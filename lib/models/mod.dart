@@ -1,4 +1,4 @@
-/// 模组外链(如 CurseForge、GitHub)
+/// 模组外链
 class ModLink {
     const ModLink({required this.name, required this.url});
 
@@ -14,6 +14,7 @@ class ModSummary {
         required this.description,
         this.subName,
         this.iconUrl,
+        this.statsText,
     });
 
     /// 站内模组 ID
@@ -31,6 +32,9 @@ class ModSummary {
     /// 模组图标地址(首页推荐列表有,搜索结果没有)
     final String? iconUrl;
 
+    /// 浏览/推荐/收藏统计文本(分类列表页有,如 '浏览 5575 · 推荐 80 · 收藏 0')
+    final String? statsText;
+
     /// 模组详情页地址
     String get pageUrl => 'https://www.mcmod.cn/class/$id.html';
 
@@ -45,6 +49,30 @@ class ModSummary {
         final m = RegExp(r'^\[([^\]]*)\]').firstMatch(title);
         return m?.group(1);
     }
+}
+
+/// mcmod.cn 首页展示的模组分类
+class ModCategory {
+    const ModCategory({
+        required this.id,
+        required this.name,
+        this.slogan,
+        this.description,
+    });
+
+    final int id;
+
+    /// 分类名,如 科技
+    final String name;
+
+    /// 标语,如 '科学技术是第一生产力。'
+    final String? slogan;
+
+    /// 分类定义(站点上为隐藏文本)
+    final String? description;
+
+    /// 分类第 1 页地址
+    String get pageUrl => 'https://www.mcmod.cn/class/category/$id-1.html';
 }
 
 /// 模组详细信息(解析自详情页)
@@ -69,8 +97,8 @@ class ModDetail {
     /// 英文名(副标题)
     final String? subName;
 
-    /// 模组介绍(富文本 HTML,来自详情页正文面板的全部内容;
-    /// 页面无正文面板时由搜索页 wiki 简介转换而来)
+    /// 模组介绍（富文本 HTML）
+    /// 来自详情页正文面板的全部内容；页面无正文面板时由搜索页 wiki 简介转换而来
     final String? description;
 
     /// 封面图地址

@@ -11,7 +11,7 @@ class McmodThrottledException implements Exception {
     const McmodThrottledException();
 
     @override
-    String toString() => '请求太频繁,被站点限流,请稍后再试';
+    String toString() => '请求太频繁，请稍后再试';
 }
 
 /// MC百科(mcmod.cn)数据获取服务。
@@ -36,16 +36,22 @@ class McmodApi {
     /// 搜索请求的最小间隔(站点限流阈值约为 3 秒)
     static const Duration _searchMinInterval = Duration(seconds: 3);
 
-    /// 详情请求的最小间隔
+    /// www.mcmod.cn 普通页面请求的最小间隔(详情/列表/首页/分类页共用)
     static const Duration _detailMinInterval = Duration(seconds: 1);
 
     static DateTime? _lastSearchAt;
-    static DateTime? _lastDetailAt;
+    static DateTime? _lastWwwAt;
 
     /// 会话缓存,避免重复请求触发限流
     static final Map<String, List<ModSummary>> _searchCache = {};
     static final Map<int, ModDetail> _detailCache = {};
-    static final Map<String, List<ModSummary>> _featuredCache = {};
+    static List<ModCategory>? _categoryCache;
+    static final Map<String, ({List<ModSummary> mods, int totalPages})>
+        _categoryModsCache = {};
+
+    /// 推荐列表的分页缓存(key='$sort-$page')。
+    /// 按页缓存而不是按 sort 缓存整份结果:条数上限变化时已抓页复用,只增量抓新页
+    static final Map<String, List<ModSummary>> _featuredPageCache = {};
 
     /// 按关键词搜索模组,返回摘要列表
     static Future<List<ModSummary>> search(String keyword) async {
@@ -58,13 +64,7 @@ class McmodApi {
         final uri = Uri.parse('https://search.mcmod.cn/s').replace(
         queryParameters: {'key': keyword, 'filter': '0', 'mold': '0'},
         );
-        var body = await _get(uri, _searchMinInterval, _lastSearchAt);
-        if (_isThrottled(body)) {
-        // 被站点限流,等待后重试一次
-        await Future<void>.delayed(const Duration(seconds: 5));
-        body = await _get(uri, Duration.zero, _lastSearchAt);
-        if (_isThrottled(body)) throw const McmodThrottledException();
-        }
+        final body = await _fetchWithRetry(uri, _searchMinInterval, _lastSearchAt);
         final results = _parseSearch(body);
         // 站点原始排序相关性较差(附属模组往往排在本体前面),
         // 这里按与关键词的匹配程度从高到低重新排序
@@ -127,12 +127,7 @@ class McmodApi {
         if (cached != null) return cached;
 
         final uri = Uri.parse('https://www.mcmod.cn/class/$id.html');
-        var body = await _get(uri, _detailMinInterval, _lastDetailAt);
-        if (_isThrottled(body)) {
-        await Future<void>.delayed(const Duration(seconds: 5));
-        body = await _get(uri, Duration.zero, _lastDetailAt);
-        if (_isThrottled(body)) throw const McmodThrottledException();
-        }
+        final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
         final detail = _parseDetail(
         id,
         body,
@@ -144,25 +139,81 @@ class McmodApi {
 
     /// 获取 mcmod.cn 首页“最新收录 / 最新编辑”版块的模组列表
     ///
-    /// [sort]:createtime=最新收录,lastedittime=最新编辑
+    /// [sort]: createTime=最新收录, lastEditTime=最新编辑
+    /// [limit]: 返回的最大条数。为 null 时保持旧行为(仅第 1 页,约 20 条);
+    ///          非空时逐页获取,直到凑满 [limit] 条或翻到末页
+    ///          (列表页每页约 20 条,limit 超过 20 时需要请求多页)
     /// (首页版块内容由 JS 动态加载,这里直接取版块“更多”指向的列表页)
     static Future<List<ModSummary>> getFeaturedMods({
         String sort = 'createtime',
+        int? limit,
     }) async {
-        final cached = _featuredCache[sort];
+        // 未指定上限:保持旧行为,只取第 1 页
+        if (limit == null) {
+        return _featuredPage(sort, 1);
+        }
+        if (limit <= 0) return const [];
+
+        final all = <ModSummary>[];
+        var page = 1;
+        // 满页容量:以第 1 页条数为准,不足此数的页视为末页
+        var capacity = 0;
+        while (all.length < limit) {
+        final mods = await _featuredPage(sort, page);
+        if (page == 1) capacity = mods.length;
+        all.addAll(mods);
+        // 翻到末页(条目数不足一页)或出现空页:停止翻页
+        if (mods.isEmpty || mods.length < capacity) break;
+        page++;
+        }
+        // 多页累计可能略超上限(如 limit=30 需要完整两页),统一截断
+        return all.take(limit).toList();
+    }
+
+    /// 获取推荐列表页第 [page] 页的模组(带会话缓存)
+    static Future<List<ModSummary>> _featuredPage(String sort, int page) async {
+        final key = '$sort-$page';
+        final cached = _featuredPageCache[key];
         if (cached != null) return cached;
 
         final uri = Uri.parse('https://www.mcmod.cn/modlist.html')
-            .replace(queryParameters: {'sort': sort});
-        var body = await _get(uri, _detailMinInterval, _lastDetailAt);
-        if (_isThrottled(body)) {
-        await Future<void>.delayed(const Duration(seconds: 5));
-        body = await _get(uri, Duration.zero, _lastDetailAt);
-        if (_isThrottled(body)) throw const McmodThrottledException();
-        }
-        final results = _parseModlist(body);
-        _featuredCache[sort] = results;
-        return results;
+            .replace(queryParameters: {'sort': sort, if (page > 1) 'page': '$page'});
+        final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
+        final mods = _parseModlist(body);
+        _featuredPageCache[key] = mods;
+        return mods;
+    }
+
+    /// 获取 mcmod.cn 首页展示的模组分类(科技/魔法等)。
+    ///
+    /// 首页的分类块是服务端渲染的,直接解析 HTML 即可。
+    static Future<List<ModCategory>> getCategories() async {
+        final cached = _categoryCache;
+        if (cached != null) return cached;
+
+        final uri = Uri.parse('https://www.mcmod.cn/');
+        final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
+        final cats = _parseCategories(body);
+        _categoryCache = cats;
+        return cats;
+    }
+
+    /// 获取分类列表页第 [page] 页的模组(每页约 20 个)与总页数
+    static Future<({List<ModSummary> mods, int totalPages})> getCategoryMods(
+        int categoryId, {
+        int page = 1,
+    }) async {
+        final key = '$categoryId-$page';
+        final cached = _categoryModsCache[key];
+        if (cached != null) return cached;
+
+        final uri = Uri.parse(
+        'https://www.mcmod.cn/class/category/$categoryId-$page.html',
+        );
+        final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
+        final result = _parseCategoryPage(body);
+        _categoryModsCache[key] = result;
+        return result;
     }
 
     // ---------- 请求基础 ----------
@@ -191,11 +242,26 @@ class McmodApi {
         return utf8.decode(resp.bodyBytes);
     }
 
+    /// 抓取页面;被站点限流时等待 5 秒重试一次,仍限流则抛出异常
+    static Future<String> _fetchWithRetry(
+        Uri uri,
+        Duration minInterval,
+        DateTime? lastAt,
+    ) async {
+        var body = await _get(uri, minInterval, lastAt);
+        if (_isThrottled(body)) {
+        await Future<void>.delayed(const Duration(seconds: 5));
+        body = await _get(uri, Duration.zero, lastAt);
+        if (_isThrottled(body)) throw const McmodThrottledException();
+        }
+        return body;
+    }
+
     static void _record(Uri uri) {
         if (uri.host == 'search.mcmod.cn') {
             _lastSearchAt = DateTime.now();
         } else {
-            _lastDetailAt = DateTime.now();
+            _lastWwwAt = DateTime.now();
         }
     }
 
@@ -261,6 +327,85 @@ class McmodApi {
         ));
         }
         return results;
+    }
+
+    // ---------- 首页分类解析 ----------
+
+    /// 解析首页的 9 个分类块(.class_category_block):
+    /// data-id 为分类 ID,.icon a 为名称,.text span.i 为标语,
+    /// .text span.t 为分类定义(站点上隐藏,但文本仍在 HTML 中)
+    static List<ModCategory> _parseCategories(String html) {
+        final doc = html_parser.parse(html);
+        final cats = <ModCategory>[];
+        for (final block in doc.querySelectorAll('.class_category_block')) {
+        final id = int.tryParse(block.attributes['data-id'] ?? '');
+        if (id == null) continue;
+        final name = _cleanText(block.querySelector('.icon a')?.text ?? '');
+        if (name.isEmpty) continue;
+        final slogan = _cleanText(block.querySelector('.text span.i')?.text ?? '');
+        final desc = _cleanText(block.querySelector('.text span.t')?.text ?? '');
+        cats.add(ModCategory(
+            id: id,
+            name: name,
+            slogan: slogan.isEmpty ? null : slogan,
+            description: desc.isEmpty ? null : desc,
+        ));
+        }
+        return cats;
+    }
+
+    // ---------- 分类列表页解析 ----------
+
+    /// 解析分类列表页:每个模组是 .frame > .block 卡片(封面 + 标题 + 统计),
+    /// 总页数取自分页块(.pages_system)里的最大页码
+    static ({List<ModSummary> mods, int totalPages}) _parseCategoryPage(String html) {
+        final doc = html_parser.parse(html);
+        final mods = <ModSummary>[];
+        // 子代组合选择器锚定 .frame > .block,避免误匹配侧栏/页脚里的 .block
+        for (final block in doc.querySelectorAll('div.frame > div.block')) {
+        final nameA = block.querySelector('.name.t a');
+        final href = nameA?.attributes['href'] ?? '';
+        final idMatch = RegExp(r'class/(\d+)\.html').firstMatch(href);
+        if (idMatch == null) continue;
+        final title = _cleanText(nameA?.text ?? '');
+        if (title.isEmpty) continue;
+
+        var icon = block.querySelector('img.img')?.attributes['src'] ?? '';
+        if (icon.startsWith('//')) icon = 'https:$icon';
+        // none.jpg 是站点无封面时的占位图,不展示
+        if (icon.contains('/none.jpg')) icon = '';
+
+        // 统计:浏览/推荐/收藏,逐项判空拼接
+        final views = _cleanText(block.querySelector('.num')?.text ?? '');
+        final push = _cleanText(block.querySelector('.push')?.text ?? '');
+        final like = _cleanText(block.querySelector('.like')?.text ?? '');
+        final stats = <String>[
+        if (views.isNotEmpty) '浏览 $views',
+        if (push.isNotEmpty) '推荐 $push',
+        if (like.isNotEmpty) '收藏 $like',
+        ];
+        mods.add(ModSummary(
+            id: int.parse(idMatch.group(1)!),
+            title: title,
+            description: '',
+            iconUrl: icon.isEmpty ? null : icon,
+            statsText: stats.isEmpty ? null : stats.join(' · '),
+        ));
+        }
+        // 没有分页块(单页分类)时兜底为 1 页
+        var totalPages = 1;
+        final pages = doc.querySelector('.pages_system');
+        if (pages != null) {
+        for (final a in pages.querySelectorAll('a[href]')) {
+            final m = RegExp(r'category/\d+-(\d+)\.html')
+                .firstMatch(a.attributes['href'] ?? '');
+            if (m != null) {
+            final n = int.tryParse(m.group(1)!);
+            if (n != null && n > totalPages) totalPages = n;
+            }
+        }
+        }
+        return (mods: mods, totalPages: totalPages);
     }
 
     // ---------- 详情页解析 ----------
