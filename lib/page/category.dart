@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../models/mod.dart';
+import '../model/mod.dart';
 import '../api/mcmod.dart';
-import '../widgets/error_view.dart';
+import '../widget/error_view.dart';
 import 'detail.dart';
 
 /// 分类模组列表页：网格卡片展示，滚动到底自动加载下一页
@@ -130,25 +130,25 @@ class _CategoryPageState extends State<CategoryPage> {
         builder: (context, constraints) {
             final columns = (constraints.maxWidth / 180).floor().clamp(2, 4);
             return CustomScrollView(
-            controller: _controller,
-            slivers: [
-                SliverPadding(
-                padding: const EdgeInsets.all(8),
-                sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                    childAspectRatio: 0.8,
+                controller: _controller,
+                slivers: [
+                    SliverPadding(
+                        padding: const EdgeInsets.all(8),
+                        sliver: SliverGrid(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: columns,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                childAspectRatio: 0.8,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                                (context, i) => _ModCard(mod: _mods[i]),
+                                childCount: _mods.length,
+                            ),
+                        ),
                     ),
-                    delegate: SliverChildBuilderDelegate(
-                    (context, i) => _ModCard(mod: _mods[i]),
-                    childCount: _mods.length,
-                    ),
-                ),
-                ),
-                SliverToBoxAdapter(child: _buildFooter()),
-            ],
+                    SliverToBoxAdapter(child: _buildFooter()),
+                ],
             );
         },
         );

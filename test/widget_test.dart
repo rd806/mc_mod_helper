@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/main.dart';
-import 'package:mc_mod_helper/services/settings.dart';
+import 'package:mc_mod_helper/service/settings.dart';
 
 /// 启动应用并推进到主页两个加载区(分类/推荐)都完成失败渲染。
 ///

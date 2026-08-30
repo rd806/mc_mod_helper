@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:mc_mod_helper/services/settings.dart';
+import 'package:mc_mod_helper/service/settings.dart';
 
 void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
 
     setUp(() {
-    // 每个用例重置 mock 存储;load() 对缺失键赋默认值,单例随之复位
-    SharedPreferences.setMockInitialValues({});
+        // 每个用例重置 mock 存储;load() 对缺失键赋默认值,单例随之复位
+        SharedPreferences.setMockInitialValues({});
     });
 
     test('load 在无存档时回到默认值', () async {

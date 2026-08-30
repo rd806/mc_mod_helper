@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../models/mod.dart';
+import '../model/mod.dart';
 import '../api/mcmod.dart';
-import '../widgets/error_view.dart';
-import '../widgets/mod_tile.dart';
+import '../widget/error_view.dart';
+import '../widget/mod_tile.dart';
 
-/// 搜索页:按关键词搜索模组,点击结果进入详情页
+/// 搜索页：按关键词搜索模组，点击结果进入详情页
 class SearchPage extends StatefulWidget {
     const SearchPage({super.key});
 
@@ -14,6 +14,7 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
+
     final TextEditingController _controller = TextEditingController();
 
     // 搜索状态
@@ -60,25 +61,32 @@ class _SearchPageState extends State<SearchPage> {
     @override
     Widget build(BuildContext context) {
         return Scaffold(
-            appBar: AppBar(
-                title: const Text('MC百科 · 模组搜索'),
-            ),
+            appBar: AppBar(title: const Text('模组搜索')),
             body: Column(
-            children: [
-                Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: TextField(
-                    controller: _controller,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: _search,
-                    onChanged: (text) {
+                children: [
+                    _buildSearchBar(),
+                    Expanded(child: _buildSearchBody()),
+                ],
+            ),
+        );
+    }
+
+    // 输入栏
+    Widget _buildSearchBar() {
+        return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: TextField(
+                controller: _controller,
+                textInputAction: TextInputAction.search,
+                onSubmitted: _search,
+                onChanged: (text) {
                     // 清空输入时回到未搜索状态
                     if (text.trim().isEmpty && _hasSearched) {
                         setState(() => _hasSearched = false);
                     }
-                    },
-                    decoration: InputDecoration(
-                    hintText: '输入模组名 / 英文名 / 缩写,如 JEI',
+                },
+                decoration: InputDecoration(
+                    hintText: '输入模组名 / 英文名 / 缩写',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: IconButton(
                         tooltip: '搜索',
@@ -89,46 +97,44 @@ class _SearchPageState extends State<SearchPage> {
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(28),
                     ),
-                    ),
                 ),
-                ),
-                Expanded(child: _buildSearchBody()),
-            ],
             ),
         );
     }
 
+    // 搜索区
     Widget _buildSearchBody() {
         if (!_hasSearched) {
-        return Center(
-            child: Text(
-            '输入模组名 / 英文名 / 缩写开始搜索',
-            style: Theme.of(context).textTheme.bodyLarge,
-            ),
-        );
+            return Center(
+                child: Text(
+                    '输入模组名 / 英文名 / 缩写开始搜索',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                ),
+            );
         }
         if (_searching) {
-        return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
         }
         if (_searchError != null) {
-        return ErrorView(
-            message: _searchError!,
-            onRetry: () => _search(_controller.text),
-        );
+            return ErrorView(
+                message: _searchError!,
+                onRetry: () => _search(_controller.text),
+            );
         }
         if (_results.isEmpty) {
-        return Center(
-            child: Text(
-            '没有找到相关模组',
-            style: Theme.of(context).textTheme.bodyLarge,
-            ),
-        );
+            return Center(
+                child: Text(
+                    '没有找到相关模组',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                ),
+            );
         }
+        // 显示搜索结果
         return ListView.separated(
-        padding: const EdgeInsets.all(8),
-        itemCount: _results.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
-        itemBuilder: (context, index) => ModTile(mod: _results[index]),
+            padding: const EdgeInsets.all(8),
+            itemCount: _results.length,
+            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemBuilder: (context, index) => ModTile(mod: _results[index]),
         );
     }
 }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../models/mod.dart';
+import '../model/mod.dart';
 import '../api/mcmod.dart';
 
 /// 模组详情页
@@ -35,16 +35,17 @@ class _DetailPageState extends State<DetailPage> {
         _future = _load();
     }
 
+    /// 获取详情
     Future<ModDetail> _load() {
         return McmodApi.getDetail(
-        widget.id,
-        fallbackDescription: widget.initialDescription,
+            widget.id,
+            fallbackDescription: widget.initialDescription,
         );
     }
 
     void _reload() {
         setState(() {
-        _future = _load();
+            _future = _load();
         });
     }
 

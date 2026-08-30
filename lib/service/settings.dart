@@ -34,19 +34,19 @@ class SettingsService extends ChangeNotifier {
     /// 因此测试里可以用 setMockInitialValues({}) + load() 把单例重置为默认。
     Future<void> load() async {
         try {
-        final prefs = await SharedPreferences.getInstance();
-        _themeMode = ThemeMode.values.asNameMap()[
+            final prefs = await SharedPreferences.getInstance();
+            _themeMode = ThemeMode.values.asNameMap()[
                 prefs.getString(_themeModeKey)] ??
-            ThemeMode.system;
-        _seedColor = Color(
-            prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32(),
-        );
-        _fontScale = prefs.getDouble(_fontScaleKey) ?? 1.0;
-        _featuredMax = (prefs.getInt(_featuredMaxKey) ?? 20)
-            .clamp(featuredMin, featuredMaxLimit);
-        notifyListeners();
+                ThemeMode.system;
+            _seedColor = Color(
+                prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32(),
+            );
+            _fontScale = prefs.getDouble(_fontScaleKey) ?? 1.0;
+            _featuredMax = (prefs.getInt(_featuredMaxKey) ?? 20)
+                .clamp(featuredMin, featuredMaxLimit);
+            notifyListeners();
         } catch (_) {
-        // 读取失败:保持默认值,不阻塞启动
+            // 读取失败:保持默认值,不阻塞启动
         }
     }
 
@@ -86,17 +86,14 @@ class SettingsService extends ChangeNotifier {
     /// 异步写盘;失败不影响本次切换,仅下次启动回到上次成功保存的值
     Future<void> _persist(String key, Object value) async {
         try {
-        final prefs = await SharedPreferences.getInstance();
-        switch (value) {
-            case final int i:
-            await prefs.setInt(key, i);
-            case final double d:
-            await prefs.setDouble(key, d);
-            default:
-            await prefs.setString(key, value as String);
-        }
+            final prefs = await SharedPreferences.getInstance();
+            switch (value) {
+                case final int i: await prefs.setInt(key, i);
+                case final double d: await prefs.setDouble(key, d);
+                default: await prefs.setString(key, value as String);
+            }
         } catch (_) {
-        // 忽略写盘失败
+            // 忽略写盘失败
         }
     }
 }

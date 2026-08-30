@@ -4,7 +4,7 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
-import '../models/mod.dart';
+import '../model/mod.dart';
 
 /// 被站点限流时抛出的异常
 class McmodThrottledException implements Exception {
@@ -46,11 +46,11 @@ class McmodApi {
     static final Map<String, List<ModSummary>> _searchCache = {};
     static final Map<int, ModDetail> _detailCache = {};
     static List<ModCategory>? _categoryCache;
-    static final Map<String, ({List<ModSummary> mods, int totalPages})>
-        _categoryModsCache = {};
+    static final Map<String, ({List<ModSummary> mods, int totalPages})> _categoryModsCache = {};
 
-    /// 推荐列表的分页缓存(key='$sort-$page')。
-    /// 按页缓存而不是按 sort 缓存整份结果:条数上限变化时已抓页复用,只增量抓新页
+    /// 推荐列表的分页缓存
+    /// key='$sort-$page'；
+    /// 按页缓存而不是按 sort 缓存整份结果：条数上限变化时已抓页复用，只增量抓新页
     static final Map<String, List<ModSummary>> _featuredPageCache = {};
 
     /// 按关键词搜索模组,返回摘要列表
@@ -62,7 +62,7 @@ class McmodApi {
         // 相关性很差,本体模组会被附属模组淹没;filter=0 的排序是正确的。
         // 解析时只保留模组条目(class/数字.html),所以类型混杂不影响结果。
         final uri = Uri.parse('https://search.mcmod.cn/s').replace(
-        queryParameters: {'key': keyword, 'filter': '0', 'mold': '0'},
+            queryParameters: {'key': keyword, 'filter': '0', 'mold': '0'},
         );
         final body = await _fetchWithRetry(uri, _searchMinInterval, _lastSearchAt);
         final results = _parseSearch(body);
@@ -109,10 +109,9 @@ class McmodApi {
                 index: e.key,
                 mod: e.value,
                 score: _relevanceScore(e.value, keyword),
-                ))
+            ))
             .toList();
-        scored.sort((a, b) =>
-            b.score != a.score ? b.score.compareTo(a.score) : a.index.compareTo(b.index));
+        scored.sort((a, b) => b.score != a.score ? b.score.compareTo(a.score) : a.index.compareTo(b.index));
         return scored.map((e) => e.mod).toList();
     }
 
@@ -129,9 +128,9 @@ class McmodApi {
         final uri = Uri.parse('https://www.mcmod.cn/class/$id.html');
         final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
         final detail = _parseDetail(
-        id,
-        body,
-        fallbackDescription: fallbackDescription,
+            id,
+            body,
+            fallbackDescription: fallbackDescription,
         );
         _detailCache[id] = detail;
         return detail;
@@ -139,7 +138,7 @@ class McmodApi {
 
     /// 获取 mcmod.cn 首页“最新收录 / 最新编辑”版块的模组列表
     ///
-    /// [sort]: createTime=最新收录, lastEditTime=最新编辑
+    /// [sort]: createtime=最新收录, lastedittime=最新编辑
     /// [limit]: 返回的最大条数。为 null 时保持旧行为(仅第 1 页,约 20 条);
     ///          非空时逐页获取,直到凑满 [limit] 条或翻到末页
     ///          (列表页每页约 20 条,limit 超过 20 时需要请求多页)
@@ -150,7 +149,7 @@ class McmodApi {
     }) async {
         // 未指定上限:保持旧行为,只取第 1 页
         if (limit == null) {
-        return _featuredPage(sort, 1);
+            return _featuredPage(sort, 1);
         }
         if (limit <= 0) return const [];
 
@@ -159,12 +158,12 @@ class McmodApi {
         // 满页容量:以第 1 页条数为准,不足此数的页视为末页
         var capacity = 0;
         while (all.length < limit) {
-        final mods = await _featuredPage(sort, page);
-        if (page == 1) capacity = mods.length;
-        all.addAll(mods);
-        // 翻到末页(条目数不足一页)或出现空页:停止翻页
-        if (mods.isEmpty || mods.length < capacity) break;
-        page++;
+            final mods = await _featuredPage(sort, page);
+            if (page == 1) capacity = mods.length;
+            all.addAll(mods);
+            // 翻到末页(条目数不足一页)或出现空页:停止翻页
+            if (mods.isEmpty || mods.length < capacity) break;
+            page++;
         }
         // 多页累计可能略超上限(如 limit=30 需要完整两页),统一截断
         return all.take(limit).toList();
@@ -207,9 +206,7 @@ class McmodApi {
         final cached = _categoryModsCache[key];
         if (cached != null) return cached;
 
-        final uri = Uri.parse(
-        'https://www.mcmod.cn/class/category/$categoryId-$page.html',
-        );
+        final uri = Uri.parse('https://www.mcmod.cn/class/category/$categoryId-$page.html');
         final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
         final result = _parseCategoryPage(body);
         _categoryModsCache[key] = result;
@@ -228,16 +225,16 @@ class McmodApi {
         DateTime? lastAt,
     ) async {
         if (lastAt != null) {
-        final elapsed = DateTime.now().difference(lastAt);
-        if (elapsed < minInterval) {
-            await Future<void>.delayed(minInterval - elapsed);
-        }
+            final elapsed = DateTime.now().difference(lastAt);
+            if (elapsed < minInterval) {
+                await Future<void>.delayed(minInterval - elapsed);
+            }
         }
         // 在发出请求前记录时间,保证后续请求的间隔计算正确
         _record(uri);
         final resp = await _client.get(uri, headers: _headers);
         if (resp.statusCode != 200) {
-        throw Exception('请求失败: HTTP ${resp.statusCode}');
+            throw Exception('请求失败: HTTP ${resp.statusCode}');
         }
         return utf8.decode(resp.bodyBytes);
     }
@@ -250,9 +247,9 @@ class McmodApi {
     ) async {
         var body = await _get(uri, minInterval, lastAt);
         if (_isThrottled(body)) {
-        await Future<void>.delayed(const Duration(seconds: 5));
-        body = await _get(uri, Duration.zero, lastAt);
-        if (_isThrottled(body)) throw const McmodThrottledException();
+            await Future<void>.delayed(const Duration(seconds: 5));
+            body = await _get(uri, Duration.zero, lastAt);
+            if (_isThrottled(body)) throw const McmodThrottledException();
         }
         return body;
     }
@@ -268,32 +265,33 @@ class McmodApi {
     /// 站点限流页面的特征文本
     static bool _isThrottled(String html) => html.contains('太频繁');
 
+
     // ---------- 搜索页解析 ----------
 
     static List<ModSummary> _parseSearch(String html) {
         final doc = html_parser.parse(html);
         final results = <ModSummary>[];
         for (final item in doc.querySelectorAll('.result-item')) {
-        // .head 里第一个 a 可能是分类链接(class/category/...),
-        // 需要遍历找出指向模组页(class/数字.html)的那个
-        Element? anchor;
-        for (final a in item.querySelectorAll('.head a')) {
-            if (RegExp(r'class/\d+\.html').hasMatch(a.attributes['href'] ?? '')) {
-            anchor = a;
-            break;
+            // .head 里第一个 a 可能是分类链接(class/category/...),
+            // 需要遍历找出指向模组页(class/数字.html)的那个
+            Element? anchor;
+            for (final a in item.querySelectorAll('.head a')) {
+                if (RegExp(r'class/\d+\.html').hasMatch(a.attributes['href'] ?? '')) {
+                    anchor = a;
+                    break;
+                }
             }
-        }
-        if (anchor == null) continue;
-        final href = anchor.attributes['href'] ?? '';
-        final idMatch = RegExp(r'class/(\d+)\.html').firstMatch(href);
-        if (idMatch == null) continue;
-        final title = _cleanText(anchor.text);
-        if (title.isEmpty) continue;
-        results.add(ModSummary(
-            id: int.parse(idMatch.group(1)!),
-            title: title,
-            description: _cleanText(item.querySelector('.body')?.text ?? ''),
-        ));
+            if (anchor == null) continue;
+            final href = anchor.attributes['href'] ?? '';
+            final idMatch = RegExp(r'class/(\d+)\.html').firstMatch(href);
+            if (idMatch == null) continue;
+            final title = _cleanText(anchor.text);
+            if (title.isEmpty) continue;
+            results.add(ModSummary(
+                id: int.parse(idMatch.group(1)!),
+                title: title,
+                description: _cleanText(item.querySelector('.body')?.text ?? ''),
+            ));
         }
         return results;
     }
@@ -304,27 +302,25 @@ class McmodApi {
         final doc = html_parser.parse(html);
         final results = <ModSummary>[];
         for (final block in doc.querySelectorAll('.modlist-block')) {
-        final nameA = block.querySelector('.title .name a');
-        final href = nameA?.attributes['href'] ?? '';
-        final idMatch = RegExp(r'class/(\d+)\.html').firstMatch(href);
-        if (idMatch == null) continue;
-        final title = _cleanText(nameA?.text ?? '');
-        if (title.isEmpty) continue;
+            final nameA = block.querySelector('.title .name a');
+            final href = nameA?.attributes['href'] ?? '';
+            final idMatch = RegExp(r'class/(\d+)\.html').firstMatch(href);
+            if (idMatch == null) continue;
+            final title = _cleanText(nameA?.text ?? '');
+            if (title.isEmpty) continue;
 
-        final ename = _cleanText(block.querySelector('.title .ename')?.text ?? '');
-        final intro = _cleanText(
-            block.querySelector('.intro-content span')?.text ?? '',
-        );
-        var icon = block.querySelector('.cover img')?.attributes['src'] ?? '';
-        if (icon.startsWith('//')) icon = 'https:$icon';
+            final ename = _cleanText(block.querySelector('.title .ename')?.text ?? '',);
+            final intro = _cleanText(block.querySelector('.intro-content span')?.text ?? '',);
+            var icon = block.querySelector('.cover img')?.attributes['src'] ?? '';
+            if (icon.startsWith('//')) icon = 'https:$icon';
 
-        results.add(ModSummary(
-            id: int.parse(idMatch.group(1)!),
-            title: title,
-            description: intro,
-            subName: ename.isEmpty ? null : ename,
-            iconUrl: icon.isEmpty ? null : icon,
-        ));
+            results.add(ModSummary(
+                id: int.parse(idMatch.group(1)!),
+                title: title,
+                description: intro,
+                subName: ename.isEmpty ? null : ename,
+                iconUrl: icon.isEmpty ? null : icon,
+            ));
         }
         return results;
     }
@@ -339,17 +335,17 @@ class McmodApi {
         final cats = <ModCategory>[];
         for (final block in doc.querySelectorAll('.class_category_block')) {
         final id = int.tryParse(block.attributes['data-id'] ?? '');
-        if (id == null) continue;
-        final name = _cleanText(block.querySelector('.icon a')?.text ?? '');
-        if (name.isEmpty) continue;
-        final slogan = _cleanText(block.querySelector('.text span.i')?.text ?? '');
-        final desc = _cleanText(block.querySelector('.text span.t')?.text ?? '');
-        cats.add(ModCategory(
-            id: id,
-            name: name,
-            slogan: slogan.isEmpty ? null : slogan,
-            description: desc.isEmpty ? null : desc,
-        ));
+            if (id == null) continue;
+            final name = _cleanText(block.querySelector('.icon a')?.text ?? '');
+            if (name.isEmpty) continue;
+            final slogan = _cleanText(block.querySelector('.text span.i')?.text ?? '');
+            final desc = _cleanText(block.querySelector('.text span.t')?.text ?? '');
+            cats.add(ModCategory(
+                id: id,
+                name: name,
+                slogan: slogan.isEmpty ? null : slogan,
+                description: desc.isEmpty ? null : desc,
+            ));
         }
         return cats;
     }
@@ -363,47 +359,46 @@ class McmodApi {
         final mods = <ModSummary>[];
         // 子代组合选择器锚定 .frame > .block,避免误匹配侧栏/页脚里的 .block
         for (final block in doc.querySelectorAll('div.frame > div.block')) {
-        final nameA = block.querySelector('.name.t a');
-        final href = nameA?.attributes['href'] ?? '';
-        final idMatch = RegExp(r'class/(\d+)\.html').firstMatch(href);
-        if (idMatch == null) continue;
-        final title = _cleanText(nameA?.text ?? '');
-        if (title.isEmpty) continue;
+            final nameA = block.querySelector('.name.t a');
+            final href = nameA?.attributes['href'] ?? '';
+            final idMatch = RegExp(r'class/(\d+)\.html').firstMatch(href);
+            if (idMatch == null) continue;
+            final title = _cleanText(nameA?.text ?? '');
+            if (title.isEmpty) continue;
 
-        var icon = block.querySelector('img.img')?.attributes['src'] ?? '';
-        if (icon.startsWith('//')) icon = 'https:$icon';
-        // none.jpg 是站点无封面时的占位图,不展示
-        if (icon.contains('/none.jpg')) icon = '';
+            var icon = block.querySelector('img.img')?.attributes['src'] ?? '';
+            if (icon.startsWith('//')) icon = 'https:$icon';
+            // none.jpg 是站点无封面时的占位图,不展示
+            if (icon.contains('/none.jpg')) icon = '';
 
-        // 统计:浏览/推荐/收藏,逐项判空拼接
-        final views = _cleanText(block.querySelector('.num')?.text ?? '');
-        final push = _cleanText(block.querySelector('.push')?.text ?? '');
-        final like = _cleanText(block.querySelector('.like')?.text ?? '');
-        final stats = <String>[
-        if (views.isNotEmpty) '浏览 $views',
-        if (push.isNotEmpty) '推荐 $push',
-        if (like.isNotEmpty) '收藏 $like',
-        ];
-        mods.add(ModSummary(
-            id: int.parse(idMatch.group(1)!),
-            title: title,
-            description: '',
-            iconUrl: icon.isEmpty ? null : icon,
-            statsText: stats.isEmpty ? null : stats.join(' · '),
-        ));
+            // 统计:浏览/推荐/收藏,逐项判空拼接
+            final views = _cleanText(block.querySelector('.num')?.text ?? '');
+            final push = _cleanText(block.querySelector('.push')?.text ?? '');
+            final like = _cleanText(block.querySelector('.like')?.text ?? '');
+            final stats = <String>[
+                if (views.isNotEmpty) '浏览 $views',
+                if (push.isNotEmpty) '推荐 $push',
+                if (like.isNotEmpty) '收藏 $like',
+            ];
+            mods.add(ModSummary(
+                id: int.parse(idMatch.group(1)!),
+                title: title,
+                description: '',
+                iconUrl: icon.isEmpty ? null : icon,
+                statsText: stats.isEmpty ? null : stats.join(' · '),
+            ));
         }
         // 没有分页块(单页分类)时兜底为 1 页
         var totalPages = 1;
-        final pages = doc.querySelector('.pages_system');
-        if (pages != null) {
-        for (final a in pages.querySelectorAll('a[href]')) {
-            final m = RegExp(r'category/\d+-(\d+)\.html')
-                .firstMatch(a.attributes['href'] ?? '');
-            if (m != null) {
-            final n = int.tryParse(m.group(1)!);
-            if (n != null && n > totalPages) totalPages = n;
+        final page = doc.querySelector('.pages_system');
+        if (page != null) {
+            for (final a in page.querySelectorAll('a[href]')) {
+                final m = RegExp(r'category/\d+-(\d+)\.html').firstMatch(a.attributes['href'] ?? '');
+                if (m != null) {
+                    final n = int.tryParse(m.group(1)!);
+                    if (n != null && n > totalPages) totalPages = n;
+                }
             }
-        }
         }
         return (mods: mods, totalPages: totalPages);
     }
@@ -418,63 +413,56 @@ class McmodApi {
         final doc = html_parser.parse(html);
 
         // 标题:<title>中文名 (English) - MC百科|...</title>
-        var title = doc
-                .querySelector('title')
-                ?.text
-                .replaceFirst(RegExp(r'\s*-\s*MC百科.*$'), '') ??
-            '';
+        var title = doc.querySelector('title')?.text.replaceFirst(RegExp(r'\s*-\s*MC百科.*$'), '') ?? '';
         String? subName;
         final paren = RegExp(r'\((.*?)\)$').firstMatch(title);
         if (paren != null && RegExp(r'[A-Za-z]').hasMatch(paren.group(1)!)) {
-        subName = paren.group(1);
-        title = title.substring(0, paren.start).trim();
+            subName = paren.group(1);
+            title = title.substring(0, paren.start).trim();
         }
 
         // 封面图
         String? coverUrl;
         final cover = doc.querySelector('img[src*="i.mcmod.cn/class/cover"]');
         if (cover != null) {
-        var src = cover.attributes['src'] ?? '';
-        if (src.startsWith('//')) src = 'https:$src';
-        coverUrl = src;
+            var src = cover.attributes['src'] ?? '';
+            if (src.startsWith('//')) src = 'https:$src';
+            coverUrl = src;
         }
 
         // 相关链接(CurseForge / GitHub / ...)
         final links = <ModLink>[];
         for (final li in doc.querySelectorAll('ul.common-link-icon-frame li')) {
-        final a = li.querySelector('a[href]');
-        final name = (li.querySelector('.name')?.text ??
-                a?.attributes['data-original-title'] ??
-                '')
-            .trim();
-        var href = a?.attributes['href'] ?? '';
-        // 外链经 link.mcmod.cn/target/<base64> 中转,解码出真实地址
-        final target = href.indexOf('/target/');
-        if (href.contains('link.mcmod.cn') && target >= 0) {
-            final encoded = href.substring(target + 8);
-            try {
-            href = utf8.decode(base64.decode(base64.normalize(encoded)));
-            } catch (_) {
-            // 解码失败时保留原始跳转地址
+            final a = li.querySelector('a[href]');
+            final name = (li.querySelector('.name')?.text ?? a?.attributes['data-original-title'] ?? '').trim();
+            var href = a?.attributes['href'] ?? '';
+            // 外链经 link.mcmod.cn/target/<base64> 中转,解码出真实地址
+            final target = href.indexOf('/target/');
+            if (href.contains('link.mcmod.cn') && target >= 0) {
+                final encoded = href.substring(target + 8);
+                try {
+                    href = utf8.decode(base64.decode(base64.normalize(encoded)));
+                } catch (_) {
+                // 解码失败时保留原始跳转地址
+                }
             }
-        }
-        if (name.isNotEmpty && href.isNotEmpty) {
-            links.add(ModLink(name: name, url: href));
-        }
+            if (name.isNotEmpty && href.isNotEmpty) {
+                links.add(ModLink(name: name, url: href));
+            }
         }
 
         // 支持的 MC 版本(去重,保持顺序)
         final mcVersions = <String>[];
         for (final a in doc.querySelectorAll('li.mcver a')) {
-        final v = a.text.trim();
-        if (v.isNotEmpty && !mcVersions.contains(v)) mcVersions.add(v);
+            final v = a.text.trim();
+            if (v.isNotEmpty && !mcVersions.contains(v)) mcVersions.add(v);
         }
 
         // 左侧信息面板:支持平台 / 运行环境(直接对 HTML 文本做正则)
         String? field(String label) {
-        final m = RegExp('$label[:：]\\s*([^<]+)<').firstMatch(html);
-        final v = m?.group(1)?.trim();
-        return (v == null || v.isEmpty) ? null : v;
+            final m = RegExp('$label[:：]\\s*([^<]+)<').firstMatch(html);
+            final v = m?.group(1)?.trim();
+            return (v == null || v.isEmpty) ? null : v;
         }
 
         // 简介:取详情页正文面板(.text-area.common-text)的全部富文本 HTML,
@@ -483,15 +471,15 @@ class McmodApi {
             _extractFullContentHtml(doc) ?? _bbcodeToHtml(fallbackDescription ?? '');
 
         return ModDetail(
-        id: id,
-        title: title,
-        subName: subName,
-        description: description.isEmpty ? null : description,
-        coverUrl: coverUrl,
-        links: links,
-        mcVersions: mcVersions,
-        platform: field('支持平台'),
-        environment: field('运行环境'),
+            id: id,
+            title: title,
+            subName: subName,
+            description: description.isEmpty ? null : description,
+            coverUrl: coverUrl,
+            links: links,
+            mcVersions: mcVersions,
+            platform: field('支持平台'),
+            environment: field('运行环境'),
         );
     }
 
@@ -512,11 +500,10 @@ class McmodApi {
     static String _styleSectionTitles(String html) {
         const sizes = {'1': '1.35', '2': '1.2', '3': '1.1'};
         return html.replaceAllMapped(
-        RegExp(r'<span[^>]*class="[^"]*common-text-title-(\d)[^"]*"[^>]*>'),
-        (m) {
-            final size = sizes[m.group(1)] ?? '1';
-            return '<span style="font-weight:bold;font-size:${size}em">';
-        },
+            RegExp(r'<span[^>]*class="[^"]*common-text-title-(\d)[^"]*"[^>]*>'), (m) {
+                final size = sizes[m.group(1)] ?? '1';
+                return '<span style="font-weight:bold;font-size:${size}em">';
+            },
         );
     }
 
@@ -527,43 +514,37 @@ class McmodApi {
         s = s.replaceAll(RegExp(r'<script[^>]*>.*?</script>', dotAll: true), '');
         // 懒加载图片:真实地址在 data-src,替换掉占位 loading 图
         s = s.replaceAllMapped(
-        RegExp(r'\s+src="[^"]*loading[^"]*"(\s+data-src="([^"]*)")'),
-        (m) => ' src="${m.group(2)!}"',
+            RegExp(r'\s+src="[^"]*loading[^"]*"(\s+data-src="([^"]*)")'), (m) => ' src="${m.group(2)!}"',
         );
         s = s.replaceAll(RegExp(r'\s+data-src="[^"]*"'), '');
         s = s.replaceAll(RegExp(r'\s+data-error="[^"]*"'), '');
         // 图片:去掉固定宽高与 class,限制最大宽度防止溢出屏幕;
         // 包一层链接,点击图片时在灯箱中放大查看
         s = s.replaceAllMapped(RegExp(r'<img([^>]*)>'), (m) {
-        final attrs = m.group(1)!;
-        final src = RegExp(r'src="([^"]*)"').firstMatch(attrs)?.group(1);
-        final cleaned = attrs
-            .replaceAll(RegExp(r'\s+(width|height)="[^"]*"'), '')
-            .replaceAll(RegExp(r'\s+(class|style)="[^"]*"'), '');
-        final img = '<img$cleaned style="max-width:100%">';
-        return (src == null || src.isEmpty)
-            ? img
-            : '<a href="$src">$img</a>';
+            final attrs = m.group(1)!;
+            final src = RegExp(r'src="([^"]*)"').firstMatch(attrs)?.group(1);
+            final cleaned = attrs
+                .replaceAll(RegExp(r'\s+(width|height)="[^"]*"'), '')
+                .replaceAll(RegExp(r'\s+(class|style)="[^"]*"'), '');
+            final img = '<img$cleaned style="max-width:100%">';
+            return (src == null || src.isEmpty) ? img : '<a href="$src">$img</a>';
         });
         // 表格分类处理:
         // - 含图片的表格(截图画廊等):转成纵向堆叠的 div 布局。
-        //   fwfh 的表格布局在单元格含图片时,计算 dry-baseline 会访问
+        //   表格布局在单元格含图片时,计算 dry-baseline 会访问
         //   RenderImage 的 size,触发 Flutter 断言崩溃;竖排也更适合窄屏。
         // - 纯文字的表格(按键说明、元素表等):保留表格渲染,仅清理固定宽度。
-        s = s.replaceAllMapped(
-        RegExp(r'<table[^>]*>.*?</table>', dotAll: true),
-        (m) {
+        s = s.replaceAllMapped(RegExp(r'<table[^>]*>.*?</table>', dotAll: true), (m) {
             final block = m.group(0)!;
             if (block.contains('<img')) return _tableToDiv(block);
             return block
                 .replaceAll(RegExp(r'\s+width="[^"]*"'), '')
                 .replaceAll(RegExp(r'\s+style="[^"]*"'), '');
-        },
-        );
+        });
         // 站内弹窗链接(javascript:void(0))只保留文字
         s = s.replaceAllMapped(
-        RegExp(r'<a[^>]*href="javascript:[^"]*"[^>]*>(.*?)</a>', dotAll: true),
-        (m) => '<span>${m.group(1)}</span>',
+            RegExp(r'<a[^>]*href="javascript:[^"]*"[^>]*>(.*?)</a>', dotAll: true),
+            (m) => '<span>${m.group(1)}</span>',
         );
         // 协议相对地址补全
         s = s.replaceAll('src="//', 'src="https://');

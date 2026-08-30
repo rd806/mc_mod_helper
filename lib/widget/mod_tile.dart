@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/mod.dart';
-import '../pages/detail.dart';
+import '../model/mod.dart';
+import '../page/detail.dart';
 
 /// 单条模组
 /// 搜索结果 / 首页推荐通用

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../api/mcmod.dart';
-import '../models/mod.dart';
-import '../services/settings.dart';
-import '../widgets/error_view.dart';
-import '../widgets/mod_tile.dart';
+import '../model/mod.dart';
+import '../service/settings.dart';
+import '../widget/error_view.dart';
+import '../widget/mod_tile.dart';
 import 'category.dart';
 import 'config.dart';
 import 'search.dart';
@@ -35,7 +35,7 @@ class _HomePageState extends State<HomePage> {
     bool _featuredLoading = true;
     String? _featuredError;
     List<ModSummary> _featured = const [];
-    String _featuredSort = 'createTime';
+    String _featuredSort = 'createtime';
 
     // 分类区状态
     bool _categoriesLoading = true;
@@ -191,8 +191,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                     SegmentedButton<String>(
                         segments: const [
-                            ButtonSegment(value: 'createTime', label: Text('最新收录')),
-                            ButtonSegment(value: 'lastEditTime', label: Text('最新编辑')),
+                            ButtonSegment(value: 'createtime', label: Text('最新收录')),
+                            ButtonSegment(value: 'lastedittime', label: Text('最新编辑')),
                         ],
                         selected: {_featuredSort},
                         showSelectedIcon: false,

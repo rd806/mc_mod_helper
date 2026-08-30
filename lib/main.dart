@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-import 'pages/home.dart';
-import 'services/settings.dart';
+import 'page/home.dart';
+import 'service/settings.dart';
 
 /// 应用程序入口
 Future<void> main() async {
@@ -22,27 +22,27 @@ class McModHelper extends StatelessWidget {
         // home 是 const,ThemeData 有缓存(见 _buildTheme),
         // 所以非主题类设置变化不会引发子树重建/主题动画
         return ListenableBuilder(
-        listenable: SettingsService.instance,
-        builder: (context, _) {
-            final settings = SettingsService.instance;
-            return MaterialApp(
-                title: 'Minecraft Mod Helper',
-                debugShowCheckedModeBanner: false,
-                theme: _buildTheme(Brightness.light, settings.seedColor),
-                darkTheme: _buildTheme(Brightness.dark, settings.seedColor),
-                themeMode: settings.themeMode,
-                // 全局字体缩放:覆盖 MediaQuery.textScaler。
-                // Navigator 是 builder 的 child,因此路由页面/对话框/SnackBar 全部生效。
-                // 注意:这会覆盖系统无障碍字体缩放(用户三档选择优先)。
-                builder: (context, child) => MediaQuery(
-                    data: MediaQuery.of(context).copyWith(
-                        textScaler: TextScaler.linear(settings.fontScale),
+            listenable: SettingsService.instance,
+            builder: (context, _) {
+                final settings = SettingsService.instance;
+                return MaterialApp(
+                    title: 'Minecraft Mod Helper',
+                    debugShowCheckedModeBanner: false,
+                    theme: _buildTheme(Brightness.light, settings.seedColor),
+                    darkTheme: _buildTheme(Brightness.dark, settings.seedColor),
+                    themeMode: settings.themeMode,
+                    // 全局字体缩放:覆盖 MediaQuery.textScaler。
+                    // Navigator 是 builder 的 child,因此路由页面/对话框/SnackBar 全部生效。
+                    // 注意:这会覆盖系统无障碍字体缩放(用户三档选择优先)。
+                    builder: (context, child) => MediaQuery(
+                        data: MediaQuery.of(context).copyWith(
+                            textScaler: TextScaler.linear(settings.fontScale),
+                        ),
+                        child: child!,
                     ),
-                    child: child!,
-                ),
-                home: const HomePage(),
-            );
-        },
+                    home: const HomePage(),
+                );
+            },
         );
     }
 }
