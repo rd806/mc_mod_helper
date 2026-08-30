@@ -299,6 +299,7 @@ class _DetailPageState extends State<DetailPage> {
         );
     }
 
+    // 选择匹配的图标
     IconData _linkIcon(String name) {
         final n = name.toLowerCase();
         if (n.contains('github')) return Icons.code;

@@ -35,6 +35,7 @@ void main() {
     expect(find.textContaining('加载失败'), findsNWidgets(2));
     expect(find.byIcon(Icons.search), findsOneWidget);
     expect(find.byIcon(Icons.settings), findsOneWidget);
+    expect(find.byIcon(Icons.refresh), findsOneWidget);
     });
 
     testWidgets('点击搜索图标进入搜索页', (tester) async {
@@ -42,7 +43,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.search));
     await tester.pumpAndSettle(); // 仅路由动画,无挂起计时器
 
-    expect(find.text('MC百科 · 模组搜索'), findsOneWidget);
+    expect(find.text('模组搜索'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
     });
 
@@ -54,9 +55,9 @@ void main() {
 
     // 三个设置区块都在
     expect(find.text('设置'), findsOneWidget);
-    expect(find.text('主题'), findsOneWidget);
+    expect(find.text('主题选择'), findsOneWidget);
     expect(find.text('字体大小'), findsOneWidget);
-    expect(find.text('推荐列表'), findsOneWidget);
+    expect(find.text('列表长度'), findsOneWidget);
 
     // 切换主题模式 → 服务值变化(不触发主页重载,无新计时器)
     await tester.tap(find.text('亮色'));
@@ -66,7 +67,7 @@ void main() {
     // 切换字体档位 → 服务值变化
     await tester.tap(find.text('大'));
     await tester.pump();
-    expect(SettingsService.instance.fontScale, 1.15);
+    expect(SettingsService.instance.fontScale, 1.5);
 
     // 拖滑条 → 松手提交,服务值变化
     await tester.drag(find.byType(Slider), const Offset(400, 0));
@@ -79,6 +80,20 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     await tester.pump();
+    });
+
+    testWidgets('点击刷新按钮重新加载本页', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.pump(); // 两个区块回到加载态
+    expect(find.byType(CircularProgressIndicator), findsNWidgets(2));
+    expect(find.textContaining('加载失败'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 1)); // 两个节流计时器触发
+    await tester.pump(); // 请求 400 → setState
+    await tester.pump(); // 渲染错误态
+    expect(find.textContaining('加载失败'), findsNWidgets(2));
     });
 
     testWidgets('修改推荐条数上限后主页重新拉取推荐', (tester) async {

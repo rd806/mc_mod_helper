@@ -1,17 +1,13 @@
-# McMod App
+# MC Mod Helper
 
-My first Flutter project.
+我的第一个 flutter 项目：一个简易的 Minecraft 模组浏览应用。
 
-## Getting Started
+> 仅用于学习交流。
 
-This project is a starting point for a Flutter application.
+## 功能
 
-A few resources to get you started if this is your first Flutter project:
+- [x] 浏览模组
+- [x] 搜索模组
+- [x] 查看模组详情与版本信息
+- [ ] 收藏常用模组
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.

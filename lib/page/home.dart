@@ -129,6 +129,11 @@ class _HomePageState extends State<HomePage> {
         }
     }
 
+    /// 重新加载本页:分类与推荐两个区块同时刷新(非静默,显示加载动画)
+    Future<void> _refresh() async {
+        await Future.wait([_loadCategories(), _loadFeatured()]);
+    }
+
     @override
     Widget build(BuildContext context) {
         return Scaffold(
@@ -143,6 +148,11 @@ class _HomePageState extends State<HomePage> {
                         onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const SearchPage()),
                         ),
+                    ),
+                    IconButton(
+                        tooltip: '刷新',
+                        icon: const Icon(Icons.refresh),
+                        onPressed: _refresh,
                     ),
                     // 设置
                     IconButton(
@@ -263,7 +273,18 @@ class _HomePageState extends State<HomePage> {
         // 正确内容
         return LayoutBuilder(
             builder: (context, constraints) {
-                final columns = (constraints.maxWidth / 190).floor().clamp(2, 3);
+                // 窄屏：每个分类卡片占一行,纵向排列
+                if (constraints.maxWidth < 480) {
+                    return Column(
+                        children: [
+                            for (final cat in _categories)
+                                _CategoryRow(category: cat),
+                        ],
+                    );
+                }
+                // 宽屏
+                final rawColumns = (constraints.maxWidth / 250).floor();
+                final columns = rawColumns < 2 ? 2 : rawColumns;
                 return GridView(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -271,15 +292,55 @@ class _HomePageState extends State<HomePage> {
                         crossAxisCount: columns,
                         crossAxisSpacing: 10,
                         mainAxisSpacing: 10,
-                        // 卡片高度 = 宽度 / 纵横比。1.4 保证窄窗口/大字体下
-                        // 图标+名称+两行标语也有足够高度,避免 RenderFlex 溢出
-                        childAspectRatio: 1.4,
+                        // 卡片高度 = 宽度 / 纵横比
+                        childAspectRatio: 1.6,
                     ),
                     children: [
                         for (final cat in _categories) _CategoryCard(category: cat),
                     ],
                 );
             },
+        );
+    }
+}
+
+/// 窄屏模式下的分类行:每个分类占一行(ListTile 风格),点击进入分类模组列表
+class _CategoryRow extends StatelessWidget {
+    const _CategoryRow({required this.category});
+
+    final ModCategory category;
+
+    @override
+    Widget build(BuildContext context) {
+        final theme = Theme.of(context);
+        return Card(
+            clipBehavior: Clip.antiAlias,
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+                leading: Icon(
+                    _categoryIcons[category.id] ?? Icons.category,
+                    size: 30,
+                    color: theme.colorScheme.primary,
+                ),
+                title: Text(
+                    category.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: category.slogan == null
+                    ? null
+                    : Text(
+                        category.slogan!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                    ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => CategoryPage(category: category),
+                    ),
+                ),
+            ),
         );
     }
 }
