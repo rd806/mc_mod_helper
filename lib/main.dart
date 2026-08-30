@@ -19,7 +19,7 @@ class McModHelper extends StatelessWidget {
     @override
     Widget build(BuildContext context) {
         // 监听全部设置;任意一项变化都重建 MaterialApp 本体。
-        // home 是 const,ThemeData 有缓存(见 _buildTheme),
+        // home 是 const，ThemeData 有缓存（见 _buildTheme）,
         // 所以非主题类设置变化不会引发子树重建/主题动画
         return ListenableBuilder(
             listenable: SettingsService.instance,

@@ -63,11 +63,16 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # 应用字体:思源黑体(Noto Sans SC,可变字重)
   fonts:
+    # 应用字体：思源黑体（Noto Sans SC,可变字重）
     - family: NotoSansSC
       fonts:
         - asset: assets/fonts/NotoSansSC-VF.ttf
+
+    # 链接图标字体（GitHub/Discord/CurseForge 等，由 IcoMoon/FlutterIcon 生成）
+    - family: LinkIcons
+      fonts:
+        - asset: assets/icon/link_icons.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

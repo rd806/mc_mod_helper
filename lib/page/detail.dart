@@ -4,6 +4,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../model/mod.dart';
 import '../api/mcmod.dart';
+import '../widget/collapsible_chips.dart';
+import '../widget/link_icons.dart';
+import '../widget/image_box.dart';
 
 /// 模组详情页
 class DetailPage extends StatefulWidget {
@@ -49,9 +52,22 @@ class _DetailPageState extends State<DetailPage> {
         });
     }
 
-    Future<void> _openUrl(String url) async {
+    /// 打开链接:站内模组页(class/{id}.html)默认在应用内跳转详情页,其余链接用浏览器打开。
+    /// [forceExternal] 为 true 时一律走浏览器
+    Future<void> _openUrl(String url, {bool forceExternal = false}) async {
         final uri = Uri.tryParse(url);
         if (uri == null) return;
+        if (!forceExternal) {
+            final modId = _modIdFromUrl(uri);
+            if (modId != null) {
+                // 跳过指向当前模组自身的链接,避免堆叠重复详情页
+                if (modId == widget.id) return;
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => DetailPage(id: modId)),
+                );
+                return;
+            }
+        }
         try {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
         } catch (_) {
@@ -59,6 +75,14 @@ class _DetailPageState extends State<DetailPage> {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('无法打开链接')),);
             }
         }
+    }
+
+    /// 站内模组详情页链接(www.mcmod.cn/class/{id}.html) → 模组 id;
+    /// 其它链接返回 null
+    static int? _modIdFromUrl(Uri uri) {
+        if (uri.host != 'www.mcmod.cn' && uri.host != 'mcmod.cn') return null;
+        final m = RegExp(r'^/class/(\d+)\.html$').firstMatch(uri.path);
+        return m == null ? null : int.parse(m.group(1)!);
     }
 
     /// 是否为图片地址(富文本里的图片已包成 <a href=图片地址>)
@@ -70,71 +94,32 @@ class _DetailPageState extends State<DetailPage> {
 
     /// 灯箱:全屏暗底放大查看图片,点击任意处或关闭按钮退出,支持缩放
     void _showLightbox(String url) {
-        showGeneralDialog<void>(
-        context: context,
-        barrierColor: Colors.black87,
-        barrierDismissible: true,
-        barrierLabel: 'Image Box',
-        transitionDuration: const Duration(milliseconds: 150),
-        pageBuilder: (context, animation, secondaryAnimation) {
-            return Stack(
-                children: [
-                    Positioned.fill(
-                    child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => Navigator.of(context).pop(),
-                        child: InteractiveViewer(
-                        maxScale: 5,
-                        child: Center(
-                            child: Image.network(
-                            url,
-                            fit: BoxFit.contain,
-                            loadingBuilder: (context, child, progress) =>
-                                progress == null
-                                    ? child
-                                    : const CircularProgressIndicator(
-                                        color: Colors.white54,
-                                        ),
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                Icon(Icons.broken_image,
-                                    color: Colors.white54, size: 64),
-                                SizedBox(height: 8),
-                                Text(
-                                    '图片加载失败',
-                                    style: TextStyle(color: Colors.white54),
-                                ),
-                                ],
-                            ),
-                            ),
-                        ),
-                        ),
-                    ),
-                    ),
-                    Positioned(
-                        top: 12,
-                        right: 12,
-                        child: IconButton(
-                            tooltip: '关闭',
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.close, color: Colors.white),
-                        ),
-                    ),
-                ],
-            );
-        },
-        transitionBuilder: (context, animation, secondaryAnimation, child) =>
-            FadeTransition(opacity: animation, child: child),
-        );
+        showImageBox(context, url);
     }
 
     @override
     Widget build(BuildContext context) {
         return Scaffold(
             // 刘海屏
-            appBar: AppBar(title: Text(widget.initialTitle ?? '模组详情')),
+            appBar: AppBar(
+                title: Text(widget.initialTitle ?? '模组详情'),
+                actions: [
+                    IconButton(
+                        tooltip: '刷新',
+                        icon: const Icon(Icons.refresh),
+                        onPressed: _reload,
+                    ),
+                    // 页地址只依赖 id，详情未加载完也能打开
+                    IconButton(
+                        tooltip: '在浏览器中打开',
+                        icon: const Icon(Icons.open_in_browser),
+                        onPressed: () => _openUrl(
+                            'https://www.mcmod.cn/class/${widget.id}.html',
+                            forceExternal: true,
+                        ),
+                    ),
+                ],
+            ),
             body: FutureBuilder<ModDetail>(
                 future: _future,
                 builder: (context, snapshot) {
@@ -144,28 +129,35 @@ class _DetailPageState extends State<DetailPage> {
                     }
                     // 错误界面
                     if (snapshot.hasError) {
-                        return Center(
-                            child: Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                        const Icon(Icons.error_outline, size: 48),
-                                        const SizedBox(height: 12),
-                                        Text('加载失败\n${snapshot.error}', textAlign: TextAlign.center),
-                                        const SizedBox(height: 12),
-                                        FilledButton(onPressed: _reload, child: const Text('重试')),
-                                    ],
-                                ),
-                            ),
-                        );
+                        return _buildErrorPage(snapshot);
                     }
+                    // 详情界面
                     return _buildDetail(snapshot.data!);
                 }
             ),
         );
     }
 
+    // 错误界面
+    Widget _buildErrorPage(AsyncSnapshot<ModDetail> snapshot) {
+        return Center(
+            child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                        const Icon(Icons.error_outline, size: 48),
+                        const SizedBox(height: 12),
+                        Text('加载失败\n${snapshot.error}', textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        FilledButton(onPressed: _reload, child: const Text('重试')),
+                    ],
+                ),
+            ),
+        );
+    }
+
+    // 详情界面
     Widget _buildDetail(ModDetail mod) {
         final theme = Theme.of(context);
         return ListView(
@@ -187,36 +179,45 @@ class _DetailPageState extends State<DetailPage> {
                 ],
 
                 if (mod.platform != null || mod.environment != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     _buildPlatforms(mod),
+                    const SizedBox(height: 16),
                 ],
+                const Divider(),
                 if (mod.links.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text('相关链接', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 16),
+                    ..._buildSectionTitle('相关链接'),
                     _buildLinks(mod),
                 ],
+                const Divider(),
                 if (mod.mcVersions.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text('支持版本', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 16),
+                    ..._buildSectionTitle('支持版本'),
                     _buildModVersion(mod),
                 ],
+                const Divider(),
                 if (mod.description != null && mod.description!.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text('模组介绍', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 16),
+                    ..._buildSectionTitle('模组介绍'),
                     _buildDescription(mod, theme),
                 ],
-
-                const SizedBox(height: 24),
-                OutlinedButton.icon(
-                    onPressed: () => _openUrl(mod.pageUrl),
-                    icon: const Icon(Icons.open_in_browser),
-                    label: const Text('在浏览器中打开'),
-                ),
             ],
         );
+    }
+
+    /// 区块标题:上间距 + titleLarge 标题 + 下间距,配合 ... 展开使用
+    List<Widget> _buildSectionTitle(String title) {
+        return [
+            const SizedBox(height: 16),
+            Row(
+                children: [
+                    Icon(
+                        Icons.align_horizontal_left_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(title, style: Theme.of(context).textTheme.titleLarge),
+                ]
+            ),
+            const SizedBox(height: 16),
+        ];
     }
 
     // 模组图标
@@ -256,10 +257,8 @@ class _DetailPageState extends State<DetailPage> {
 
     // 相关链接
     Widget _buildLinks(ModDetail mod) {
-        return Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
+        return CollapsibleChips(
+            chips: [
                 for (final link in mod.links)
                     ActionChip(
                         avatar: Icon(_linkIcon(link.name), size: 18),
@@ -272,19 +271,15 @@ class _DetailPageState extends State<DetailPage> {
 
     // 支持版本
     Widget _buildModVersion(ModDetail mod) {
-        return Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-                for (final v in mod.mcVersions) _InfoChip(label: v),
-            ],
+        return CollapsibleChips(
+            chips: [for (final v in mod.mcVersions) _InfoChip(label: v)],
         );
     }
 
     // 详细内容
     Widget _buildDescription(ModDetail mod, ThemeData theme) {
         // 富文本渲染:标题、加粗、颜色、图片、表格、列表等。
-        // 图片已包成 <a href=图片地址>,点击时走灯箱放大
+        // 图片已包成 <a href=图片地址>，点击时走灯箱放大
         return HtmlWidget(
             mod.description!,
             textStyle: theme.textTheme.bodyMedium,
@@ -299,12 +294,16 @@ class _DetailPageState extends State<DetailPage> {
         );
     }
 
-    // 选择匹配的图标
+    // 选择匹配的品牌图标(自定义图标字体),没有匹配时用通用链接图标
     IconData _linkIcon(String name) {
         final n = name.toLowerCase();
-        if (n.contains('github')) return Icons.code;
-        if (n.contains('discord')) return Icons.forum;
-        if (n.contains('curse') || n.contains('forge')) return Icons.extension;
+        if (n.contains('github')) return LinkIcons.github;
+        if (n.contains('discord')) return LinkIcons.discord;
+        if (n.contains('patreon')) return LinkIcons.patreon;
+        if (n.contains('wiki')) return LinkIcons.wiki;
+        if (n.contains('youtube')) return LinkIcons.youtube;
+        if (n.contains('curse') || n.contains('forge')) return LinkIcons.curseforge;
+        if (n.contains('mcbbs') || n.contains('bbs')) return LinkIcons.mcbbs;
         return Icons.link;
     }
 }
@@ -318,9 +317,9 @@ class _InfoChip extends StatelessWidget {
     @override
     Widget build(BuildContext context) {
         return Chip(
-        label: Text(label),
-        visualDensity: VisualDensity.compact,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            label: Text(label),
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         );
     }
 }
