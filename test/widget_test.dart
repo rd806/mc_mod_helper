@@ -53,11 +53,12 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings));
     await tester.pumpAndSettle(); // 仅路由动画;配置页无网络请求、无挂起计时器
 
-    // 三个设置区块都在
+    // 四个设置区块都在
     expect(find.text('设置'), findsOneWidget);
     expect(find.text('主题选择'), findsOneWidget);
     expect(find.text('字体大小'), findsOneWidget);
     expect(find.text('列表长度'), findsOneWidget);
+    expect(find.text('推荐来源'), findsOneWidget);
 
     // 切换主题模式 → 服务值变化(不触发主页重载,无新计时器)
     await tester.tap(find.text('亮色'));
@@ -79,6 +80,16 @@ void main() {
     // 条数变化触发主页(离屏但已挂载)重新拉取:先走节流计时器再发请求,
     // 测试环境请求返回 400;必须显式推进假时钟,不能用 pumpAndSettle
     // (它会提前退出留下 pending Timer,与 pumpApp 里是同一个坑)
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    await tester.pump();
+
+    // 切换推荐来源 → 服务值变化,主页再次重拉
+    await tester.ensureVisible(find.text('最新编辑'));
+    await tester.pump();
+    await tester.tap(find.text('最新编辑'));
+    await tester.pump();
+    expect(SettingsService.instance.featuredSource, 'lastedittime');
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     await tester.pump();

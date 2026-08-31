@@ -212,7 +212,7 @@ class _DetailPageState extends State<DetailPage> {
             Row(
                 children: [
                     Icon(
-                        Icons.align_horizontal_left_rounded,
+                        Icons.dehaze_rounded,
                         color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(width: 5),

@@ -35,7 +35,6 @@ class _HomePageState extends State<HomePage> {
     bool _featuredLoading = true;
     String? _featuredError;
     List<ModSummary> _featured = const [];
-    String _featuredSort = 'createtime';
 
     // 分类区状态
     bool _categoriesLoading = true;
@@ -44,6 +43,9 @@ class _HomePageState extends State<HomePage> {
 
     /// 上次发起推荐加载时使用的条数上限,用于判断设置变化是否需要重新拉取
     int? _lastFeaturedLimit;
+
+    /// 上次发起推荐加载时使用的来源(最新收录/最新编辑)
+    String? _lastFeaturedSource;
 
     /// 推荐请求序号:丢弃过期响应,防止快速切换排序/条数时旧结果覆盖新结果
     int _featuredSeq = 0;
@@ -64,10 +66,11 @@ class _HomePageState extends State<HomePage> {
         super.dispose();
     }
 
-    /// 设置变化回调:仅当推荐条数上限与上次加载时不同才重新拉取。
+    /// 设置变化回调:仅当推荐条数上限/来源与上次加载时不同才重新拉取。
     /// 主题/字体/强调色变化也会触发本回调,但比较后直接返回
     void _onSettingsChanged() {
-        if (SettingsService.instance.featuredMax != _lastFeaturedLimit) {
+        if (SettingsService.instance.featuredMax != _lastFeaturedLimit ||
+            SettingsService.instance.featuredSource != _lastFeaturedSource) {
             _loadFeatured();
         }
     }
@@ -75,6 +78,7 @@ class _HomePageState extends State<HomePage> {
     /// 加载首页推荐列表。[silent] 为 true 时不显示加载动画(下拉刷新用)
     Future<void> _loadFeatured({bool silent = false}) async {
         final limit = SettingsService.instance.featuredMax;
+        final source = SettingsService.instance.featuredSource;
         final seq = ++_featuredSeq;
         if (!silent) {
             setState(() {
@@ -82,11 +86,12 @@ class _HomePageState extends State<HomePage> {
                 _featuredError = null;
             });
         }
-        // 在发起时记录本次使用的上限:加载期间条数再变化会再次触发重载
+        // 在发起时记录本次使用的上限与来源:加载期间再变化会再次触发重载
         _lastFeaturedLimit = limit;
+        _lastFeaturedSource = source;
         try {
             final mods = await McmodApi.getFeaturedMods(
-                sort: _featuredSort,
+                sort: source,
                 limit: limit,
             );
             if (!mounted || seq != _featuredSeq) return;
@@ -174,12 +179,14 @@ class _HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
                     children: [
                         _buildFeaturedHeader(context),
+                        const SizedBox(height: 8),
                         _buildFeaturedSection(),
                         const SizedBox(height: 16),
                         // 分隔线
                         const Divider(),
 
                         _buildCategoriesHeader(context),
+                        const SizedBox(height: 8),
                         _buildCategoriesSection(),
                     ],
                 ),
@@ -189,31 +196,16 @@ class _HomePageState extends State<HomePage> {
 
     // ---------- 推荐区 ----------
     Widget _buildFeaturedHeader(BuildContext context) {
+        // 推荐来源(最新收录/最新编辑)已在设置页配置
         return Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
             child: Row(
                 children: [
-                    Expanded(
-                        child: Text(
-                            '首页推荐',
-                            style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                    ),
-                    SegmentedButton<String>(
-                        segments: const [
-                            ButtonSegment(value: 'createtime', label: Text('最新收录')),
-                            ButtonSegment(value: 'lastedittime', label: Text('最新编辑')),
-                        ],
-                        selected: {_featuredSort},
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(
-                            visualDensity: VisualDensity.compact,
-                        ),
-                        onSelectionChanged: (selection) {
-                            if (selection.first == _featuredSort) return;
-                            setState(() => _featuredSort = selection.first);
-                            _loadFeatured();
-                        },
+                    Icon(Icons.thumb_up_rounded),
+                    const SizedBox(width: 10),
+                    Text(
+                        '首页推荐',
+                        style: Theme.of(context).textTheme.headlineSmall,
                     ),
                 ],
             ),
@@ -244,11 +236,17 @@ class _HomePageState extends State<HomePage> {
     // ---------- 分类区 ----------
     Widget _buildCategoriesHeader(BuildContext context) {
         return Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-            child: Text(
-                '模组分类',
-                style: Theme.of(context).textTheme.titleLarge,
-            ),
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 16),
+            child: Row(
+               children: [
+                   Icon(Icons.widgets_rounded),
+                   const SizedBox(width: 10),
+                   Text(
+                       '模组分类',
+                       style: Theme.of(context).textTheme.headlineSmall,
+                   ),
+               ],
+            )
         );
     }
 

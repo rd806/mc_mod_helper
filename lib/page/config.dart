@@ -54,7 +54,8 @@ class _ConfigPageState extends State<ConfigPage> {
                             _buildSeedColorSection(context, s),
                             _sectionTitle(context, '字体设置'),
                             _buildFontScaleSection(context, s),
-                            _sectionTitle(context, '列表长度'),
+                            _sectionTitle(context, '首页设置'),
+                            _buildListSource(context, s),
                             _buildListMaxSection(context, s),
                         ],
                     );
@@ -171,6 +172,41 @@ class _ConfigPageState extends State<ConfigPage> {
                     ),
                 ],
             ),
+        );
+    }
+
+    /// 推荐列表来源(最新收录/最新编辑),修改后持久化,主页监听变化自动重拉
+    Widget _buildListSource(BuildContext context, SettingsService s) {
+        final theme = Theme.of(context);
+        return Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+            child: Row(
+                children: [
+                    Text(
+                        '推荐来源', style: theme.textTheme.bodyMedium
+                    ),
+                    Spacer(),
+                    SegmentedButton<String>(
+                        segments: const [
+                            ButtonSegment(value: '', label: Text('默认')),
+                            ButtonSegment(value: 'createtime', label: Text('最新收录')),
+                            ButtonSegment(value: 'lastedittime', label: Text('最新编辑')),
+                        ],
+                        // 防御:存档值不在选项内时回落显示“最新收录”,
+                        // SegmentedButton 要求 selected 是 segments 的子集
+                        selected: {
+                            SettingsService.featuredSources.contains(s.featuredSource)
+                                ? s.featuredSource : 'createtime',
+                        },
+                        showSelectedIcon: false,
+                        style: const ButtonStyle(
+                            visualDensity: VisualDensity.compact,
+                        ),
+                        onSelectionChanged: (selection) => SettingsService.instance
+                            .setFeaturedSource(selection.first),
+                    )
+                ],
+            )
         );
     }
 

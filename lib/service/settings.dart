@@ -13,6 +13,7 @@ class SettingsService extends ChangeNotifier {
     static const String _seedColorKey = 'seed_color';
     static const String _fontScaleKey = 'font_scale';
     static const String _featuredMaxKey = 'featured_max';
+    static const String _featuredSourceKey = 'featured_source';
 
     /// 字体大小
     static const double fontMin = 0.5;
@@ -22,15 +23,20 @@ class SettingsService extends ChangeNotifier {
     static const int featuredMin = 5;
     static const int featuredMaxLimit = 50;
 
+    /// 首页推荐来源的合法取值(与 mcmod.cn 列表页 sort 参数一致)
+    static const List<String> featuredSources = ['', 'createtime', 'lastedittime'];
+
     ThemeMode _themeMode = ThemeMode.system;
     Color _seedColor = Colors.blue;
     double _fontScale = 1.0;
     int _featuredMax = 20;
+    String _featuredSource = "";
 
     ThemeMode get themeMode => _themeMode;
     Color get seedColor => _seedColor;
     double get fontScale => _fontScale;
     int get featuredMax => _featuredMax;
+    String get featuredSource => _featuredSource;
 
     /// 启动时读取已保存的设置(在 runApp 前调用,避免启动后主题/字体跳变)。
     ///
@@ -49,6 +55,11 @@ class SettingsService extends ChangeNotifier {
                 .clamp(fontMin, fontMax);
             _featuredMax = (prefs.getInt(_featuredMaxKey) ?? 20)
                 .clamp(featuredMin, featuredMaxLimit);
+            final source = prefs.getString(_featuredSourceKey);
+            _featuredSource =
+                (source != null && featuredSources.contains(source))
+                    ? source
+                    : 'createtime';
             notifyListeners();
         } catch (_) {
             // 读取失败:保持默认值,不阻塞启动
@@ -78,6 +89,17 @@ class SettingsService extends ChangeNotifier {
         _fontScale = clamped;
         notifyListeners();
         _persist(_fontScaleKey, clamped);
+    }
+
+    /// 设置首页推荐来源(最新收录/最新编辑),非法值忽略
+    void setFeaturedSource(String source) {
+        if (!featuredSources.contains(source) ||
+            source == _featuredSource) {
+            return;
+        }
+        _featuredSource = source;
+        notifyListeners();
+        _persist(_featuredSourceKey, source);
     }
 
     /// 设置首页推荐列表条数上限(自动截断到允许范围)

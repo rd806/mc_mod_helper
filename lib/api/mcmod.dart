@@ -537,9 +537,30 @@ class McmodApi {
         s = s.replaceAllMapped(RegExp(r'<table[^>]*>.*?</table>', dotAll: true), (m) {
             final block = m.group(0)!;
             if (block.contains('<img')) return _tableToDiv(block);
-            return block
+            var table = block
                 .replaceAll(RegExp(r'\s+width="[^"]*"'), '')
                 .replaceAll(RegExp(r'\s+style="[^"]*"'), '');
+            // fwfh 渲染表格默认没有框线:补 border="1" 让表格带 1px 实线边框
+            // 且每个单元格继承。同时补 border-collapse:collapse——
+            // fwfh 对 border 属性默认用 separate + 2px 间距,相邻单元格
+            // 各画一边会显示成双框线,collapse 合并成单线。
+            // (站点原有 border="0" 表示刻意无边框,不覆盖)
+            if (!RegExp(r'<table[^>]*\sborder="0"').hasMatch(table)) {
+                final borderAttr =
+                    RegExp(r'<table[^>]*\sborder=').hasMatch(table)
+                        ? ''
+                        : ' border="1"';
+                table = table.replaceFirst(
+                    RegExp(r'<table'),
+                    '<table style="border-collapse:collapse"$borderAttr',
+                );
+            }
+            // 表头文字居中(fwfh 默认与正文一样靠左;样式属性已被上面清空,可直接注入)
+            table = table.replaceAllMapped(RegExp(r'<th([^>]*)>'), (m) {
+                final attrs = m.group(1)!;
+                return '<th$attrs style="text-align:center">';
+            });
+            return table;
         });
         // 站内弹窗链接(javascript:void(0))只保留文字
         s = s.replaceAllMapped(
