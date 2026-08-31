@@ -14,35 +14,41 @@ class ModTile extends StatelessWidget {
     @override
     Widget build(BuildContext context) {
         final theme = Theme.of(context);
-        return ListTile(
-            leading: _buildAvatar(theme),
-            title: Text(
-                mod.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                ),
-            ),
-            subtitle: mod.description.isEmpty ? null :
-                Text(
-                    mod.description,
-                    maxLines: 2,
+        return Card(
+            clipBehavior: Clip.antiAlias,
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+                leading: _buildAvatar(theme),
+                title: Text(
+                    mod.displayName,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                    ),
                 ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-                Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => DetailPage(
-                            id: mod.id,
-                            initialTitle: mod.displayName,
-                            initialDescription: mod.description,
+                subtitle: mod.description.isEmpty ? null :
+                    Text(
+                        mod.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.grey
                         ),
                     ),
-                );
-            },
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                    Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => DetailPage(
+                                id: mod.id,
+                                initialTitle: mod.displayName,
+                                initialDescription: mod.description,
+                            ),
+                        ),
+                    );
+                },
+            ),
         );
     }
 
@@ -51,12 +57,12 @@ class ModTile extends StatelessWidget {
         if (mod.iconUrl != null) {
             return ClipOval(
                 child: Image.network(
-                mod.iconUrl!,
-                width: 40,
-                height: 40,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    _LetterAvatar(theme: theme, mod: mod),
+                    mod.iconUrl!,
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _LetterAvatar(theme: theme, mod: mod),
                 ),
             );
         }
@@ -78,8 +84,8 @@ class _LetterAvatar extends StatelessWidget {
             child: Text(
                 (mod.abbr ?? mod.displayName).characters.first.toUpperCase(),
                 style: TextStyle(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
                 ),
             ),
         );

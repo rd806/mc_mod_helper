@@ -28,9 +28,9 @@ abstract class ModCard extends StatelessWidget {
     /// StatelessWidget 没有 context 属性，由子类的 build 传入
     Widget buildShell(
         BuildContext context, {
-        EdgeInsetsGeometry? margin,
-        required Widget child,
-    }) {
+            EdgeInsetsGeometry? margin,
+            required Widget child,
+        }) {
         return Card(
             clipBehavior: Clip.antiAlias,
             margin: margin,

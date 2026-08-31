@@ -188,17 +188,17 @@ class _DetailPageState extends State<DetailPage> {
                 ],
                 const Divider(),
                 if (mod.links.isNotEmpty) ...[
-                    ..._buildSectionTitle('相关链接'),
+                    _buildSectionTitle('相关链接', Icons.insert_link_rounded),
                     _buildLinks(mod),
                 ],
                 const Divider(),
                 if (mod.mcVersions.isNotEmpty) ...[
-                    ..._buildSectionTitle('支持版本'),
+                    _buildSectionTitle('支持版本', Icons.check_circle_rounded),
                     _buildModVersion(mod),
                 ],
                 const Divider(),
                 if (mod.description != null && mod.description!.isNotEmpty) ...[
-                    ..._buildSectionTitle('模组介绍'),
+                    _buildSectionTitle('模组介绍', Icons.article_rounded),
                     _buildDescription(mod, theme),
                 ],
             ],
@@ -206,23 +206,23 @@ class _DetailPageState extends State<DetailPage> {
     }
 
     /// 区块标题:上间距 + titleLarge 标题 + 下间距,配合 ... 展开使用
-    List<Widget> _buildSectionTitle(String title) {
-        return [
-            const SizedBox(height: 16),
-            Row(
+    Widget _buildSectionTitle(String title, IconData icon) {
+        return Padding(
+            // 上下间距写入 Padding 中
+            padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
+            child: Row(
                 children: [
-                    Icon(
-                        Icons.dehaze_rounded,
-                        color: Theme.of(context).colorScheme.primary,
-                    ),
+                    Icon(icon),
                     const SizedBox(width: 5),
-                    Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold
-                    )),
+                    Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold
+                        )
+                    ),
                 ]
             ),
-            const SizedBox(height: 16),
-        ];
+        );
     }
 
     // 模组图标

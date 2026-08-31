@@ -48,9 +48,9 @@ class _ConfigPageState extends State<ConfigPage> {
                     return ListView(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         children: [
-                            _sectionTitle(context, '主题选择'),
-                            _buildThemeModeSection(s),
-                            _sectionTitle(context, '颜色种子'),
+                            _sectionTitle(context, '主题设置'),
+                            _buildThemeModeSection(context, s),
+                            const SizedBox(height: 15),
                             _buildSeedColorSection(context, s),
                             _sectionTitle(context, '字体设置'),
                             _buildFontScaleSection(context, s),
@@ -73,23 +73,32 @@ class _ConfigPageState extends State<ConfigPage> {
     }
 
     /// 主题模式；跟随系统 / 亮色 / 暗色。
-    Widget _buildThemeModeSection(SettingsService s) {
-        final theme = s.themeMode;
+    Widget _buildThemeModeSection(BuildContext context, SettingsService s) {
+        final themeMode = s.themeMode;
+        final theme = Theme.of(context);
         return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SegmentedButton<ThemeMode>(
-                segments: [
-                    for (final (label, value) in _themeMode)
-                        ButtonSegment(value: value, label: Text(label)),
+            child: Row(
+                children: [
+                    Text(
+                        '主题选择', style: theme.textTheme.bodyMedium
+                    ),
+                    Spacer(),
+                    SegmentedButton<ThemeMode>(
+                        segments: [
+                            for (final (label, value) in _themeMode)
+                                ButtonSegment(value: value, label: Text(label)),
+                        ],
+                        // 防御:存档值不在三档内(被外部改动)时回落显示“跟随系统”,
+                        // SegmentedButton 要求 selected 是 segments 的子集,否则断言崩溃
+                        selected: {
+                            _themeMode.any((f) => f.$2 == themeMode) ? themeMode : ThemeMode.system,
+                        },
+                        showSelectedIcon: false,
+                        onSelectionChanged: (selection) => SettingsService.instance.setThemeMode(selection.first),
+                    ),
                 ],
-                // 防御:存档值不在三档内(被外部改动)时回落显示“跟随系统”,
-                // SegmentedButton 要求 selected 是 segments 的子集,否则断言崩溃
-                selected: {
-                    _themeMode.any((f) => f.$2 == theme) ? theme : ThemeMode.system,
-                },
-                showSelectedIcon: false,
-                onSelectionChanged: (selection) => SettingsService.instance.setThemeMode(selection.first),
-            ),
+            )
         );
     }
 
@@ -101,6 +110,10 @@ class _ConfigPageState extends State<ConfigPage> {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Row(
                 children: [
+                    Text(
+                        '颜色种子', style: theme.textTheme.bodyMedium
+                    ),
+                    Spacer(),
                     for (final (label, color) in _seedColors)
                         _buildColor(label, color, selectedArgb, theme),
                 ],

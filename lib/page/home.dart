@@ -178,15 +178,11 @@ class _HomePageState extends State<HomePage> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
                     children: [
-                        _buildFeaturedHeader(context),
-                        const SizedBox(height: 8),
+                        _buildSectionTitle('首页推荐', Icons.thumb_up_rounded),
                         _buildFeaturedSection(),
-                        const SizedBox(height: 16),
                         // 分隔线
                         const Divider(),
-
-                        _buildCategoriesHeader(context),
-                        const SizedBox(height: 8),
+                        _buildSectionTitle('模组分类', Icons.widgets_rounded),
                         _buildCategoriesSection(),
                     ],
                 ),
@@ -194,24 +190,24 @@ class _HomePageState extends State<HomePage> {
         );
     }
 
-    // ---------- 推荐区 ----------
-    Widget _buildFeaturedHeader(BuildContext context) {
-        // 推荐来源(最新收录/最新编辑)已在设置页配置
+    /// 构建标题
+    Widget _buildSectionTitle(String sectionTitle, IconData icon) {
         return Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
             child: Row(
                 children: [
-                    Icon(Icons.thumb_up_rounded),
+                    Icon(icon),
                     const SizedBox(width: 10),
                     Text(
-                        '首页推荐',
-                        style: Theme.of(context).textTheme.headlineSmall,
+                        sectionTitle,
+                        style: Theme.of(context).textTheme.headlineSmall
                     ),
                 ],
             ),
         );
     }
 
+    // ---------- 推荐区 ----------
     Widget _buildFeaturedSection() {
         if (_featuredLoading) {
             return const Padding(
@@ -234,22 +230,6 @@ class _HomePageState extends State<HomePage> {
     }
 
     // ---------- 分类区 ----------
-    Widget _buildCategoriesHeader(BuildContext context) {
-        return Padding(
-            padding: const EdgeInsets.fromLTRB(8, 16, 8, 16),
-            child: Row(
-               children: [
-                   Icon(Icons.widgets_rounded),
-                   const SizedBox(width: 10),
-                   Text(
-                       '模组分类',
-                       style: Theme.of(context).textTheme.headlineSmall,
-                   ),
-               ],
-            )
-        );
-    }
-
     Widget _buildCategoriesSection() {
         // 加载动画
         if (_categoriesLoading) {
@@ -324,13 +304,17 @@ class _CategoryRow extends StatelessWidget {
                     category.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold
+                    ),
                 ),
-                subtitle: category.slogan == null
-                    ? null
-                    : Text(
+                subtitle: category.slogan == null ? null : Text(
                         category.slogan!,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.grey
+                        ),
                     ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(

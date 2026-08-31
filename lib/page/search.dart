@@ -129,11 +129,10 @@ class _SearchPageState extends State<SearchPage> {
                 ),
             );
         }
-        // 显示搜索结果
-        return ListView.separated(
+        // 显示搜索结果，不使用分隔线
+        return ListView.builder(
             padding: const EdgeInsets.all(8),
             itemCount: _results.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) => ModTile(mod: _results[index]),
         );
     }
