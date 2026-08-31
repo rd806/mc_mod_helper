@@ -11,9 +11,13 @@ class ConfigPage extends StatefulWidget {
 }
 
 class _ConfigPageState extends State<ConfigPage> {
-    /// 滑条草稿值:拖动过程中只改草稿,松手(onChangeEnd)才提交,
+    /// 推荐条数滑条草稿值:拖动过程中只改草稿,松手(onChangeEnd)才提交,
     /// 避免每个档位变化都触发主页重新拉取(多页抓取耗时较长)
     late double _featuredDraft = SettingsService.instance.featuredMax.toDouble();
+
+    /// 字体缩放滑条草稿值(独立于推荐条数草稿)
+    late double _fontScaleDraft = SettingsService.instance.fontScale
+        .clamp(SettingsService.fontMin, SettingsService.fontMax);
 
     /// 系统主题
     static const List<(String, ThemeMode)> _themeMode = [
@@ -29,13 +33,6 @@ class _ConfigPageState extends State<ConfigPage> {
         ('紫色', Colors.deepPurple),
         ('橙色', Colors.orange),
         ('红色', Colors.red)
-    ];
-
-    /// 可选字体缩放：标签 + 倍率
-    static const List<(String, double)> _fontScales = [
-        ('小', 0.9),
-        ('标准', 1.0),
-        ('大', 1.5)
     ];
 
     @override
@@ -55,7 +52,7 @@ class _ConfigPageState extends State<ConfigPage> {
                             _buildThemeModeSection(s),
                             _sectionTitle(context, '颜色种子'),
                             _buildSeedColorSection(context, s),
-                            _sectionTitle(context, '字体大小'),
+                            _sectionTitle(context, '字体设置'),
                             _buildFontScaleSection(context, s),
                             _sectionTitle(context, '列表长度'),
                             _buildListMaxSection(context, s),
@@ -143,24 +140,36 @@ class _ConfigPageState extends State<ConfigPage> {
         );
     }
 
-    /// 字体大小三档:小 0.9 / 标准 1.0 / 大 1.15
+    /// 字体大小滑块
     Widget _buildFontScaleSection(BuildContext context, SettingsService s) {
-        final scale = s.fontScale;
+        final theme = Theme.of(context);
         return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SegmentedButton<double>(
-                segments: [
-                    for (final (label, value) in _fontScales)
-                        ButtonSegment(value: value, label: Text(label)),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                    Row(
+                        children: [
+                            Text('字体大小', style: theme.textTheme.bodyMedium),
+                            const Spacer(),
+                            Text(
+                                '${_fontScaleDraft.toStringAsFixed(2)}×',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                ),
+                            ),
+                        ],
+                    ),
+                    Slider(
+                        value: _fontScaleDraft,
+                        min: SettingsService.fontMin,
+                        max: SettingsService.fontMax,
+                        divisions: 15, // 步进 0.1,刻度包含默认值 1.0
+                        label: '${_fontScaleDraft.toStringAsFixed(2)}×',
+                        onChanged: (v) => setState(() => _fontScaleDraft = v),
+                        onChangeEnd: (v) => SettingsService.instance.setFontScale(v),
+                    ),
                 ],
-                // 防御:存档值不在三档内(被外部改动)时回落显示“标准”,
-                // SegmentedButton 要求 selected 是 segments 的子集,否则断言崩溃
-                selected: {
-                    _fontScales.any((f) => f.$2 == scale) ? scale : 1.0,
-                },
-                showSelectedIcon: false,
-                onSelectionChanged: (selection) =>
-                    SettingsService.instance.setFontScale(selection.first),
             ),
         );
     }

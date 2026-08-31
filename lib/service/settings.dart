@@ -14,6 +14,10 @@ class SettingsService extends ChangeNotifier {
     static const String _fontScaleKey = 'font_scale';
     static const String _featuredMaxKey = 'featured_max';
 
+    /// 字体大小
+    static const double fontMin = 0.5;
+    static const double fontMax = 2.0;
+
     /// 推荐列表条数上限的允许范围(与设置页滑条保持一致)
     static const int featuredMin = 5;
     static const int featuredMaxLimit = 50;
@@ -41,7 +45,8 @@ class SettingsService extends ChangeNotifier {
             _seedColor = Color(
                 prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32(),
             );
-            _fontScale = prefs.getDouble(_fontScaleKey) ?? 1.0;
+            _fontScale = (prefs.getDouble(_fontScaleKey) ?? 1.0)
+                .clamp(fontMin, fontMax);
             _featuredMax = (prefs.getInt(_featuredMaxKey) ?? 20)
                 .clamp(featuredMin, featuredMaxLimit);
             notifyListeners();
@@ -66,12 +71,13 @@ class SettingsService extends ChangeNotifier {
         _persist(_seedColorKey, color.toARGB32());
     }
 
-    /// 设置全局字体缩放
+    /// 设置全局字体缩放(自动截断到允许范围)
     void setFontScale(double scale) {
-        if (scale == _fontScale) return;
-        _fontScale = scale;
+        final clamped = scale.clamp(fontMin, fontMax);
+        if (clamped == _fontScale) return;
+        _fontScale = clamped;
         notifyListeners();
-        _persist(_fontScaleKey, scale);
+        _persist(_fontScaleKey, clamped);
     }
 
     /// 设置首页推荐列表条数上限(自动截断到允许范围)

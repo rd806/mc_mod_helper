@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../model/mod.dart';
 import '../api/mcmod.dart';
 import '../widget/error_view.dart';
-import 'detail.dart';
+import '../widget/mod/mod_card.dart';
 
 /// 分类模组列表页：网格卡片展示，滚动到底自动加载下一页
 class CategoryPage extends StatefulWidget {
@@ -168,7 +168,7 @@ class _CategoryPageState extends State<CategoryPage> {
     Widget _buildModList() {
         return SliverList(
             delegate: SliverChildBuilderDelegate(
-                (context, i) => _ModCardRow(mod: _mods[i]),
+                (context, i) => ModCardRow(mod: _mods[i]),
                 childCount: _mods.length,
             ),
         );
@@ -184,7 +184,7 @@ class _CategoryPageState extends State<CategoryPage> {
                 childAspectRatio: 0.8,
             ),
             delegate: SliverChildBuilderDelegate(
-                (context, i) => _ModCardColumn(mod: _mods[i]),
+                (context, i) => ModCardColumn(mod: _mods[i]),
                 childCount: _mods.length,
             ),
         );
@@ -216,174 +216,6 @@ class _CategoryPageState extends State<CategoryPage> {
         return Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(child: child),
-        );
-    }
-}
-
-/// 分类页的模组行卡片(窄屏):左侧封面缩略图,右侧标题与统计
-class _ModCardRow extends StatelessWidget {
-    const _ModCardRow({required this.mod});
-
-    final ModSummary mod;
-
-    @override
-    Widget build(BuildContext context) {
-        final theme = Theme.of(context);
-        return Card(
-            clipBehavior: Clip.antiAlias,
-            margin: const EdgeInsets.only(bottom: 8),
-            child: InkWell(
-                onTap: () {
-                    Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => DetailPage(
-                                id: mod.id,
-                                initialTitle: mod.displayName,
-                                initialDescription: mod.description,
-                            ),
-                        ),
-                    );
-                },
-                child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Row(
-                        children: [
-                            _buildCover(theme),
-                            const SizedBox(width: 12),
-                            _buildInfo(theme),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.chevron_right),
-                        ],
-                    ),
-                ),
-            ),
-        );
-    }
-
-    // 左侧封面缩略图
-    Widget _buildCover(ThemeData theme) {
-        return ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: mod.iconUrl == null ? _buildThumbPlaceholder(theme) : Image.network(
-                mod.iconUrl!,
-                width: 72,
-                height: 54,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _buildThumbPlaceholder(theme),
-            ),
-        );
-    }
-
-    // 右侧标题与统计
-    Widget _buildInfo(ThemeData theme) {
-        return Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                    Text(
-                        mod.displayName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyLarge,
-                    ),
-                    if (mod.statsText != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                            mod.statsText!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                        ),
-                    ],
-                ],
-            ),
-        );
-    }
-
-    Widget _buildThumbPlaceholder(ThemeData theme) {
-        return Container(
-            width: 72,
-            height: 54,
-            color: theme.colorScheme.surfaceContainerHighest,
-            child: const Icon(Icons.image_outlined, size: 24),
-        );
-    }
-}
-
-/// 分类页的模组卡片
-/// 横排卡片
-class _ModCardColumn extends StatelessWidget {
-    const _ModCardColumn({required this.mod});
-
-    final ModSummary mod;
-
-    @override
-    Widget build(BuildContext context) {
-        final theme = Theme.of(context);
-        return Card(
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-                onTap: () {
-                    Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => DetailPage(
-                                id: mod.id,
-                                initialTitle: mod.displayName,
-                                initialDescription: mod.description,
-                            ),
-                        ),
-                    );
-                },
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                        // Expanded 吸收剩余高度,任何文本长度下都不会溢出
-                        Expanded(
-                            child: mod.iconUrl == null ? _buildCoverPlaceholder(theme) : Image.network(
-                                mod.iconUrl!,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => _buildCoverPlaceholder(theme),
-                            ),
-                        ),
-                        Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                    Text(
-                                        mod.displayName,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.bodyMedium,
-                                    ),
-                                    if (mod.statsText != null) ...[
-                                        const SizedBox(height: 4),
-                                        Text(
-                                            mod.statsText!,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: theme.textTheme.bodySmall?.copyWith(
-                                                color: theme.colorScheme.onSurfaceVariant,
-                                            ),
-                                        ),
-                                    ],
-                                ],
-                            ),
-                        ),
-                    ],
-                ),
-            ),
-        );
-    }
-
-    Widget _buildCoverPlaceholder(ThemeData theme) {
-        return Container(
-            width: double.infinity,
-            color: theme.colorScheme.surfaceContainerHighest,
-            child: const Center(child: Icon(Icons.image_outlined, size: 48)),
         );
     }
 }

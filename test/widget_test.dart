@@ -64,13 +64,15 @@ void main() {
     await tester.pumpAndSettle(); // 主题过渡动画收尾
     expect(SettingsService.instance.themeMode, ThemeMode.light);
 
-    // 切换字体档位 → 服务值变化
-    await tester.tap(find.text('大'));
+    // 拖字体滑条(第一个) → 松手提交,服务值变化
+    await tester.drag(find.byType(Slider).first, const Offset(100, 0));
     await tester.pump();
-    expect(SettingsService.instance.fontScale, 1.5);
+    expect(SettingsService.instance.fontScale, greaterThan(1.0));
 
-    // 拖滑条 → 松手提交,服务值变化
-    await tester.drag(find.byType(Slider), const Offset(400, 0));
+    // 拖推荐条数滑条(第二个,可能在可视区外,先滚动到可见)
+    await tester.ensureVisible(find.byType(Slider).last);
+    await tester.pump();
+    await tester.drag(find.byType(Slider).last, const Offset(400, 0));
     await tester.pump();
     expect(SettingsService.instance.featuredMax, greaterThan(20));
 

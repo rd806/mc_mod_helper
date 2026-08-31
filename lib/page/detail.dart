@@ -167,13 +167,16 @@ class _DetailPageState extends State<DetailPage> {
 
                 // 模组名称
                 const SizedBox(height: 12),
-                Text(mod.title, style: theme.textTheme.headlineSmall),
+                Text(mod.title, style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold
+                )),
                 if (mod.subName != null) ...[
                     const SizedBox(height: 4),
                     Text(
                         mod.subName!,
                         style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.primary,
+                            color: theme.colorScheme.primary,
+                            fontStyle: FontStyle.italic
                         ),
                     ),
                 ],
@@ -213,7 +216,9 @@ class _DetailPageState extends State<DetailPage> {
                         color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(width: 5),
-                    Text(title, style: Theme.of(context).textTheme.titleLarge),
+                    Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold
+                    )),
                 ]
             ),
             const SizedBox(height: 16),

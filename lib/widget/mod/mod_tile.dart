@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../model/mod.dart';
-import '../page/detail.dart';
+import '../../model/mod.dart';
+import '../../page/detail.dart';
 
 /// 单条模组
 /// 搜索结果 / 首页推荐通用
@@ -20,12 +20,16 @@ class ModTile extends StatelessWidget {
                 mod.displayName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                ),
             ),
             subtitle: mod.description.isEmpty ? null :
                 Text(
                     mod.description,
-                    maxLines: 3,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall
                 ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
@@ -45,16 +49,16 @@ class ModTile extends StatelessWidget {
     /// 有图标就显示图标,加载失败或无图标时回退到首字母头像
     Widget _buildAvatar(ThemeData theme) {
         if (mod.iconUrl != null) {
-        return ClipOval(
-            child: Image.network(
-            mod.iconUrl!,
-            width: 40,
-            height: 40,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) =>
-                _LetterAvatar(theme: theme, mod: mod),
-            ),
-        );
+            return ClipOval(
+                child: Image.network(
+                mod.iconUrl!,
+                width: 40,
+                height: 40,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    _LetterAvatar(theme: theme, mod: mod),
+                ),
+            );
         }
         return _LetterAvatar(theme: theme, mod: mod);
     }

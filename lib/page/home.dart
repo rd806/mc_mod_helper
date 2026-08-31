@@ -4,7 +4,7 @@ import '../api/mcmod.dart';
 import '../model/mod.dart';
 import '../service/settings.dart';
 import '../widget/error_view.dart';
-import '../widget/mod_tile.dart';
+import '../widget/mod/mod_tile.dart';
 import 'category.dart';
 import 'config.dart';
 import 'search.dart';

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../model/mod.dart';
 import '../api/mcmod.dart';
 import '../widget/error_view.dart';
-import '../widget/mod_tile.dart';
+import '../widget/mod/mod_tile.dart';
 
 /// 搜索页：按关键词搜索模组，点击结果进入详情页
 class SearchPage extends StatefulWidget {
