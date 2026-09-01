@@ -8,20 +8,20 @@ import 'package:flutter/widgets.dart';
 /// 每个图标的 codePoint 以生成工具输出的为准(见样式表里的 content: "\e900"
 /// 之类,去掉反斜杠就是 0xe900)。
 class LinkIcons {
-    LinkIcons._();
+  LinkIcons._();
 
-    /// 与 pubspec.yaml 中声明的字体 family 对应
-    static const String linkFont = 'LinkIcons';
+  /// 与 pubspec.yaml 中声明的字体 family 对应
+  static const String linkFont = 'LinkIcons';
 
-    /// 拿到生成的字体文件后，按工具输出的 codePoint 修正以下值
-    // 发布站类
-    static const IconData github = IconData(0xe906, fontFamily: linkFont);
-    static const IconData curseforge = IconData(0xe902, fontFamily: linkFont);
-    // 论坛类
-    static const IconData wiki = IconData(0xe904, fontFamily: linkFont);
-    static const IconData discord = IconData(0xe903, fontFamily: linkFont);
-    static const IconData patreon = IconData(0xe905, fontFamily: linkFont);
-    static const IconData mcbbs = IconData(0xe900, fontFamily: linkFont);
-    // 视频站类
-    static const IconData youtube = IconData(0xe901, fontFamily: linkFont);
+  /// 拿到生成的字体文件后，按工具输出的 codePoint 修正以下值
+  // 发布站类
+  static const IconData github = IconData(0xe906, fontFamily: linkFont);
+  static const IconData curseforge = IconData(0xe902, fontFamily: linkFont);
+  // 论坛类
+  static const IconData wiki = IconData(0xe904, fontFamily: linkFont);
+  static const IconData discord = IconData(0xe903, fontFamily: linkFont);
+  static const IconData patreon = IconData(0xe905, fontFamily: linkFont);
+  static const IconData mcbbs = IconData(0xe900, fontFamily: linkFont);
+  // 视频站类
+  static const IconData youtube = IconData(0xe901, fontFamily: linkFont);
 }
