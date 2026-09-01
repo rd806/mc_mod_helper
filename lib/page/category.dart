@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../model/mod.dart';
+import '../model/mod_category.dart';
 import '../api/mcmod.dart';
+import '../api/modrinth.dart';
+import '../model/mod_summary.dart';
 import '../widget/error_view.dart';
 import '../widget/mod/mod_card.dart';
 
@@ -53,6 +55,13 @@ class _CategoryPageState extends State<CategoryPage> {
     super.dispose();
   }
 
+  /// 按分类的数据来源拉取第 [page] 页
+  Future<({List<ModSummary> mods, int totalPages})> _fetchPage(int page) {
+    return widget.category.source == 'modrinth'
+        ? ModrinthApi.getCategoryMods(widget.category.sourceId!, page: page)
+        : McmodApi.getCategoryMods(widget.category.id, page: page);
+  }
+
   /// 加载首页内容
   Future<void> _loadInitial() async {
     setState(() {
@@ -60,7 +69,7 @@ class _CategoryPageState extends State<CategoryPage> {
       _error = null;
     });
     try {
-      final result = await McmodApi.getCategoryMods(widget.category.id);
+      final result = await _fetchPage(1);
       if (!mounted) return;
       setState(() {
         _mods
@@ -94,10 +103,7 @@ class _CategoryPageState extends State<CategoryPage> {
     if (_loading || _loadMoreFailed || !_hasMore || _initialLoading) return;
     setState(() => _loading = true);
     try {
-      final result = await McmodApi.getCategoryMods(
-        widget.category.id,
-        page: _page + 1,
-      );
+      final result = await _fetchPage(_page + 1);
       if (!mounted) return;
       setState(() {
         _mods.addAll(result.mods);

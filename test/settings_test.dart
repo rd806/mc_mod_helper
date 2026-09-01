@@ -22,6 +22,7 @@ void main() {
     expect(SettingsService.instance.fontScale, 1.0);
     expect(SettingsService.instance.featuredMax, 20);
     expect(SettingsService.instance.featuredSource, 'createtime');
+    expect(SettingsService.instance.dataSource, 'mcmod');
     });
 
     test('setter 写入持久化存储', () async {
@@ -31,7 +32,8 @@ void main() {
         ..setSeedColor(Colors.orange)
         ..setFontScale(1.15)
         ..setFeaturedMax(35)
-        ..setFeaturedSource('lastedittime');
+        ..setFeaturedSource('lastedittime')
+        ..setDataSource('modrinth');
 
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('theme_mode'), 'dark');
@@ -39,6 +41,7 @@ void main() {
     expect(prefs.getDouble('font_scale'), 1.15);
     expect(prefs.getInt('featured_max'), 35);
     expect(prefs.getString('featured_source'), 'lastedittime');
+    expect(prefs.getString('data_source'), 'modrinth');
     });
 
     test('load 能恢复已保存的设置(模拟重启)', () async {
@@ -48,6 +51,7 @@ void main() {
         'font_scale': 0.9,
         'featured_max': 45,
         'featured_source': 'lastedittime',
+        'data_source': 'modrinth',
     });
     await SettingsService.instance.load();
     expect(SettingsService.instance.themeMode, ThemeMode.dark);
@@ -58,6 +62,15 @@ void main() {
     expect(SettingsService.instance.fontScale, 0.9);
     expect(SettingsService.instance.featuredMax, 45);
     expect(SettingsService.instance.featuredSource, 'lastedittime');
+    expect(SettingsService.instance.dataSource, 'modrinth');
+    });
+
+    test('dataSource 非法值被忽略', () async {
+    await SettingsService.instance.load();
+    SettingsService.instance.setDataSource('bogus');
+    expect(SettingsService.instance.dataSource, 'mcmod');
+    SettingsService.instance.setDataSource('modrinth');
+    expect(SettingsService.instance.dataSource, 'modrinth');
     });
 
     test('featuredSource 非法值被忽略', () async {

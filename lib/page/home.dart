@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../api/mcmod.dart';
-import '../model/mod.dart';
+import '../api/modrinth.dart';
+import '../model/mod_category.dart';
+import '../model/mod_summary.dart';
 import '../service/settings.dart';
+import '../widget/category/category.dart';
 import '../widget/error_view.dart';
 import '../widget/mod/mod_tile.dart';
-import 'category.dart';
 import 'config.dart';
 import 'search.dart';
 
@@ -16,19 +18,6 @@ class HomePage extends StatefulWidget {
   @override
   State<HomePage> createState() => _HomePageState();
 }
-
-/// 分类 id → 图标(实时抓取的分类中未知的 id 用兜底图标)
-const Map<int, IconData> _categoryIcons = {
-  1: Icons.memory, // 科技
-  2: Icons.auto_awesome, // 魔法
-  3: Icons.explore, // 冒险
-  4: Icons.agriculture, // 农业
-  5: Icons.palette, // 装饰
-  7: Icons.api, // LIB
-  21: Icons.tune, // 魔改
-  23: Icons.build, // 实用
-  24: Icons.support_agent, // 辅助
-};
 
 class _HomePageState extends State<HomePage> {
   // 推荐区状态
@@ -46,6 +35,9 @@ class _HomePageState extends State<HomePage> {
 
   /// 上次发起推荐加载时使用的来源(最新收录/最新编辑)
   String? _lastFeaturedSource;
+
+  /// 上次加载分类时使用的数据来源,用于判断设置变化是否需要重新拉取
+  String? _lastDataSource;
 
   /// 推荐请求序号:丢弃过期响应,防止快速切换排序/条数时旧结果覆盖新结果
   int _featuredSeq = 0;
@@ -66,9 +58,12 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  /// 设置变化回调:仅当推荐条数上限/来源与上次加载时不同才重新拉取。
+  /// 设置变化回调:数据来源变化重拉分类,推荐条数上限/来源变化重拉推荐。
   /// 主题/字体/强调色变化也会触发本回调,但比较后直接返回
   void _onSettingsChanged() {
+    if (SettingsService.instance.dataSource != _lastDataSource) {
+      _loadCategories();
+    }
     if (SettingsService.instance.featuredMax != _lastFeaturedLimit ||
         SettingsService.instance.featuredSource != _lastFeaturedSource) {
       _loadFeatured();
@@ -106,7 +101,8 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  /// 加载首页模组分类。[silent] 为 true 时不显示加载动画(下拉刷新用)
+  /// 加载首页模组分类(按数据来源选择平台)。
+  /// [silent] 为 true 时不显示加载动画(下拉刷新用)
   Future<void> _loadCategories({bool silent = false}) async {
     if (!silent) {
       setState(() {
@@ -114,8 +110,13 @@ class _HomePageState extends State<HomePage> {
         _categoriesError = null;
       });
     }
+    // 在发起时记录使用的数据来源:加载期间再变化会再次触发重载
+    final dataSource = SettingsService.instance.dataSource;
+    _lastDataSource = dataSource;
     try {
-      final cats = await McmodApi.getCategories();
+      final cats = dataSource == 'modrinth'
+          ? await ModrinthApi.getCategories()
+          : await McmodApi.getCategories();
       if (!mounted) return;
       setState(() {
         _categories = cats;
@@ -141,7 +142,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       // 顶部栏
       appBar: AppBar(
-        title: const Text('MC百科'),
+        title: const Text('MC Mod Helper'),
         actions: [
           // 搜索
           IconButton(
@@ -187,13 +188,14 @@ class _HomePageState extends State<HomePage> {
 
   /// 构建标题
   Widget _buildSectionTitle(String sectionTitle, IconData icon) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
       child: Row(
         children: [
-          Icon(icon),
+          Icon(icon, color: theme.colorScheme.primary,),
           const SizedBox(width: 10),
-          Text(sectionTitle, style: Theme.of(context).textTheme.headlineSmall),
+          Text(sectionTitle, style: theme.textTheme.headlineSmall),
         ],
       ),
     );
@@ -239,7 +241,7 @@ class _HomePageState extends State<HomePage> {
         if (constraints.maxWidth < 480) {
           return Column(
             children: [
-              for (final cat in _categories) _CategoryRow(category: cat),
+              for (final cat in _categories) CategoryCard(category: cat),
             ],
           );
         }
@@ -254,117 +256,13 @@ class _HomePageState extends State<HomePage> {
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
             // 卡片高度 = 宽度 / 纵横比
-            childAspectRatio: 1.6,
+            childAspectRatio: 3.5,
           ),
           children: [
-            for (final cat in _categories) _CategoryCard(category: cat),
+            for (final cat in _categories) CategoryCard(category: cat),
           ],
         );
       },
-    );
-  }
-}
-
-/// 窄屏模式下的分类行:每个分类占一行(ListTile 风格),点击进入分类模组列表
-class _CategoryRow extends StatelessWidget {
-  const _CategoryRow({required this.category});
-
-  final ModCategory category;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: Icon(
-          _categoryIcons[category.id] ?? Icons.category,
-          size: 30,
-          color: theme.colorScheme.primary,
-        ),
-        title: Text(
-          category.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: category.slogan == null
-            ? null
-            : Text(
-                category.slogan!,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
-              ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => CategoryPage(category: category)),
-        ),
-      ),
-    );
-  }
-}
-
-/// 分类卡片:图标 + 名称 + 标语,点击进入该分类的模组列表
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.category});
-
-  final ModCategory category;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => CategoryPage(category: category)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    _categoryIcons[category.id] ?? Icons.category,
-                    size: 30,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      category.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 15),
-              // Flexible 收缩:单元格高度不足时标语截断为更少行,
-              // 而不是整列溢出报错
-              if (category.slogan != null)
-                Flexible(
-                  child: Text(
-                    category.slogan!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              const Spacer(),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

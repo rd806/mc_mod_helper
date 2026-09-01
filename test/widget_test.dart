@@ -53,12 +53,11 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings));
     await tester.pumpAndSettle(); // 仅路由动画;配置页无网络请求、无挂起计时器
 
-    // 四个设置区块都在
+    // 三个设置区块都在
     expect(find.text('设置'), findsOneWidget);
-    expect(find.text('主题选择'), findsOneWidget);
+    expect(find.text('主题设置'), findsOneWidget);
     expect(find.text('字体大小'), findsOneWidget);
-    expect(find.text('列表长度'), findsOneWidget);
-    expect(find.text('推荐来源'), findsOneWidget);
+    expect(find.text('首页设置'), findsOneWidget);
 
     // 切换主题模式 → 服务值变化(不触发主页重载,无新计时器)
     await tester.tap(find.text('亮色'));
@@ -93,6 +92,15 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     await tester.pump();
+
+    // 数据来源区块存在,切到 Modrinth
+    expect(find.text('数据来源'), findsOneWidget);
+    await tester.ensureVisible(find.text('Modrinth'));
+    await tester.pump();
+    await tester.tap(find.text('Modrinth'));
+    // dataSource 不触发主页重拉(无新 Timer),pumpAndSettle 只收尾按钮动画,安全
+    await tester.pumpAndSettle();
+    expect(SettingsService.instance.dataSource, 'modrinth');
     });
 
     testWidgets('点击刷新按钮重新加载本页', (tester) async {

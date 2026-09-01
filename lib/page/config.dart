@@ -57,6 +57,7 @@ class _ConfigPageState extends State<ConfigPage> {
               _sectionTitle(context, '字体设置'),
               _buildFontScaleSection(context, s),
               _sectionTitle(context, '首页设置'),
+              _buildDataSourceSection(context, s),
               _buildListSource(context, s),
               _buildListMaxSection(context, s),
             ],
@@ -202,6 +203,35 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 推荐列表来源(最新收录/最新编辑),修改后持久化,主页监听变化自动重拉
+  /// 搜索/详情数据来源(MC百科/Modrinth),修改后持久化
+  Widget _buildDataSourceSection(BuildContext context, SettingsService s) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+      child: Row(
+        children: [
+          Text('数据来源', style: theme.textTheme.bodyMedium),
+          Spacer(),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'mcmod', label: Text('MC百科')),
+              ButtonSegment(value: 'modrinth', label: Text('Modrinth')),
+            ],
+            // 防御:存档值不在选项内时回落显示 "MC百科"
+            selected: {
+              SettingsService.dataSources.contains(s.dataSource)
+                  ? s.dataSource
+                  : 'mcmod',
+            },
+            showSelectedIcon: false,
+            onSelectionChanged: (selection) =>
+                SettingsService.instance.setDataSource(selection.first),
+          )
+        ],
+      )
+    );
+  }
+
   Widget _buildListSource(BuildContext context, SettingsService s) {
     final theme = Theme.of(context);
     return Padding(

@@ -4,7 +4,10 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
-import '../model/mod.dart';
+import '../model/mod_category.dart';
+import '../model/mod_detail.dart';
+import '../model/mod_link.dart';
+import '../model/mod_summary.dart';
 
 /// 被站点限流时抛出的异常
 class McmodThrottledException implements Exception {
@@ -46,8 +49,7 @@ class McmodApi {
   static final Map<String, List<ModSummary>> _searchCache = {};
   static final Map<int, ModDetail> _detailCache = {};
   static List<ModCategory>? _categoryCache;
-  static final Map<String, ({List<ModSummary> mods, int totalPages})>
-  _categoryModsCache = {};
+  static final Map<String, ({List<ModSummary> mods, int totalPages})> _categoryModsCache = {};
 
   /// 推荐列表的分页缓存
   /// key='$sort-$page'；
@@ -586,8 +588,7 @@ class McmodApi {
       // (站点原有 border="0" 表示刻意无边框,不覆盖)
       if (!RegExp(r'<table[^>]*\sborder="0"').hasMatch(table)) {
         final borderAttr = RegExp(r'<table[^>]*\sborder=').hasMatch(table)
-            ? ''
-            : ' border="1"';
+            ? '' : ' border="1"';
         table = table.replaceFirst(
           RegExp(r'<table'),
           '<table style="border-collapse:collapse"$borderAttr',

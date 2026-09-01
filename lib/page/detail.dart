@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:mc_mod_helper/widget/description/cover.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../model/mod.dart';
 import '../api/mcmod.dart';
+import '../api/modrinth.dart';
+import '../model/mod_detail.dart';
 import '../widget/description/collapsible_chips.dart';
 import '../widget/link_icons.dart';
 import '../widget/description/image_box.dart';
@@ -15,9 +17,18 @@ class DetailPage extends StatefulWidget {
     required this.id,
     this.initialTitle,
     this.initialDescription,
+    this.source = 'mcmod',
+    this.sourceId,
   });
 
   final int id;
+
+  /// 数据来源:'mcmod' 用站内 ID,[sourceId] 为 null;
+  /// 'modrinth' 用 [sourceId](项目 slug),id 为占位 0
+  final String source;
+
+  /// Modrinth 项目 slug(如 'jei'),mcmod 数据为 null
+  final String? sourceId;
 
   /// 详情加载完成前显示在标题栏的名称
   final String? initialTitle;
@@ -38,8 +49,18 @@ class _DetailPageState extends State<DetailPage> {
     _future = _load();
   }
 
-  /// 获取详情
+  /// 获取详情:按数据来源选择 API
   Future<ModDetail> _load() {
+    if (widget.source == 'modrinth') {
+      final sourceId = widget.sourceId;
+      if (sourceId == null || sourceId.isEmpty) {
+        return Future.error(Exception('Modrinth 项目标识缺失'));
+      }
+      return ModrinthApi.getDetail(
+        sourceId,
+        fallbackDescription: widget.initialDescription,
+      );
+    }
     return McmodApi.getDetail(
       widget.id,
       fallbackDescription: widget.initialDescription,
@@ -52,7 +73,8 @@ class _DetailPageState extends State<DetailPage> {
     });
   }
 
-  /// 打开链接:站内模组页(class/{id}.html)默认在应用内跳转详情页,其余链接用浏览器打开。
+  /// 打开链接:站内模组页(mcmod 的 class/{id}.html 或 modrinth.com/mod/{slug})
+  /// 默认在应用内跳转详情页,其余链接用浏览器打开。
   /// [forceExternal] 为 true 时一律走浏览器
   Future<void> _openUrl(String url, {bool forceExternal = false}) async {
     final uri = Uri.tryParse(url);
@@ -66,6 +88,18 @@ class _DetailPageState extends State<DetailPage> {
             .push(MaterialPageRoute(builder: (_) => DetailPage(id: modId)));
         return;
       }
+      final slug = _modrinthSlugFromUrl(uri);
+      if (slug != null) {
+        // 跳过指向当前项目自身的链接
+        if (widget.source == 'modrinth' && slug == widget.sourceId) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) =>
+                DetailPage(id: 0, source: 'modrinth', sourceId: slug),
+          ),
+        );
+        return;
+      }
     }
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -75,6 +109,17 @@ class _DetailPageState extends State<DetailPage> {
             .showSnackBar(const SnackBar(content: Text('无法打开链接')));
       }
     }
+  }
+
+  /// Modrinth 模组页(modrinth.com/mod/{slug} 或 /project/{id|slug}) → slug;
+  /// 其它路径(版本页/用户页/docs 子域等)返回 null,走浏览器
+  static String? _modrinthSlugFromUrl(Uri uri) {
+    if (uri.host != 'modrinth.com' && uri.host != 'www.modrinth.com') {
+      return null;
+    }
+    final m = RegExp(r'^/(?:mod|project)/([a-zA-Z0-9_-]+)/?$')
+        .firstMatch(uri.path.toLowerCase());
+    return m?.group(1);
   }
 
   /// 站内模组详情页链接(www.mcmod.cn/class/{id}.html) → 模组 id;
@@ -109,12 +154,14 @@ class _DetailPageState extends State<DetailPage> {
             icon: const Icon(Icons.refresh),
             onPressed: _reload,
           ),
-          // 页地址只依赖 id，详情未加载完也能打开
+          // 页地址只依赖 id/sourceId,详情未加载完也能打开
           IconButton(
             tooltip: '在浏览器中打开',
             icon: const Icon(Icons.open_in_browser),
             onPressed: () => _openUrl(
-              'https://www.mcmod.cn/class/${widget.id}.html',
+              widget.source == 'modrinth'
+                  ? 'https://modrinth.com/mod/${widget.sourceId}'
+                  : 'https://www.mcmod.cn/class/${widget.id}.html',
               forceExternal: true,
             ),
           ),
@@ -163,32 +210,14 @@ class _DetailPageState extends State<DetailPage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (mod.coverUrl != null) _buildIcon(mod, theme),
-
-        // 模组名称
-        const SizedBox(height: 12),
-        Text(
-          mod.title,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        // 封面与标题:窄屏竖排(封面在上),宽屏横排(封面在左),按宽度自动选择
+        LayoutBuilder(
+          builder: (context, constraints) => constraints.maxWidth < 480
+              ? ModCoverNarrow(mod: mod)
+              : ModCoverWide(mod: mod),
         ),
-        if (mod.subName != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            mod.subName!,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.primary,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
 
-        if (mod.platform != null || mod.environment != null) ...[
-          const SizedBox(height: 16),
-          _buildPlatforms(mod),
-          const SizedBox(height: 16),
-        ],
+
         const Divider(),
         if (mod.links.isNotEmpty) ...[
           _buildSectionTitle('相关链接', Icons.insert_link_rounded),
@@ -210,53 +239,20 @@ class _DetailPageState extends State<DetailPage> {
 
   /// 区块标题:上间距 + titleLarge 标题 + 下间距,配合 ... 展开使用
   Widget _buildSectionTitle(String title, IconData icon) {
+    final theme = Theme.of(context);
     return Padding(
       // 上下间距写入 Padding 中
       padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
       child: Row(
         children: [
-          Icon(icon),
-          const SizedBox(width: 5),
+          Icon(icon, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
           Text(
             title,
-            style: Theme.of(context).textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
         ],
       ),
-    );
-  }
-
-  // 模组图标
-  Widget _buildIcon(ModDetail mod, ThemeData theme) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: GestureDetector(
-        onTap: () => _showLightbox(mod.coverUrl!),
-        child: Image.network(
-          mod.coverUrl!,
-          height: 200,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Container(
-            height: 200,
-            color: theme.colorScheme.surfaceContainerHighest,
-            child: const Icon(Icons.image_not_supported, size: 48),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 支持平台
-  Widget _buildPlatforms(ModDetail mod) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        if (mod.platform != null) _InfoChip(label: '平台: ${mod.platform}'),
-        if (mod.environment != null) _InfoChip(label: '环境: ${mod.environment}'),
-      ],
     );
   }
 
@@ -277,7 +273,7 @@ class _DetailPageState extends State<DetailPage> {
   // 支持版本
   Widget _buildModVersion(ModDetail mod) {
     return CollapsibleChips(
-      chips: [for (final v in mod.mcVersions) _InfoChip(label: v)],
+      chips: [for (final v in mod.mcVersions) Chip(label: Text(v))],
     );
   }
 
@@ -310,21 +306,5 @@ class _DetailPageState extends State<DetailPage> {
     if (n.contains('curse') || n.contains('forge')) return LinkIcons.curseforge;
     if (n.contains('mcbbs') || n.contains('bbs')) return LinkIcons.mcbbs;
     return Icons.link;
-  }
-}
-
-/// 紧凑的小标签
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      label: Text(label),
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
   }
 }

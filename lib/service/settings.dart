@@ -14,6 +14,7 @@ class SettingsService extends ChangeNotifier {
   static const String _fontScaleKey = 'font_scale';
   static const String _featuredMaxKey = 'featured_max';
   static const String _featuredSourceKey = 'featured_source';
+  static const String _dataSourceKey = 'data_source';
 
   /// 字体大小
   static const double fontMin = 0.5;
@@ -30,17 +31,22 @@ class SettingsService extends ChangeNotifier {
     'lastedittime',
   ];
 
+  /// 搜索/详情数据来源的合法取值
+  static const List<String> dataSources = ['mcmod', 'modrinth'];
+
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.blue;
   double _fontScale = 1.0;
   int _featuredMax = 20;
   String _featuredSource = "";
+  String _dataSource = 'mcmod';
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
   double get fontScale => _fontScale;
   int get featuredMax => _featuredMax;
   String get featuredSource => _featuredSource;
+  String get dataSource => _dataSource;
 
   /// 启动时读取已保存的设置(在 runApp 前调用,避免启动后主题/字体跳变)。
   ///
@@ -65,6 +71,8 @@ class SettingsService extends ChangeNotifier {
       _featuredSource = (source != null && featuredSources.contains(source))
           ? source
           : 'createtime';
+      final ds = prefs.getString(_dataSourceKey);
+      _dataSource = (ds != null && dataSources.contains(ds)) ? ds : 'mcmod';
       notifyListeners();
     } catch (_) {
       // 读取失败:保持默认值,不阻塞启动
@@ -104,6 +112,14 @@ class SettingsService extends ChangeNotifier {
     _featuredSource = source;
     notifyListeners();
     _persist(_featuredSourceKey, source);
+  }
+
+  /// 设置搜索/详情数据来源(MC百科/Modrinth),非法值忽略
+  void setDataSource(String source) {
+    if (!dataSources.contains(source) || source == _dataSource) return;
+    _dataSource = source;
+    notifyListeners();
+    _persist(_dataSourceKey, source);
   }
 
   /// 设置首页推荐列表条数上限(自动截断到允许范围)

@@ -142,7 +142,7 @@ class _CollapsibleChipsState extends State<CollapsibleChips> {
       child: TextButton.icon(
         onPressed: () => setState(() => _expanded = !_expanded),
         icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more, size: 18),
-        label: Text(_expanded ? '收起' : '展开全部'),
+        label: Text(_expanded ? '收起' : '展开'),
       ),
     );
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../model/mod.dart';
+import '../../model/mod_summary.dart';
 import '../../page/detail.dart';
 
 /// 分类页模组卡片的公共基类:
@@ -42,6 +42,8 @@ abstract class ModCard extends StatelessWidget {
                 id: mod.id,
                 initialTitle: mod.displayName,
                 initialDescription: mod.description,
+                source: mod.source ?? 'mcmod',
+                sourceId: mod.sourceId,
               ),
             ),
           );

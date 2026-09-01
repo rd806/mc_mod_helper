@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../model/mod.dart';
+import '../../model/mod_summary.dart';
 import '../../page/detail.dart';
 
 /// 单条模组
@@ -43,6 +43,8 @@ class ModTile extends StatelessWidget {
                 id: mod.id,
                 initialTitle: mod.displayName,
                 initialDescription: mod.description,
+                source: mod.source ?? 'mcmod',
+                sourceId: mod.sourceId,
               ),
             ),
           );
