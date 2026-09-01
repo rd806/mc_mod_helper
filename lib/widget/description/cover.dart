@@ -74,6 +74,9 @@ abstract class ModCover extends StatelessWidget {
             ),
           ),
         ],
+        // 来源(始终有值,显示友好名称)
+        const SizedBox(height: 10),
+        _buildSource(mod),
         // 支持平台
         if (mod.platform != null || mod.environment != null) ...[
           const SizedBox(height: 16),
@@ -82,6 +85,12 @@ abstract class ModCover extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  // 显示来源
+  Widget _buildSource(ModDetail mod) {
+    String source = mod.source == 'modrinth' ? 'Modrinth' : 'MC百科';
+    return _InfoChip(label: '来源：$source');
   }
 
   // 支持平台
@@ -123,7 +132,7 @@ class ModCoverWide extends ModCover {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildIcon(context, width: 240, height: 150),
+        _buildIcon(context, width: 288, height: 180),
         const SizedBox(width: 16),
         Expanded(child: _buildName(context)),
       ],

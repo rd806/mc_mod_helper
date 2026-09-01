@@ -7,13 +7,11 @@ class ModSummary {
     this.subName,
     this.iconUrl,
     this.statsText,
-    this.source,
-    this.sourceId,
+    this.source = 'mcmod',
   });
 
-  /// 站内模组 ID
-  /// 数据来源非 mcmod 时为占位值 0(来源平台用 [sourceId] 标识)
-  final int id;
+  /// 统一模组标识(字符串):MC百科为数字字符串(如 '123'),Modrinth 为 slug(如 'jei')
+  final String id;
 
   /// 完整标题,如 `[JEI] JEI物品管理器 (Just Enough Items)`
   final String title;
@@ -30,15 +28,12 @@ class ModSummary {
   /// 浏览/推荐/收藏统计文本(分类列表页有,如 '浏览 5575 · 推荐 80 · 收藏 0')
   final String? statsText;
 
-  /// 数据来源:null='mcmod', 'modrinth'=Modrinth
-  final String? source;
-
-  /// 来源平台内的唯一标识(Modrinth 项目的 slug,如 'jei');mcmod 数据为 null
-  final String? sourceId;
+  /// 数据来源:'mcmod' 或 'modrinth'
+  final String source;
 
   /// 模组详情页地址(按数据来源返回)
-  String get pageUrl => (source == 'modrinth' && sourceId != null)
-      ? 'https://modrinth.com/mod/$sourceId'
+  String get pageUrl => source == 'modrinth'
+      ? 'https://modrinth.com/mod/$id'
       : 'https://www.mcmod.cn/class/$id.html';
 
   /// 去掉 `[缩写]` 前缀后的显示名

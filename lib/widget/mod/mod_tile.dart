@@ -43,8 +43,7 @@ class ModTile extends StatelessWidget {
                 id: mod.id,
                 initialTitle: mod.displayName,
                 initialDescription: mod.description,
-                source: mod.source ?? 'mcmod',
-                sourceId: mod.sourceId,
+                source: mod.source,
               ),
             ),
           );

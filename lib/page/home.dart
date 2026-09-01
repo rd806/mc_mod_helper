@@ -246,17 +246,16 @@ class _HomePageState extends State<HomePage> {
           );
         }
         // 宽屏
-        final rawColumns = (constraints.maxWidth / 250).floor();
-        final columns = rawColumns < 2 ? 2 : rawColumns;
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
+          // 固定高度的卡片
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent (
+            maxCrossAxisExtent: 300,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
             // 卡片高度 = 宽度 / 纵横比
-            childAspectRatio: 3.5,
+            childAspectRatio: 3.0,
           ),
           children: [
             for (final cat in _categories) CategoryCard(category: cat),

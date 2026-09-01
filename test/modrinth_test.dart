@@ -89,19 +89,18 @@ void main() {
       final results = await ModrinthApi.search('sodium');
       expect(results, hasLength(1));
       final m = results.first;
-      expect(m.id, 0);
+      expect(m.id, 'sodium');
       expect(m.title, 'Sodium');
       expect(m.source, 'modrinth');
-      expect(m.sourceId, 'sodium');
       expect(m.statsText, '下载 863万 · 关注 3200');
       expect(m.pageUrl, 'https://modrinth.com/mod/sodium');
     });
 
     test('getDetail 映射到 ModDetail(markdown 转换)', () async {
       final d = await ModrinthApi.getDetail('sodium');
+      expect(d.id, 'sodium');
       expect(d.title, 'Sodium');
       expect(d.source, 'modrinth');
-      expect(d.sourceId, 'sodium');
       // 表格带边框与 collapse
       expect(d.description, contains('<table'));
       expect(d.description, contains('border-collapse'));
@@ -126,14 +125,14 @@ void main() {
       final cats = await ModrinthApi.getCategories();
       expect(cats.map((c) => c.name), containsAll(['科技', '魔法']));
       expect(cats.map((c) => c.name), isNot(contains('128x')));
-      final tech = cats.firstWhere((c) => c.sourceId == 'technology');
+      final tech = cats.firstWhere((c) => c.id == 'technology');
       expect(tech.source, 'modrinth');
-      expect(tech.id, 0);
+      expect(tech.id, 'technology');
     });
 
     test('getCategoryMods 按 offset 分页并计算总页数', () async {
       final r1 = await ModrinthApi.getCategoryMods('technology');
-      expect(r1.mods.first.sourceId, 'create');
+      expect(r1.mods.first.id, 'create');
       expect(r1.totalPages, 3); // 45 条 / 20 每页 = 3 页
 
       final r2 = await ModrinthApi.getCategoryMods('technology', page: 2);

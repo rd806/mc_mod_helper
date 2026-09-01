@@ -29,7 +29,7 @@ void main() {
     testWidgets('启动显示主页:分类与推荐加载失败,搜索与设置入口可用', (tester) async {
     await pumpApp(tester);
 
-    expect(find.text('MC百科'), findsOneWidget);
+    expect(find.text('MC Mod Helper'), findsOneWidget);
     expect(find.text('模组分类'), findsOneWidget);
     expect(find.text('首页推荐'), findsOneWidget);
     expect(find.textContaining('加载失败'), findsNWidgets(2));
@@ -59,8 +59,10 @@ void main() {
     expect(find.text('字体大小'), findsOneWidget);
     expect(find.text('首页设置'), findsOneWidget);
 
-    // 切换主题模式 → 服务值变化(不触发主页重载,无新计时器)
-    await tester.tap(find.text('亮色'));
+    // 切换主题模式(下拉框) → 服务值变化(不触发主页重载,无新计时器)
+    await tester.tap(find.byType(DropdownButton<ThemeMode>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('亮色').last);
     await tester.pumpAndSettle(); // 主题过渡动画收尾
     expect(SettingsService.instance.themeMode, ThemeMode.light);
 
@@ -83,11 +85,13 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // 切换推荐来源 → 服务值变化,主页再次重拉
-    await tester.ensureVisible(find.text('最新编辑'));
+    // 切换推荐来源(下拉框) → 服务值变化,主页再次重拉
+    await tester.ensureVisible(find.byType(DropdownButton<String>));
     await tester.pump();
-    await tester.tap(find.text('最新编辑'));
-    await tester.pump();
+    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('最新编辑').last);
+    await tester.pumpAndSettle();
     expect(SettingsService.instance.featuredSource, 'lastedittime');
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();

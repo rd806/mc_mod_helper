@@ -37,6 +37,14 @@ class _ConfigPageState extends State<ConfigPage> {
     ('红色', Colors.red),
   ];
 
+  // 推荐方法
+  // 与 settings 中的一致
+  static const List<(String, String)> _sortMethod = [
+    ('默认', ''),
+    ('最新收录', 'createtime'),
+    ('最新编辑', 'lastedittime')
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,7 +60,6 @@ class _ConfigPageState extends State<ConfigPage> {
             children: [
               _sectionTitle(context, '主题设置'),
               _buildThemeModeSection(context, s),
-              const SizedBox(height: 15),
               _buildSeedColorSection(context, s),
               _sectionTitle(context, '字体设置'),
               _buildFontScaleSection(context, s),
@@ -79,31 +86,66 @@ class _ConfigPageState extends State<ConfigPage> {
   Widget _buildThemeModeSection(BuildContext context, SettingsService s) {
     final themeMode = s.themeMode;
     final theme = Theme.of(context);
+    // 将 _themeMode 转换为 DropdownMenuItem 列表
+    final dropdownItems = _themeMode.map<DropdownMenuItem<ThemeMode>>((item) {
+      final (label, value) = item;
+      return DropdownMenuItem<ThemeMode>(
+        value: value,
+        child: Row(
+          children: [
+            Icon(_getIconForThemeMode(value)),
+            const SizedBox(width: 10),
+            Text(label),
+          ]
+        )
+      );
+    }).toList();
+    // 确定当前选中的值（防御性处理）
+    final selectedValue = _themeMode.any((f) => f.$2 == themeMode) ? themeMode : ThemeMode.system;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
           Text('主题选择', style: theme.textTheme.bodyMedium),
-          Spacer(),
-          SegmentedButton<ThemeMode>(
-            segments: [
-              for (final (label, value) in _themeMode)
-                ButtonSegment(value: value, label: Text(label)),
-            ],
-            // 防御:存档值不在三档内(被外部改动)时回落显示“跟随系统”,
-            // SegmentedButton 要求 selected 是 segments 的子集,否则断言崩溃
-            selected: {
-              _themeMode.any((f) => f.$2 == themeMode)
-                  ? themeMode
-                  : ThemeMode.system,
+          const Spacer(),
+          // 使用下拉框
+          DropdownButton<ThemeMode>(
+            value: selectedValue,
+            items: dropdownItems,
+            onChanged: (ThemeMode? newValue) {
+              if (newValue != null) {
+                SettingsService.instance.setThemeMode(newValue);
+              }
             },
-            showSelectedIcon: false,
-            onSelectionChanged: (selection) =>
-                SettingsService.instance.setThemeMode(selection.first),
+            // 样式定制（可选）
+            style: theme.textTheme.bodyMedium,
+            // 设置为透明下划线
+            underline: Container(
+              height: 0,
+              color: Colors.transparent,
+            ),
+            icon: Icon(
+              Icons.arrow_drop_down,
+              color: theme.iconTheme.color,
+            ),
+            // 如果希望下拉框宽度自适应内容
+            isDense: false,
+            // 禁用焦点和悬停效果
+            focusColor: Colors.transparent,
           ),
         ],
       ),
     );
+  }
+
+  // 获取图标
+  IconData _getIconForThemeMode(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.system: return Icons.settings_suggest;
+      case ThemeMode.light: return Icons.light_mode;
+      case ThemeMode.dark: return Icons.dark_mode;
+    }
   }
 
   /// 强调色:一行色块,选中项画外圈 + 对勾
@@ -124,12 +166,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   // 颜色按钮
-  Widget _buildColor(
-    String label,
-    Color color,
-    int selectedArgb,
-    ThemeData theme,
-  ) {
+  Widget _buildColor(String label, Color color, int selectedArgb, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5),
       child: Tooltip(
@@ -155,13 +192,9 @@ class _ConfigPageState extends State<ConfigPage> {
                     Icons.check,
                     size: 20,
                     // 按色块明暗选白/黑对勾
-                    color:
-                        ThemeData.estimateBrightnessForColor(color) ==
-                            Brightness.dark
-                        ? Colors.white
-                        : Colors.black87,
-                  )
-                : null,
+                    color: ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+                        ? Colors.white : Colors.black87,
+                  ) : null,
           ),
         ),
       ),
@@ -202,7 +235,6 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
-  /// 推荐列表来源(最新收录/最新编辑),修改后持久化,主页监听变化自动重拉
   /// 搜索/详情数据来源(MC百科/Modrinth),修改后持久化
   Widget _buildDataSourceSection(BuildContext context, SettingsService s) {
     final theme = Theme.of(context);
@@ -232,32 +264,53 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
+  /// 推荐列表来源(最新收录/最新编辑),修改后持久化,主页监听变化自动重拉
   Widget _buildListSource(BuildContext context, SettingsService s) {
     final theme = Theme.of(context);
+
+    // 转换为 DropdownMenuItem 列表
+    final dropdownItems = _sortMethod.map<DropdownMenuItem<String>>((item) {
+      final (label, value) = item;
+      return DropdownMenuItem<String>(
+        value: value,
+        child: Text(label),
+      );
+    }).toList();
+
+    final selectedValue = SettingsService.featuredSources.contains(s.featuredSource)
+        ? s.featuredSource : 'createtime';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
       child: Row(
         children: [
           Text('推荐来源', style: theme.textTheme.bodyMedium),
           Spacer(),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: '', label: Text('默认')),
-              ButtonSegment(value: 'createtime', label: Text('最新收录')),
-              ButtonSegment(value: 'lastedittime', label: Text('最新编辑')),
-            ],
-            // 防御:存档值不在选项内时回落显示“最新收录”,
-            // SegmentedButton 要求 selected 是 segments 的子集
-            selected: {
-              SettingsService.featuredSources.contains(s.featuredSource)
-                  ? s.featuredSource
-                  : 'createtime',
+          // 使用下拉框
+          DropdownButton<String>(
+            value: selectedValue,
+            items: dropdownItems,
+            onChanged: (String? newValue) {
+              if (newValue != null) {
+                SettingsService.instance.setFeaturedSource(newValue);
+              }
             },
-            showSelectedIcon: false,
-            style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            onSelectionChanged: (selection) =>
-                SettingsService.instance.setFeaturedSource(selection.first),
-          ),
+            // 样式定制（可选）
+            style: theme.textTheme.bodyMedium,
+            // 设置为透明下划线
+            underline: Container(
+              height: 0,
+              color: Colors.transparent,
+            ),
+            icon: Icon(
+              Icons.arrow_drop_down,
+              color: theme.iconTheme.color,
+            ),
+            // 如果希望下拉框宽度自适应内容
+            isDense: false,
+            // 禁用焦点和悬停效果
+            focusColor: Colors.transparent,
+          )
         ],
       ),
     );

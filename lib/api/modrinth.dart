@@ -166,7 +166,7 @@ class ModrinthApi {
     final title = (hit['title'] as String?)?.trim() ?? '';
     if (slug.isEmpty || title.isEmpty) return null;
     return ModSummary(
-      id: 0,
+      id: slug,
       title: title,
       description: (hit['description'] as String?) ?? '',
       iconUrl: hit['icon_url'] as String?,
@@ -175,7 +175,6 @@ class ModrinthApi {
         (hit['follows'] as num?)?.toInt(),
       ),
       source: 'modrinth',
-      sourceId: slug,
     );
   }
 
@@ -212,10 +211,9 @@ class ModrinthApi {
       if (slug.isEmpty) continue;
       cats.add(
         ModCategory(
-          id: 0,
+          id: slug,
           name: _categoryNames[slug] ?? slug,
           source: 'modrinth',
-          sourceId: slug,
         ),
       );
     }
@@ -246,7 +244,7 @@ class ModrinthApi {
     final html = _markdownToHtml(markdown);
 
     return ModDetail(
-      id: 0,
+      id: sourceId,
       title: title,
       subName: null,
       description: html.isEmpty ? null : html,
@@ -257,7 +255,6 @@ class ModrinthApi {
       platform: _buildPlatform(data),
       environment: _buildEnvironment(data),
       source: 'modrinth',
-      sourceId: sourceId,
     );
   }
 

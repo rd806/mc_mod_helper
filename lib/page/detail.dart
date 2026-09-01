@@ -18,17 +18,13 @@ class DetailPage extends StatefulWidget {
     this.initialTitle,
     this.initialDescription,
     this.source = 'mcmod',
-    this.sourceId,
   });
 
-  final int id;
+  /// 统一模组标识(字符串):MC百科为数字字符串(如 '123'),Modrinth 为 slug(如 'jei')
+  final String id;
 
-  /// 数据来源:'mcmod' 用站内 ID,[sourceId] 为 null;
-  /// 'modrinth' 用 [sourceId](项目 slug),id 为占位 0
+  /// 数据来源:'mcmod' 或 'modrinth',决定用哪个 API 加载详情
   final String source;
-
-  /// Modrinth 项目 slug(如 'jei'),mcmod 数据为 null
-  final String? sourceId;
 
   /// 详情加载完成前显示在标题栏的名称
   final String? initialTitle;
@@ -51,20 +47,15 @@ class _DetailPageState extends State<DetailPage> {
 
   /// 获取详情:按数据来源选择 API
   Future<ModDetail> _load() {
-    if (widget.source == 'modrinth') {
-      final sourceId = widget.sourceId;
-      if (sourceId == null || sourceId.isEmpty) {
-        return Future.error(Exception('Modrinth 项目标识缺失'));
-      }
-      return ModrinthApi.getDetail(
-        sourceId,
-        fallbackDescription: widget.initialDescription,
-      );
-    }
-    return McmodApi.getDetail(
-      widget.id,
-      fallbackDescription: widget.initialDescription,
-    );
+    return widget.source == 'modrinth'
+        ? ModrinthApi.getDetail(
+            widget.id,
+            fallbackDescription: widget.initialDescription,
+          )
+        : McmodApi.getDetail(
+            widget.id,
+            fallbackDescription: widget.initialDescription,
+          );
   }
 
   void _reload() {
@@ -83,19 +74,19 @@ class _DetailPageState extends State<DetailPage> {
       final modId = _modIdFromUrl(uri);
       if (modId != null) {
         // 跳过指向当前模组自身的链接,避免堆叠重复详情页
-        if (modId == widget.id) return;
-        Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => DetailPage(id: modId)));
+        if (widget.source != 'modrinth' && '$modId' == widget.id) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => DetailPage(id: '$modId')),
+        );
         return;
       }
       final slug = _modrinthSlugFromUrl(uri);
       if (slug != null) {
         // 跳过指向当前项目自身的链接
-        if (widget.source == 'modrinth' && slug == widget.sourceId) return;
+        if (widget.source == 'modrinth' && slug == widget.id) return;
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) =>
-                DetailPage(id: 0, source: 'modrinth', sourceId: slug),
+            builder: (_) => DetailPage(id: slug, source: 'modrinth'),
           ),
         );
         return;
@@ -160,7 +151,7 @@ class _DetailPageState extends State<DetailPage> {
             icon: const Icon(Icons.open_in_browser),
             onPressed: () => _openUrl(
               widget.source == 'modrinth'
-                  ? 'https://modrinth.com/mod/${widget.sourceId}'
+                  ? 'https://modrinth.com/mod/${widget.id}'
                   : 'https://www.mcmod.cn/class/${widget.id}.html',
               forceExternal: true,
             ),
@@ -217,18 +208,16 @@ class _DetailPageState extends State<DetailPage> {
               : ModCoverWide(mod: mod),
         ),
 
-
-        const Divider(),
         if (mod.links.isNotEmpty) ...[
           _buildSectionTitle('相关链接', Icons.insert_link_rounded),
           _buildLinks(mod),
+          const Divider(),
         ],
-        const Divider(),
         if (mod.mcVersions.isNotEmpty) ...[
           _buildSectionTitle('支持版本', Icons.check_circle_rounded),
           _buildModVersion(mod),
+          const Divider(),
         ],
-        const Divider(),
         if (mod.description != null && mod.description!.isNotEmpty) ...[
           _buildSectionTitle('模组介绍', Icons.article_rounded),
           _buildDescription(mod, theme),

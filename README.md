@@ -1,10 +1,14 @@
 # MC Mod Helper
 
-我的第一个 flutter 项目：一个简易的 Minecraft 模组浏览应用，从 [MC百科](https://www.mcmod.cn) 获取模组信息。
+我的第一个 flutter 项目： 简易的 Minecraft 模组浏览应用，从模组站点
+* [MC百科](https://www.mcmod.cn)
+* [Modrinth](https://modrinth.com/)
 
-因为 MC百科 没有公开的官方 API，所以本应用通过模拟 HTTP 请求获取网页内容并转换为可读界面。
+获取模组信息。
 
 > [!Note]
+> 因为 MC百科 没有公开的官方 API，所以本应用通过模拟 HTTP 请求获取网页内容并转换为可读界面。
+> 
 > 开发时使用了 AI 辅助，仅用于学习交流。
 
 ## 功能

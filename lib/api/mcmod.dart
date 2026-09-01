@@ -47,7 +47,7 @@ class McmodApi {
 
   /// 会话缓存,避免重复请求触发限流
   static final Map<String, List<ModSummary>> _searchCache = {};
-  static final Map<int, ModDetail> _detailCache = {};
+  static final Map<String, ModDetail> _detailCache = {};
   static List<ModCategory>? _categoryCache;
   static final Map<String, ({List<ModSummary> mods, int totalPages})> _categoryModsCache = {};
 
@@ -123,17 +123,18 @@ class McmodApi {
     return scored.map((e) => e.mod).toList();
   }
 
-  /// 获取模组详情。
+  /// 获取模组详情。[id] 为统一字符串标识(mcmod 数字字符串,如 '123')。
   ///
   /// [fallbackDescription] 用于详情页没有“概述”时回退(通常来自搜索结果)。
   static Future<ModDetail> getDetail(
-    int id, {
+    String id, {
     String? fallbackDescription,
   }) async {
     final cached = _detailCache[id];
     if (cached != null) return cached;
 
-    final uri = Uri.parse('https://www.mcmod.cn/class/$id.html');
+    final numId = int.parse(id);
+    final uri = Uri.parse('https://www.mcmod.cn/class/$numId.html');
     final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
     final detail = _parseDetail(
       id,
@@ -208,7 +209,7 @@ class McmodApi {
 
   /// 获取分类列表页第 [page] 页的模组(每页约 20 个)与总页数
   static Future<({List<ModSummary> mods, int totalPages})> getCategoryMods(
-    int categoryId, {
+    String categoryId, {
     int page = 1,
   }) async {
     final key = '$categoryId-$page';
@@ -299,7 +300,7 @@ class McmodApi {
       if (title.isEmpty) continue;
       results.add(
         ModSummary(
-          id: int.parse(idMatch.group(1)!),
+          id: idMatch.group(1)!,
           title: title,
           description: _cleanText(item.querySelector('.body')?.text ?? ''),
         ),
@@ -332,7 +333,7 @@ class McmodApi {
 
       results.add(
         ModSummary(
-          id: int.parse(idMatch.group(1)!),
+          id: idMatch.group(1)!,
           title: title,
           description: intro,
           subName: ename.isEmpty ? null : ename,
@@ -352,8 +353,8 @@ class McmodApi {
     final doc = html_parser.parse(html);
     final cats = <ModCategory>[];
     for (final block in doc.querySelectorAll('.class_category_block')) {
-      final id = int.tryParse(block.attributes['data-id'] ?? '');
-      if (id == null) continue;
+      final id = (block.attributes['data-id'] ?? '').trim();
+      if (id.isEmpty) continue;
       final name = _cleanText(block.querySelector('.icon a')?.text ?? '');
       if (name.isEmpty) continue;
       final slogan = _cleanText(
@@ -406,7 +407,7 @@ class McmodApi {
       ];
       mods.add(
         ModSummary(
-          id: int.parse(idMatch.group(1)!),
+          id: idMatch.group(1)!,
           title: title,
           description: '',
           iconUrl: icon.isEmpty ? null : icon,
@@ -433,7 +434,7 @@ class McmodApi {
   // ---------- 详情页解析 ----------
 
   static ModDetail _parseDetail(
-    int id,
+    String id,
     String html, {
     String? fallbackDescription,
   }) {

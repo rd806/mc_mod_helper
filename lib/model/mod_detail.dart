@@ -12,18 +12,16 @@ class ModDetail {
     this.mcVersions = const [],
     this.platform,
     this.environment,
-    this.source,
-    this.sourceId,
+    this.source = 'mcmod',
   });
 
-  /// 站内模组 ID
-  /// 数据来源非 mcmod 时为占位值 0(来源平台用 [sourceId] 标识)
-  final int id;
+  /// 统一模组标识(字符串):MC百科为数字字符串(如 '123'),Modrinth 为 slug(如 'jei')
+  final String id;
 
-  /// 中文名
+  /// 主要名称
   final String title;
 
-  /// 英文名(副标题)
+  /// 次要名称
   final String? subName;
 
   /// 模组介绍（富文本 HTML）
@@ -45,14 +43,11 @@ class ModDetail {
   /// 运行环境(如 客户端需装, 服务端无效)
   final String? environment;
 
-  /// 数据来源:null='mcmod', 'modrinth'=Modrinth
-  final String? source;
-
-  /// 来源平台内的唯一标识(Modrinth 项目的 slug);mcmod 数据为 null
-  final String? sourceId;
+  /// 数据来源:'mcmod' 或 'modrinth'
+  final String source;
 
   /// 模组详情页地址(按数据来源返回)
-  String get pageUrl => (source == 'modrinth' && sourceId != null)
-      ? 'https://modrinth.com/mod/$sourceId'
+  String get pageUrl => source == 'modrinth'
+      ? 'https://modrinth.com/mod/$id'
       : 'https://www.mcmod.cn/class/$id.html';
 }

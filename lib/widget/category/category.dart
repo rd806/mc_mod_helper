@@ -3,17 +3,17 @@ import 'package:flutter/material.dart';
 import '../../model/mod_category.dart';
 import '../../page/category.dart';
 
-/// 分类 id → 图标(实时抓取的分类中未知的 id 用兜底图标)
-const Map<int, IconData> _categoryIcons = {
-  1: Icons.memory, // 科技
-  2: Icons.auto_awesome, // 魔法
-  3: Icons.explore, // 冒险
-  4: Icons.agriculture, // 农业
-  5: Icons.palette, // 装饰
-  7: Icons.api, // LIB
-  21: Icons.tune, // 魔改
-  23: Icons.build, // 实用
-  24: Icons.support_agent, // 辅助
+/// MC百科的分类 id(数字字符串) → 图标(实时抓取的分类中未知的 id 用兜底图标)
+const Map<String, IconData> _categoryIcons = {
+  '1': Icons.memory,          // 科技
+  '2': Icons.auto_awesome,    // 魔法
+  '3': Icons.explore,         // 冒险
+  '4': Icons.agriculture,     // 农业
+  '5': Icons.palette,         // 装饰
+  '7': Icons.api,             // LIB
+  '21': Icons.tune,           // 魔改
+  '23': Icons.build,          // 实用
+  '24': Icons.support_agent,  // 辅助
 };
 
 /// Modrinth 分类名 → 图标(未收录的用兜底图标)
@@ -39,7 +39,7 @@ const Map<String, IconData> _modrinthCategoryIcons = {
   'worldgen': Icons.public,
 };
 
-/// 分类行:每个分类占为一个 ListTile，点击进入分类模组列表
+/// 分类行:每个分类占为一个居中的 ListTile，点击进入分类模组列表
 class CategoryCard extends StatelessWidget {
   const CategoryCard({super.key, required this.category});
 
@@ -51,42 +51,44 @@ class CategoryCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: Icon(
-          _categoryIcon(category),
-          size: 30,
-          color: theme.colorScheme.primary,
-        ),
-        title: Text(
-          category.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.bold,
+      child: Center(
+        child: ListTile(
+          leading: Icon(
+            _categoryIcon(category),
+            size: 30,
+            color: theme.colorScheme.primary,
+          ),
+          title: Text(
+            category.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          subtitle: category.slogan == null
+              ? null
+              : Text(
+            category.slogan!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant
+            ),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => CategoryPage(category: category)),
           ),
         ),
-        subtitle: category.slogan == null
-            ? null
-            : Text(
-          category.slogan!,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant
-          ),
-        ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => CategoryPage(category: category)),
-        ),
-      ),
+      )
     );
   }
 
   /// 分类图标:按数据来源选择映射表
   IconData _categoryIcon(ModCategory category) {
-    if (category.source == 'modrinth' && category.sourceId != null) {
-      return _modrinthCategoryIcons[category.sourceId] ?? Icons.category;
+    if (category.source == 'modrinth') {
+      return _modrinthCategoryIcons[category.id] ?? Icons.category;
     }
     return _categoryIcons[category.id] ?? Icons.category;
   }

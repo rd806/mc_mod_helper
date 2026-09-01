@@ -5,13 +5,11 @@ class ModCategory {
     required this.name,
     this.slogan,
     this.description,
-    this.source,
-    this.sourceId,
+    this.source = 'mcmod',
   });
 
-  /// 分类 ID
-  /// 数据来源非 mcmod 时为占位值 0(来源平台用 [sourceId] 标识)
-  final int id;
+  /// 统一分类标识(字符串):MC百科为数字字符串(如 '1'),Modrinth 为分类名(如 'technology')
+  final String id;
 
   /// 分类名,如 科技
   final String name;
@@ -22,11 +20,8 @@ class ModCategory {
   /// 分类定义(站点上为隐藏文本)
   final String? description;
 
-  /// 数据来源:null='mcmod', 'modrinth'=Modrinth
-  final String? source;
-
-  /// 来源平台内的唯一标识(Modrinth 分类名,如 'technology');mcmod 数据为 null
-  final String? sourceId;
+  /// 数据来源:'mcmod' 或 'modrinth'
+  final String source;
 
   /// 分类第 1 页地址
   String get pageUrl => 'https://www.mcmod.cn/class/category/$id-1.html';
