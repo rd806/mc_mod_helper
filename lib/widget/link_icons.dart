@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 /// 链接图标(自定义图标字体)。
 ///
@@ -24,4 +24,16 @@ class LinkIcons {
   static const IconData mcbbs = IconData(0xe900, fontFamily: linkFont);
   // 视频站类
   static const IconData youtube = IconData(0xe901, fontFamily: linkFont);
+
+  static IconData getLinkIcon(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('github')) return github;
+    if (n.contains('discord')) return discord;
+    if (n.contains('patreon')) return patreon;
+    if (n.contains('wiki')) return wiki;
+    if (n.contains('youtube')) return youtube;
+    if (n.contains('curse') || n.contains('forge')) return curseforge;
+    if (n.contains('mcbbs') || n.contains('bbs')) return mcbbs;
+    return Icons.link;
+  }
 }

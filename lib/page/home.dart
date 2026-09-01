@@ -193,7 +193,7 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
       child: Row(
         children: [
-          Icon(icon, color: theme.colorScheme.primary,),
+          Icon(icon, color: theme.colorScheme.primary),
           const SizedBox(width: 10),
           Text(sectionTitle, style: theme.textTheme.headlineSmall),
         ],

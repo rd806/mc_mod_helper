@@ -39,7 +39,7 @@ const Map<String, IconData> _modrinthCategoryIcons = {
   'worldgen': Icons.public,
 };
 
-/// 分类行:每个分类占为一个居中的 ListTile，点击进入分类模组列表
+/// 分类行：每个分类占为一个居中的 ListTile，点击进入分类模组列表
 class CategoryCard extends StatelessWidget {
   const CategoryCard({super.key, required this.category});
 
@@ -66,9 +66,7 @@ class CategoryCard extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          subtitle: category.slogan == null
-              ? null
-              : Text(
+          subtitle: category.slogan == null ? null : Text(
             category.slogan!,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

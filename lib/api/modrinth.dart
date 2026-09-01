@@ -358,16 +358,37 @@ class ModrinthApi {
       final img = '<img$attrs style="max-width:100%">';
       return (src == null || src.isEmpty) ? img : '<a href="$src">$img</a>';
     });
-    // 表格:补边框、合并为单线、表头居中;含图片的表格转 div
-    // (fwfh 表格单元格含图片时会触发 RenderImage 断言崩溃)
+    // 表格统一处理:
+    // - 含图片的表格(画廊等):保留真实表格布局(已验证 fwfh 0.17
+    //   可正常渲染图片单元格),只清理固定宽度;不加边框保持画廊观感。
+    // - 纯文字表格:清理固定宽度后补边框、合并为单线、表头居中。
     html = html.replaceAllMapped(
       RegExp(r'<table[^>]*>.*?</table>', dotAll: true),
       (m) {
         final block = m.group(0)!;
-        if (block.contains('<img')) return _tableToDiv(block);
-        final table = block
+        var table = block
             .replaceAll(RegExp(r'\s+width="[^"]*"'), '')
             .replaceAll(RegExp(r'\s+style="[^"]*"'), '');
+        if (table.contains('<img')) {
+          // 剥离 valign:fwfh 会为带 valign 的单元格包 ValignBaseline,
+          // 其在 paint 阶段计算 dry-baseline,而 RenderImage.paint 会访问
+          // size,触发 'renderBoxDoingDryBaseline' 断言(图片画廊必崩);
+          // 画廊图片高度统一,不再需要垂直对齐
+          table = table.replaceAll(RegExp(r'\s+valign="[^"]*"'), '');
+          // 画廊图片注入固定高度:fwfh 的 CssSizing 会把高度收紧,
+          // 图片加载完成前就占据固定行高,且自动钳制在单元格宽度内
+          // (不像 width/height 属性的 AspectRatio 盒会无视单元格约束);
+          // 加载时只变化宽度,不引起纵向布局移动
+          // (悬停处布局移动会触发 Flutter MouseTracker 的 debug 断言)
+          return table.replaceAllMapped(RegExp(r'<img([^>]*)>'), (m) {
+            var attrs = m.group(1)!;
+            attrs = attrs
+                .replaceAll(RegExp(r'\s+width="[^"]*"'), '')
+                .replaceAll(RegExp(r'\s+height="[^"]*"'), '')
+                .replaceAll(RegExp(r'\s+style="[^"]*"'), '');
+            return '<img$attrs>';
+          });
+        }
         if (!RegExp(r'<table[^>]*\sborder="0"').hasMatch(table)) {
           final borderAttr = RegExp(r'<table[^>]*\sborder=').hasMatch(table)
               ? ''
@@ -385,25 +406,5 @@ class ModrinthApi {
       },
     );
     return html;
-  }
-
-  /// 把含图片的表格转成纵向堆叠的 div 布局(内容完整保留)
-  static String _tableToDiv(String block) {
-    return block.replaceAllMapped(
-      RegExp(r'</?(?:table|tbody|thead|tr|td|th)[^>]*>'),
-      (m) {
-        final tag = m.group(0)!;
-        final closing = tag.startsWith('</');
-        final name = tag
-            .substring(closing ? 2 : 1)
-            .split(RegExp(r'[\s>]'))
-            .first;
-        if (closing) return '</div>';
-        return switch (name) {
-          'td' || 'th' => '<div style="padding:4px 0">',
-          _ => '<div>',
-        };
-      },
-    );
   }
 }
