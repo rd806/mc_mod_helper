@@ -1,6 +1,4 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:mc_mod_helper/widget/description/cover.dart';
 import 'package:mc_mod_helper/widget/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,6 +7,7 @@ import '../api/mcmod.dart';
 import '../api/modrinth.dart';
 import '../model/mod_detail.dart';
 import '../widget/description/collapsible_chips.dart';
+import '../widget/description/html_content.dart';
 import '../widget/description/image_box.dart';
 
 /// 模组详情页
@@ -349,47 +348,19 @@ class _DetailPageState extends State<DetailPage> {
   // 详细内容
   Widget _buildDescription(ModDetail mod, ThemeData theme) {
     // 富文本渲染:标题、加粗、颜色、图片、表格、列表等。
-    // 图片已包成 <a href=图片地址>，点击时走灯箱放大
-    //
-    // 用 SelectionContainer.disabled 包裹:fwfh 检测不到选择容器后,
-    // 不会给每个文本块包 MouseRegion(cursor: text),大幅减少正文里的
-    // MouseRegion 数量,避免悬停处内容在帧内重建时触发 Flutter 框架
-    // MouseTracker 的 '_debugDuringDeviceUpdate' 断言(debug 模式报错)。
-    return SelectionContainer.disabled(
-      child: HtmlWidget(
-        mod.description!,
-        factoryBuilder: () => _HtmlWidgetFactory(),
-        textStyle: theme.textTheme.bodyMedium,
-        // 超链接处理
-        onTapUrl: (url) {
-          if (_imageUrl(url)) {
-            _showLightbox(url);
-          } else {
-            _openUrl(url);
-          }
-          return true;
-        },
-      ),
+    // 图片已包成 <a href=图片地址>，点击时走灯箱放大。
+    // 使用自写的 HtmlContent 渲染器，替代 flutter_widget_from_html
+    // 从根源上消除 MouseTracker 的 debug 报错。
+    return HtmlContent(
+      html: mod.description!,
+      textStyle: theme.textTheme.bodyMedium,
+      onLinkTap: (url) {
+        if (_imageUrl(url)) {
+          _showLightbox(url);
+        } else {
+          _openUrl(url);
+        }
+      },
     );
-  }
-}
-
-/// 自定义 fwfh 工厂:链接点击不包 MouseRegion(cursor)。
-///
-/// fwfh 默认给每个可点击链接包 MouseRegion 以显示点击光标,
-/// 正文里的链接(含画廊图片)成百上千,悬停处内容在帧内重建时会
-/// 触发 Flutter MouseTracker 的 '_debugDuringDeviceUpdate' 断言;
-/// 去掉光标 MouseRegion 后点击功能保留(仅光标样式损失,可接受)。
-class _HtmlWidgetFactory extends WidgetFactory {
-  @override
-  Widget? buildGestureDetector(
-    BuildTree tree,
-    Widget child,
-    GestureRecognizer recognizer,
-  ) {
-    if (recognizer is TapGestureRecognizer) {
-      return GestureDetector(onTap: recognizer.onTap, child: child);
-    }
-    return child;
   }
 }

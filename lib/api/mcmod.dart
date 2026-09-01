@@ -558,68 +558,21 @@ class McmodApi {
     );
     s = s.replaceAll(RegExp(r'\s+data-src="[^"]*"'), '');
     s = s.replaceAll(RegExp(r'\s+data-error="[^"]*"'), '');
-    // 图片:去掉固定宽高与 class,限制最大宽度防止溢出屏幕;
-    // 包一层链接,点击图片时在灯箱中放大查看
+    // 图片:去掉固定宽高与 class(排版由 HtmlContent 渲染器负责:
+    // 表格内画廊固定高度、正文图片限制宽度),包一层链接,
+    // 点击图片时在灯箱中放大查看
     s = s.replaceAllMapped(RegExp(r'<img([^>]*)>'), (m) {
       final attrs = m.group(1)!;
       final src = RegExp(r'src="([^"]*)"').firstMatch(attrs)?.group(1);
       final cleaned = attrs
           .replaceAll(RegExp(r'\s+(width|height)="[^"]*"'), '')
           .replaceAll(RegExp(r'\s+(class|style)="[^"]*"'), '');
-      final img = '<img$cleaned style="max-width:100%">';
-      return (src == null || src.isEmpty) ? img : '<a href="$src">$img</a>';
+      return (src == null || src.isEmpty) ? '<img$cleaned>' : '<a href="$src"><img$cleaned></a>';
     });
-    // 表格统一处理:
-    // - 含图片的表格(截图画廊等):保留真实表格布局(已验证 fwfh 0.17
-    //   可正常渲染图片单元格),只清理固定宽度;不加边框保持画廊观感。
-    // - 纯文字的表格(按键说明、元素表等):清理固定宽度后补框线。
-    s = s.replaceAllMapped(RegExp(r'<table[^>]*>.*?</table>', dotAll: true), (
-      m,
-    ) {
-      final block = m.group(0)!;
-      var table = block
-          .replaceAll(RegExp(r'\s+width="[^"]*"'), '')
-          .replaceAll(RegExp(r'\s+style="[^"]*"'), '');
-      if (table.contains('<img')) {
-        // 剥离 valign:fwfh 会为带 valign 的单元格包 ValignBaseline,
-        // 其在 paint 阶段计算 dry-baseline,而 RenderImage.paint 会访问
-        // size,触发 'renderBoxDoingDryBaseline' 断言(图片画廊必崩);
-        // 画廊图片高度统一,不再需要垂直对齐
-        table = table.replaceAll(RegExp(r'\s+valign="[^"]*"'), '');
-        // 画廊图片注入固定高度:fwfh 的 CssSizing 会把高度收紧,
-        // 图片加载完成前就占据固定行高,且自动钳制在单元格宽度内
-        // (不像 width/height 属性的 AspectRatio 盒会无视单元格约束);
-        // 加载时只变化宽度,不引起纵向布局移动
-        // (悬停处布局移动会触发 Flutter MouseTracker 的 debug 断言)
-        return table.replaceAllMapped(RegExp(r'<img([^>]*)>'), (m) {
-          var attrs = m.group(1)!;
-          attrs = attrs
-              .replaceAll(RegExp(r'\s+width="[^"]*"'), '')
-              .replaceAll(RegExp(r'\s+height="[^"]*"'), '')
-              .replaceAll(RegExp(r'\s+style="[^"]*"'), '');
-          return '<img$attrs>';
-        });
-      }
-      // fwfh 渲染表格默认没有框线:补 border="1" 让表格带 1px 实线边框
-      // 且每个单元格继承。同时补 border-collapse:collapse——
-      // fwfh 对 border 属性默认用 separate + 2px 间距,相邻单元格
-      // 各画一边会显示成双框线,collapse 合并成单线。
-      // (站点原有 border="0" 表示刻意无边框,不覆盖)
-      if (!RegExp(r'<table[^>]*\sborder="0"').hasMatch(table)) {
-        final borderAttr = RegExp(r'<table[^>]*\sborder=').hasMatch(table)
-            ? '' : ' border="1"';
-        table = table.replaceFirst(
-          RegExp(r'<table'),
-          '<table style="border-collapse:collapse"$borderAttr',
-        );
-      }
-      // 表头文字居中(fwfh 默认与正文一样靠左;样式属性已被上面清空,可直接注入)
-      table = table.replaceAllMapped(RegExp(r'<th([^>]*)>'), (m) {
-        final attrs = m.group(1)!;
-        return '<th$attrs style="text-align:center">';
-      });
-      return table;
-    });
+    // 表格不做任何处理:框线、表头居中、画廊布局都由 HtmlContent
+    // 渲染器负责(fwfh 时代的 border 注入、valign 剥离、th 居中
+    // 注入等补救措施随之删除)
+
     // 站内弹窗链接(javascript:void(0))只保留文字
     s = s.replaceAllMapped(
       RegExp(r'<a[^>]*href="javascript:[^"]*"[^>]*>(.*?)</a>', dotAll: true),

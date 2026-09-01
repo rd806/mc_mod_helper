@@ -101,9 +101,9 @@ void main() {
       expect(d.id, 'sodium');
       expect(d.title, 'Sodium');
       expect(d.source, 'modrinth');
-      // 表格带边框与 collapse
+      // 表格保留为原生标签(框线/表头居中由 HtmlContent 渲染器负责)
       expect(d.description, contains('<table'));
-      expect(d.description, contains('border-collapse'));
+      expect(d.description, contains('<th>'));
       expect(d.platform, 'Fabric');
       expect(d.environment, '仅客户端');
       expect(d.mcVersions, ['1.21.1']);
@@ -182,7 +182,7 @@ void main() {
     expect(find.text('1.21.1'), findsWidgets);
     await tester.pumpAndSettle(); // 收尾路由动画(此时无挂起 Timer)
     // 「模组介绍」在视口外(ListView 懒构建),向上拖动详情列表再断言
-    // (fwfh 渲染的正文是 RichText,需要 findRichText)
+    // (HtmlContent 渲染的正文是 RichText,需要 findRichText)
     await tester.drag(find.byType(DetailPage), const Offset(0, -600));
     await tester.pump();
     expect(

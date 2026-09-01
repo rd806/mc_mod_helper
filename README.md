@@ -19,6 +19,12 @@
 - [ ] 收藏常用模组
 - [ ] 多来源管理
 
+因为 flutter 的 `flutter_widget_from_html` 插件在处理 MC百科 的HTML文本时会出现调试断言错误影响开发，因此使用了重写的 `html_content.dart`。
+
+> 所以可支持的格式并不完全，但兼容性和观感较好。
+> 
+> 更多的格式以后应该会逐步补全。
+
 ## 说明
 
 `mc_mod_helper.json` 是来自 [Ico moon](https://icomoon.io/app/#/select) 的图标文件集合。
