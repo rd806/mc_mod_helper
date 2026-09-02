@@ -85,10 +85,21 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // 切换推荐来源(下拉框) → 服务值变化,主页再次重拉
-    await tester.ensureVisible(find.byType(DropdownButton<String>));
+    // 切换渲染方法(主题设置里的 String 下拉框,树中第一个) → 服务值变化;
+    // 渲染方法不触发主页重拉,无新计时器
+    await tester.ensureVisible(find.byType(DropdownButton<String>).first);
     await tester.pump();
-    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.tap(find.byType(DropdownButton<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hyper').last);
+    await tester.pumpAndSettle();
+    expect(SettingsService.instance.renderType, 'hyperViewer');
+
+    // 切换推荐来源(首页设置里的 String 下拉框,树中最后一个) → 服务值变化,
+    // 主页再次重拉
+    await tester.ensureVisible(find.byType(DropdownButton<String>).last);
+    await tester.pump();
+    await tester.tap(find.byType(DropdownButton<String>).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('最新编辑').last);
     await tester.pumpAndSettle();

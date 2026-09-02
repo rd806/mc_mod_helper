@@ -1,14 +1,15 @@
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:hyper_render/hyper_render.dart';
 import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/service/settings.dart';
 import 'package:mc_mod_helper/widget/description/cover.dart';
 import 'package:mc_mod_helper/widget/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../model/mod_detail.dart';
-import '../service/settings.dart';
+import '../render/html_content.dart';
 import '../widget/description/collapsible_chips.dart';
-import '../widget/description/html_content.dart';
 import '../widget/description/image_box.dart';
 
 /// 模组详情页
@@ -39,6 +40,7 @@ class DetailPage extends StatefulWidget {
 
 class _DetailPageState extends State<DetailPage> {
   late Future<ModDetail> _future;
+
   // 左右控制器
   final ScrollController _leftController = ScrollController();
   final ScrollController _rightController = ScrollController();
@@ -123,12 +125,16 @@ class _DetailPageState extends State<DetailPage> {
       return null;
     }
     final m = RegExp(r'^/class/(\d+)\.html$').firstMatch(uri.path);
-    return m?.group(1)!;
+    // 不匹配返回 null(不能用 !,否则外链在 _openUrl 里会直接抛异常)
+    return m?.group(1);
   }
 
   /// 是否为图片地址(富文本里的图片已包成 <a href=图片地址>)
   static bool _imageUrl(String url) {
-    final path = Uri.tryParse(url)?.path.toLowerCase() ?? '';
+    final path = Uri
+        .tryParse(url)
+        ?.path
+        .toLowerCase() ?? '';
     return RegExp(r'\.(jpe?g|png|webp|gif|bmp)(\?.*)?$').hasMatch(path) || url.contains('i.mcmod.cn');
   }
 
@@ -154,10 +160,11 @@ class _DetailPageState extends State<DetailPage> {
           IconButton(
             tooltip: '在浏览器中打开',
             icon: const Icon(Icons.open_in_browser),
-            onPressed: () => _openUrl(
-              SourceManager.getUrl(widget.source, widget.id),
-              forceExternal: true,
-            ),
+            onPressed: () =>
+                _openUrl(
+                  SourceManager.getUrl(widget.source, widget.id),
+                  forceExternal: true,
+                ),
           ),
         ],
       ),
@@ -202,7 +209,8 @@ class _DetailPageState extends State<DetailPage> {
   Widget _buildSuccess(ModDetail mod) {
     // 按宽度选择布局:窄屏单列滚动,宽屏左右双列独立滚动
     return LayoutBuilder(
-      builder: (context, constraints) => constraints.maxWidth < 480
+      builder: (context, constraints) =>
+      constraints.maxWidth < 480
           ? _buildNarrowPage(mod)
           : _buildWidePage(mod),
     );
@@ -337,71 +345,81 @@ class _DetailPageState extends State<DetailPage> {
   List<Widget> _buildDescription(ModDetail mod, ThemeData theme) {
     return [
       _buildSectionTitle('模组介绍', Icons.article_rounded),
-      _getContentType(mod, theme),
+      _buildHTML(mod, theme),
     ];
   }
 
-  /// 按来源选择渲染器:
-  /// - MC百科:清洗后的 HTML → 自写 HtmlContent(替代 flutter_widget_from_html,
-  ///   正文零 MouseRegion,从根源上消除 MouseTracker 的 debug 报错)
-  /// - Modrinth:原始 Markdown → flutter_markdown_plus 直接渲染
-  Widget _getContentType(ModDetail mod, ThemeData theme) {
-    switch (mod.source) {
-      case ModSource.mcmod: return _buildHTML(mod, theme);
-      case ModSource.modrinth: return _buildMarkdown(mod, theme);
+  /// 正文链接点击:图片地址(清洗时已包成 <a href=图片地址>)走灯箱,
+  /// 其余按站内跳转/浏览器规则分流
+  void _handleContentLink(String url) {
+    if (_imageUrl(url)) {
+      _showLightbox(url);
+    } else {
+      _openUrl(url);
     }
   }
 
-  // 渲染 HTML
+  /// 渲染 HTML 正文(两种来源的描述都是清洗后的 HTML)。
+  ///
+  /// 按设置里的渲染方法二选一:
+  /// - default:自写 HtmlContent(逐标签映射控件,正文零 MouseRegion)
+  /// - hyperViewer:hyper_render(单 RenderObject 布局引擎,性能更优)
   Widget _buildHTML(ModDetail mod, ThemeData theme) {
-    return HtmlContent(
-      html: mod.description!,
-      textStyle: theme.textTheme.bodyMedium,
-      onLinkTap: (url) {
-        if (_imageUrl(url)) {
-          _showLightbox(url);
-        } else {
-          _openUrl(url);
-        }
-      },
+    if (SettingsService.instance.renderType == 'default') {
+      return HtmlContent(
+        html: mod.description!,
+        textStyle: theme.textTheme.bodyMedium,
+        onLinkTap: _handleContentLink,
+      );
+    }
+    return _mouseDraggable(
+      HyperViewer(
+        html: mod.description!,
+        mode: HyperRenderMode.sync,
+        shrinkWrap: true,
+        selectable: false,
+        customCss: _hyperCss(theme),
+        onLinkTap: _handleContentLink,
+      ),
     );
   }
 
-  // 渲染 Markdown
-  Widget _buildMarkdown(ModDetail mod, ThemeData theme) {
-    return Markdown(
-      data: mod.description!,
-      // 详情页外层已有 ListView:Markdown 默认内部再包 ListView 会因
-      // 高度无限报错,noScroll 改为 Column 直接排版
-      noScroll: true,
-      // 页面布局自带留白
-      padding: EdgeInsets.zero,
-      styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-        // 包内 Text 的 textScaler 取自 styleSheet 而非 MediaQuery,
-        // 手动传入全局字体缩放设置
-        textScaler: TextScaler.linear(SettingsService.instance.fontScale),
+  /// 桌面端 ScrollBehavior 默认只认触摸/手写笔拖拽,鼠标拖不动
+  /// 正文里表格的横向滚动容器;包一层开启鼠标/触控板拖拽的配置
+  /// (只作用于描述内容,不影响外层列表的既有滚动方式)
+  Widget _mouseDraggable(Widget child) {
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(
+        dragDevices: {
+          PointerDeviceKind.touch,
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.stylus,
+          PointerDeviceKind.trackpad,
+          PointerDeviceKind.invertedStylus,
+        },
       ),
-      // 链接:图片地址走灯箱,其余按站内跳转/浏览器规则分流
-      onTapLink: (text, href, title) {
-        if (href == null || href.isEmpty) return;
-        if (_imageUrl(href)) {
-          _showLightbox(href);
-        } else {
-          _openUrl(href);
-        }
-      },
-      // 图片:点击走灯箱
-      imageBuilder: (uri, title, alt) => GestureDetector(
-        onTap: () => _showLightbox(uri.toString()),
-        child: Image.network(
-          uri.toString(),
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) => const SizedBox(
-            height: 120,
-            child: Center(child: Icon(Icons.broken_image_outlined)),
-          ),
-        ),
-      ),
+      child: child,
     );
+  }
+
+  /// hyper_render 的主题适配:包默认正文样式是 16px 深灰字,用 customCss
+  /// 注入正文颜色/字号/字体(字体缩放走 MediaQuery,包默认读取)。
+  /// 颜色取 bodyMedium 的常规字体颜色(与普通 Text 控件一致),
+  /// 不使用 colorScheme 主题色。
+  /// 注意:UDT 树根节点 tagName 是 'document'(HTML/Markdown 均是),
+  /// 用 'body' 选择器匹配不到任何节点;注入根节点后靠继承传播到正文,
+  /// 行内 style 优先级更高,正文里的颜色文字不受影响
+  String _hyperCss(ThemeData theme) {
+    final textStyle = theme.textTheme.bodyMedium;
+    final color = (textStyle?.color ?? theme.colorScheme.onSurface).toARGB32();
+    final hex = color.toRadixString(16).padLeft(8, '0').substring(2);
+    final family = textStyle?.fontFamily;
+    // 包内 CSS 解析器把 font-family 整值去引号后当作单个家族名,
+    // 不支持逗号分隔的回退列表;取 bodyMedium 的家族名(应用字体)
+    final familyCss =
+    (family == null || family.isEmpty) ? '' : 'font-family: $family; ';
+    return 'document { color: #$hex; '
+        'font-size: ${textStyle?.fontSize ?? 14}px; '
+        '$familyCss}';
   }
 }

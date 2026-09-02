@@ -23,6 +23,7 @@ void main() {
     expect(SettingsService.instance.featuredMax, 20);
     expect(SettingsService.instance.featuredSource, 'createtime');
     expect(SettingsService.instance.dataSource, 'mcmod');
+    expect(SettingsService.instance.renderType, 'default');
     });
 
     test('setter 写入持久化存储', () async {
@@ -33,7 +34,8 @@ void main() {
         ..setFontScale(1.15)
         ..setFeaturedMax(35)
         ..setFeaturedSource('lastedittime')
-        ..setDataSource('modrinth');
+        ..setDataSource('modrinth')
+        ..setRenderType('hyperViewer');
 
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('theme_mode'), 'dark');
@@ -42,6 +44,7 @@ void main() {
     expect(prefs.getInt('featured_max'), 35);
     expect(prefs.getString('featured_source'), 'lastedittime');
     expect(prefs.getString('data_source'), 'modrinth');
+    expect(prefs.getString('render_type'), 'hyperViewer');
     });
 
     test('load 能恢复已保存的设置(模拟重启)', () async {
@@ -52,6 +55,7 @@ void main() {
         'featured_max': 45,
         'featured_source': 'lastedittime',
         'data_source': 'modrinth',
+        'render_type': 'hyperViewer',
     });
     await SettingsService.instance.load();
     expect(SettingsService.instance.themeMode, ThemeMode.dark);
@@ -63,6 +67,7 @@ void main() {
     expect(SettingsService.instance.featuredMax, 45);
     expect(SettingsService.instance.featuredSource, 'lastedittime');
     expect(SettingsService.instance.dataSource, 'modrinth');
+    expect(SettingsService.instance.renderType, 'hyperViewer');
     });
 
     test('dataSource 非法值被忽略', () async {
@@ -71,6 +76,14 @@ void main() {
     expect(SettingsService.instance.dataSource, 'mcmod');
     SettingsService.instance.setDataSource('modrinth');
     expect(SettingsService.instance.dataSource, 'modrinth');
+    });
+
+    test('renderType 非法值被忽略', () async {
+    await SettingsService.instance.load();
+    SettingsService.instance.setRenderType('bogus');
+    expect(SettingsService.instance.renderType, 'default');
+    SettingsService.instance.setRenderType('hyperViewer');
+    expect(SettingsService.instance.renderType, 'hyperViewer');
     });
 
     test('featuredSource 非法值被忽略', () async {

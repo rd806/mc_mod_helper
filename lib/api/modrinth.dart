@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
+import 'package:markdown/markdown.dart' as md;
 import 'package:mc_mod_helper/api/source.dart';
 
 import '../model/mod_category.dart';
@@ -238,17 +239,20 @@ class ModrinthApi {
   }) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final title = (data['title'] as String?)?.trim() ?? '';
-    // 正文保留原始 Markdown,由详情页的 Markdown 控件渲染
-    // (markdown 解析器默认转义原生 HTML 标签,无需手工剥离 script/iframe)
+    // 正文 Markdown 转成 HTML 后再交给详情页统一渲染:
+    // hyper_render 的 MarkdownAdapter 不处理原生 HTML 块(md 包的
+    // 'raw' 元素落入未知标签分支,HTML 会显示成字面文本),
+    // 而 markdownToHtml 会把原生 HTML 原样透传,走 HTML 管线即可渲染
     final markdown =
         (data['body'] as String?)?.trim() ??
         (fallbackDescription ?? (data['description'] as String?) ?? '');
+    final html = markdown.isEmpty ? '' : _markdownToHtml(markdown);
 
     return ModDetail(
       id: sourceId,
       title: title,
       subName: null,
-      description: markdown.isEmpty ? null : markdown,
+      description: html.isEmpty ? null : html,
       coverUrl: data['icon_url'] as String?,
       links: _buildLinks(data),
       mcVersions: (data['game_versions'] as List<dynamic>? ?? const [])
@@ -257,6 +261,30 @@ class ModrinthApi {
       environment: _buildEnvironment(data),
       source: ModSource.modrinth,
     );
+  }
+
+  /// Markdown 正文转成适合 app 内渲染的 HTML。
+  ///
+  /// GFM 语法;正文里的原生 HTML 块原样透传(markdownToHtml 的
+  /// encodeHtml 默认为 false)。图片包 <a href=图片地址> 以走灯箱;
+  /// script/iframe 剥掉(hyper_render 还会再做一次白名单清洗,双保险)。
+  static String _markdownToHtml(String markdown) {
+    var html = md.markdownToHtml(
+      markdown,
+      extensionSet: md.ExtensionSet.gitHubFlavored,
+    );
+    html = html
+        .replaceAll(RegExp(r'<script[^>]*>.*?</script>', dotAll: true), '')
+        .replaceAll(RegExp(r'<iframe[^>]*>.*?</iframe>', dotAll: true), '');
+    // 图片:包一层链接,点击时在灯箱中放大查看
+    html = html.replaceAllMapped(RegExp(r'<img([^>]*)>'), (m) {
+      final attrs = m.group(1)!;
+      final src = RegExp(r'src="([^"]*)"').firstMatch(attrs)?.group(1);
+      return (src == null || src.isEmpty)
+          ? '<img$attrs>'
+          : '<a href="$src"><img$attrs></a>';
+    });
+    return html;
   }
 
   /// 相关链接:源码/问题反馈/Wiki/Discord/捐赠

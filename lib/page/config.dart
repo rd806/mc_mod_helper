@@ -45,6 +45,11 @@ class _ConfigPageState extends State<ConfigPage> {
     ('最新编辑', 'lastedittime')
   ];
 
+  static const List<(String, String)> _renderType = [
+    ('默认', 'default'),
+    ('Hyper', 'hyperViewer')
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -61,6 +66,7 @@ class _ConfigPageState extends State<ConfigPage> {
               _sectionTitle(context, '主题设置'),
               _buildThemeModeSection(context, s),
               _buildSeedColorSection(context, s),
+              _buildRenderType(context, s),
               _sectionTitle(context, '字体设置'),
               _buildFontScaleSection(context, s),
               _sectionTitle(context, '首页设置'),
@@ -104,7 +110,7 @@ class _ConfigPageState extends State<ConfigPage> {
     final selectedValue = _themeMode.any((f) => f.$2 == themeMode) ? themeMode : ThemeMode.system;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
       child: Row(
         children: [
           Text('主题选择', style: theme.textTheme.bodyMedium),
@@ -153,7 +159,7 @@ class _ConfigPageState extends State<ConfigPage> {
     final theme = Theme.of(context);
     final selectedArgb = s.seedColor.toARGB32();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
       child: Row(
         children: [
           Text('颜色种子', style: theme.textTheme.bodyMedium),
@@ -345,6 +351,58 @@ class _ConfigPageState extends State<ConfigPage> {
             onChangeEnd: (v) =>
                 SettingsService.instance.setFeaturedMax(v.round()),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// 渲染方法
+  Widget _buildRenderType(BuildContext context, SettingsService s) {
+    final theme = Theme.of(context);
+
+    // 转换为 DropdownMenuItem 列表
+    final dropdownItems = _renderType.map<DropdownMenuItem<String>>((item) {
+      final (label, value) = item;
+      return DropdownMenuItem<String>(
+        value: value,
+        child: Text(label),
+      );
+    }).toList();
+
+    final selectedValue = SettingsService.renderTypes.contains(s.renderType)
+        ? s.renderType : 'default';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+      child: Row(
+        children: [
+          Text('渲染方法', style: theme.textTheme.bodyMedium),
+          Spacer(),
+          // 使用下拉框
+          DropdownButton<String>(
+            value: selectedValue,
+            items: dropdownItems,
+            onChanged: (String? newValue) {
+              if (newValue != null) {
+                SettingsService.instance.setRenderType(newValue);
+              }
+            },
+            // 样式定制（可选）
+            style: theme.textTheme.bodyMedium,
+            // 设置为透明下划线
+            underline: Container(
+              height: 0,
+              color: Colors.transparent,
+            ),
+            icon: Icon(
+              Icons.arrow_drop_down,
+              color: theme.iconTheme.color,
+            ),
+            // 如果希望下拉框宽度自适应内容
+            isDense: false,
+            // 禁用焦点和悬停效果
+            focusColor: Colors.transparent,
+          )
         ],
       ),
     );

@@ -569,9 +569,32 @@ class McmodApi {
           .replaceAll(RegExp(r'\s+(class|style)="[^"]*"'), '');
       return (src == null || src.isEmpty) ? '<img$cleaned>' : '<a href="$src"><img$cleaned></a>';
     });
-    // 表格不做任何处理:框线、表头居中、画廊布局都由 HtmlContent
-    // 渲染器负责(fwfh 时代的 border 注入、valign 剥离、th 居中
-    // 注入等补救措施随之删除)
+    // 文字表格:剥掉站点自带的百分比宽度。
+    // hyper_render 对带百分比宽度的表格走 fitWidth 策略(列压窄、
+    // 文字换行,表格变得很高);去掉后按内容自然宽度布局,超宽时由
+    // 渲染器的横向滚动容器兜底。画廊表格(含图片)保留百分比宽度——
+    // 图片按容器缩放比横向滚动更合适
+    s = s.replaceAllMapped(RegExp(r'<table[^>]*>.*?</table>', dotAll: true), (
+      m,
+    ) {
+      final block = m.group(0)!;
+      if (block.contains('<img')) return block;
+      return block.replaceFirstMapped(RegExp(r'<table[^>]*>'), (tm) {
+        var tag = tm.group(0)!;
+        tag = tag.replaceAll(RegExp(r'\s+width="[^"]*%"'), '');
+        tag = tag.replaceAllMapped(RegExp(r'style="([^"]*)"'), (sm) {
+          final cleaned = sm
+              .group(1)!
+              .split(';')
+              .where((decl) =>
+                  !(decl.toLowerCase().contains('width') &&
+                      decl.contains('%')))
+              .join(';');
+          return cleaned.trim().isEmpty ? '' : 'style="$cleaned"';
+        });
+        return tag;
+      });
+    });
 
     // 站内弹窗链接(javascript:void(0))只保留文字
     s = s.replaceAllMapped(

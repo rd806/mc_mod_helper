@@ -1,9 +1,11 @@
 import 'dart:convert';
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:hyper_render/hyper_render.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/modrinth.dart';
@@ -62,7 +64,8 @@ Future<http.Response> _handler(http.Request request) async {
   if (request.url.path == '/v2/project/sodium') {
     return _json({
       'title': 'Sodium',
-      'body': '## 简介\n\n高性能渲染引擎。\n\n| 按键 | 功能 |\n| --- | --- |\n| F3 | 调试信息 |',
+      'body': '## 简介\n\n高性能渲染引擎。\n\n<div style="color:red">原始HTML</div>\n\n'
+          '| 按键 | 功能 |\n| --- | --- |\n| F3 | 调试信息 |',
       'icon_url': 'https://cdn.modrinth.com/data/sodium_icon.png',
       'game_versions': ['1.21.1'],
       'loaders': ['fabric'],
@@ -97,14 +100,16 @@ void main() {
       expect(m.pageUrl, 'https://modrinth.com/mod/sodium');
     });
 
-    test('getDetail 映射到 ModDetail(保留原始 Markdown)', () async {
+    test('getDetail 映射到 ModDetail(Markdown 转 HTML,原生 HTML 透传)', () async {
       final d = await ModrinthApi.getDetail('sodium');
       expect(d.id, 'sodium');
       expect(d.title, 'Sodium');
       expect(d.source, ModSource.modrinth);
-      // 正文保留原始 Markdown,由详情页的 Markdown 控件渲染
-      expect(d.description, contains('## 简介'));
-      expect(d.description, contains('| 按键 | 功能 |'));
+      // Markdown 转成 HTML:标题/表格是 HTML 标签,
+      // 原生 HTML 块(<div style=...>)原样透传
+      expect(d.description, contains('<h2'));
+      expect(d.description, contains('<table>'));
+      expect(d.description, contains('<div style="color:red">原始HTML</div>'));
       expect(d.platform, 'Fabric');
       expect(d.environment, '仅客户端');
       expect(d.mcVersions, ['1.21.1']);
@@ -144,6 +149,9 @@ void main() {
 
   testWidgets('数据来源切到 Modrinth 后搜索与详情走 Modrinth', (tester) async {
     await SettingsService.instance.load();
+    // 本用例验证 hyper_render 渲染路径,显式指定渲染方法
+    // (默认 'default' 是 HtmlContent,详情页不会出现 HyperViewer)
+    SettingsService.instance.setRenderType('hyperViewer');
 
     // 启动应用:主页两个请求(真实 HTTP 400)按既有节奏推完
     await tester.pumpWidget(const McModHelper());
@@ -182,12 +190,22 @@ void main() {
     expect(find.text('Sodium'), findsWidgets);
     expect(find.text('1.21.1'), findsWidgets);
     await tester.pumpAndSettle(); // 收尾路由动画(此时无挂起 Timer)
-    // 「模组介绍」在视口外(ListView 懒构建),向上拖动详情列表再断言
-    // (HtmlContent 渲染的正文是 RichText,需要 findRichText)
+    // 「模组介绍」在视口外(ListView 懒构建),向上拖动详情列表再断言。
+    // hyper_render 在单个 RenderObject 里自绘文本,不能用 find.text 找,
+    // 改为校验转换后的 HTML 已正确传入 HyperViewer
     await tester.drag(find.byType(DetailPage), const Offset(0, -600));
     await tester.pump();
+    final viewer = tester.widget<HyperViewer>(find.byType(HyperViewer));
+    expect(viewer.content, contains('高性能渲染引擎'));
+    expect(viewer.content, contains('<table>'));
+    // 描述内容包了开启鼠标拖拽的 ScrollConfiguration
+    // (桌面端默认行为不含鼠标,表格横向滚动容器会拖不动)
     expect(
-      find.textContaining('高性能渲染引擎', findRichText: true),
+      find.byWidgetPredicate(
+        (w) =>
+            w is ScrollConfiguration &&
+            w.behavior.dragDevices.contains(PointerDeviceKind.mouse),
+      ),
       findsWidgets,
     );
   });

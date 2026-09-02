@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mc_mod_helper/widget/description/html_content.dart';
+import 'package:mc_mod_helper/render/html_content.dart';
 
 /// 渲染被测 HTML(链接回调可捕获点击 url)
 Widget _wrap(String html, [void Function(String url)? onLinkTap]) {

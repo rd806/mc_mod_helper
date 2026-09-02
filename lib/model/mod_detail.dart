@@ -26,9 +26,9 @@ class ModDetail {
   /// 次要名称
   final String? subName;
 
-  /// 模组介绍,格式按来源区分:
-  /// - mcmod:清洗后的富文本 HTML(来自正文面板,无面板时回退 wiki 简介)
-  /// - modrinth:原始 Markdown(来自 API 的 body 字段)
+  /// 模组介绍(清洗后的 HTML,两种来源统一):
+  /// - mcmod:来自正文面板的富文本 HTML,无面板时回退 wiki 简介
+  /// - modrinth:API 的 body Markdown 经 markdownToHtml 转换,原生 HTML 透传
   final String? description;
 
   /// 封面图地址
