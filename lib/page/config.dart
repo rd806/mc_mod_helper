@@ -251,9 +251,7 @@ class _ConfigPageState extends State<ConfigPage> {
             ],
             // 防御:存档值不在选项内时回落显示 "MC百科"
             selected: {
-              SettingsService.dataSources.contains(s.dataSource)
-                  ? s.dataSource
-                  : 'mcmod',
+              SettingsService.dataSources.contains(s.dataSource) ? s.dataSource : 'mcmod',
             },
             showSelectedIcon: false,
             onSelectionChanged: (selection) =>

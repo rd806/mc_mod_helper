@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/api/source.dart';
 
 import '../../model/mod_detail.dart';
 import 'image_box.dart';
@@ -90,7 +91,7 @@ abstract class ModCover extends StatelessWidget {
   // 显示来源
   Widget _buildSource(BuildContext context, ModDetail mod) {
     final theme = Theme.of(context);
-    String source = mod.source == 'modrinth' ? 'Modrinth' : 'MC百科';
+    String source = SourceManager.getSourceString(mod.source);
     return Text(
       source,
       style: theme.textTheme.titleMedium?.copyWith(

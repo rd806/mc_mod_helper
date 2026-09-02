@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/widget/description/cover.dart';
 import 'package:mc_mod_helper/widget/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../api/mcmod.dart';
-import '../api/modrinth.dart';
 import '../model/mod_detail.dart';
+import '../service/settings.dart';
 import '../widget/description/collapsible_chips.dart';
 import '../widget/description/html_content.dart';
 import '../widget/description/image_box.dart';
@@ -17,14 +18,14 @@ class DetailPage extends StatefulWidget {
     required this.id,
     this.initialTitle,
     this.initialDescription,
-    this.source = 'mcmod',
+    this.source = ModSource.mcmod,
   });
 
   /// 统一模组标识(字符串):MC百科为数字字符串(如 '123'),Modrinth 为 slug(如 'jei')
   final String id;
 
   /// 数据来源:'mcmod' 或 'modrinth',决定用哪个 API 加载详情
-  final String source;
+  final ModSource source;
 
   /// 详情加载完成前显示在标题栏的名称
   final String? initialTitle;
@@ -58,15 +59,7 @@ class _DetailPageState extends State<DetailPage> {
 
   /// 获取详情:按数据来源选择 API
   Future<ModDetail> _load() {
-    return widget.source == 'modrinth'
-        ? ModrinthApi.getDetail(
-            widget.id,
-            fallbackDescription: widget.initialDescription,
-          )
-        : McmodApi.getDetail(
-            widget.id,
-            fallbackDescription: widget.initialDescription,
-          );
+    return SourceManager.getModDetail(widget.source, widget);
   }
 
   void _reload() {
@@ -82,22 +75,23 @@ class _DetailPageState extends State<DetailPage> {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
     if (!forceExternal) {
-      final modId = _mcmodUrl(uri);
-      if (modId != null) {
+      final mcmod = _mcmodUrl(uri);
+      if (mcmod != null) {
         // 跳过指向当前模组自身的链接,避免堆叠重复详情页
-        if (widget.source != 'modrinth' && '$modId' == widget.id) return;
+        if (widget.source != ModSource.modrinth && mcmod == widget.id) return;
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => DetailPage(id: '$modId')),
+          MaterialPageRoute(builder: (_) => DetailPage(id: mcmod, source: ModSource.mcmod)),
         );
         return;
       }
-      final slug = _modrinthUrl(uri);
-      if (slug != null) {
+
+      final modrinth = _modrinthUrl(uri);
+      if (modrinth != null) {
         // 跳过指向当前项目自身的链接
-        if (widget.source == 'modrinth' && slug == widget.id) return;
+        if (widget.source == ModSource.modrinth && modrinth == widget.id) return;
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => DetailPage(id: slug, source: 'modrinth'),
+            builder: (_) => DetailPage(id: modrinth, source: ModSource.modrinth),
           ),
         );
         return;
@@ -107,8 +101,7 @@ class _DetailPageState extends State<DetailPage> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('无法打开链接')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('无法打开链接')));
       }
     }
   }
@@ -119,24 +112,24 @@ class _DetailPageState extends State<DetailPage> {
     if (uri.host != 'modrinth.com' && uri.host != 'www.modrinth.com') {
       return null;
     }
-    final m = RegExp(r'^/(?:mod|project)/([a-zA-Z0-9_-]+)/?$')
-        .firstMatch(uri.path.toLowerCase());
+    final m = RegExp(r'^/(?:mod|project)/([a-zA-Z0-9_-]+)/?$').firstMatch(uri.path.toLowerCase());
     return m?.group(1);
   }
 
   /// 站内模组详情页链接(www.mcmod.cn/class/{id}.html) → 模组 id;
   /// 其它链接返回 null
-  static int? _mcmodUrl(Uri uri) {
-    if (uri.host != 'www.mcmod.cn' && uri.host != 'mcmod.cn') return null;
+  static String? _mcmodUrl(Uri uri) {
+    if (uri.host != 'www.mcmod.cn' && uri.host != 'mcmod.cn') {
+      return null;
+    }
     final m = RegExp(r'^/class/(\d+)\.html$').firstMatch(uri.path);
-    return m == null ? null : int.parse(m.group(1)!);
+    return m?.group(1)!;
   }
 
   /// 是否为图片地址(富文本里的图片已包成 <a href=图片地址>)
   static bool _imageUrl(String url) {
     final path = Uri.tryParse(url)?.path.toLowerCase() ?? '';
-    return RegExp(r'\.(jpe?g|png|webp|gif|bmp)(\?.*)?$').hasMatch(path) ||
-        url.contains('i.mcmod.cn');
+    return RegExp(r'\.(jpe?g|png|webp|gif|bmp)(\?.*)?$').hasMatch(path) || url.contains('i.mcmod.cn');
   }
 
   /// 灯箱:全屏暗底放大查看图片,点击任意处或关闭按钮退出,支持缩放
@@ -162,9 +155,7 @@ class _DetailPageState extends State<DetailPage> {
             tooltip: '在浏览器中打开',
             icon: const Icon(Icons.open_in_browser),
             onPressed: () => _openUrl(
-              widget.source == 'modrinth'
-                  ? 'https://modrinth.com/mod/${widget.id}'
-                  : 'https://www.mcmod.cn/class/${widget.id}.html',
+              SourceManager.getUrl(widget.source, widget.id),
               forceExternal: true,
             ),
           ),
@@ -240,10 +231,8 @@ class _DetailPageState extends State<DetailPage> {
                   controller: _leftController,
                   padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
                   children: [
-                    if (mod.description != null &&
-                        mod.description!.isNotEmpty) ...[
-                      _buildSectionTitle('模组介绍', Icons.article_rounded),
-                      _buildDescription(mod, theme),
+                    if (mod.description != null && mod.description!.isNotEmpty) ...[
+                      ..._buildDescription(mod, theme),
                     ],
                   ],
                 ),
@@ -256,14 +245,10 @@ class _DetailPageState extends State<DetailPage> {
                   padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
                   children: [
                     if (mod.links.isNotEmpty) ...[
-                      _buildSectionTitle('相关链接', Icons.insert_link_rounded),
-                      _buildLinks(mod),
-                      const Divider(),
+                      ..._buildLinks(mod),
                     ],
                     if (mod.mcVersions.isNotEmpty) ...[
-                      _buildSectionTitle('支持版本', Icons.check_circle_rounded),
-                      _buildModVersion(mod),
-                      const Divider(),
+                      ..._buildModVersion(mod),
                     ],
                   ],
                 ),
@@ -283,18 +268,13 @@ class _DetailPageState extends State<DetailPage> {
       children: [
         ModCoverNarrow(mod: mod),
         if (mod.links.isNotEmpty) ...[
-          _buildSectionTitle('相关链接', Icons.insert_link_rounded),
-          _buildLinks(mod),
-          const Divider(),
+          ..._buildLinks(mod),
         ],
         if (mod.mcVersions.isNotEmpty) ...[
-          _buildSectionTitle('支持版本', Icons.check_circle_rounded),
-          _buildModVersion(mod),
-          const Divider(),
+          ..._buildModVersion(mod),
         ],
         if (mod.description != null && mod.description!.isNotEmpty) ...[
-          _buildSectionTitle('模组介绍', Icons.article_rounded),
-          _buildDescription(mod, theme),
+          ..._buildDescription(mod, theme),
         ],
       ],
     );
@@ -324,33 +304,56 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-  // 相关链接
-  Widget _buildLinks(ModDetail mod) {
-    return CollapsibleChips(
-      chips: [
-        for (final link in mod.links)
-          ActionChip(
-            avatar: Icon(LinkIcons.getLinkIcon(link.name), size: 18),
-            label: Text(link.name),
-            onPressed: () => _openUrl(link.url),
-          ),
-      ],
-    );
+  /// 相关链接
+  List<Widget> _buildLinks(ModDetail mod) {
+    return [
+      _buildSectionTitle('相关链接', Icons.insert_link_rounded),
+      CollapsibleChips(
+        chips: [
+          for (final link in mod.links)
+            ActionChip(
+              avatar: Icon(LinkIcons.getLinkIcon(link.name), size: 18),
+              label: Text(link.name),
+              onPressed: () => _openUrl(link.url),
+            ),
+        ],
+      ),
+      const Divider(),
+    ];
   }
 
-  // 支持版本
-  Widget _buildModVersion(ModDetail mod) {
-    return CollapsibleChips(
-      chips: [for (final v in mod.mcVersions) Chip(label: Text(v))],
-    );
+  /// 支持版本
+  List<Widget> _buildModVersion(ModDetail mod) {
+    return [
+      _buildSectionTitle('支持版本', Icons.check_circle_rounded),
+      CollapsibleChips(
+        chips: [for (final v in mod.mcVersions) Chip(label: Text(v))],
+      ),
+      const Divider(),
+    ];
   }
 
-  // 详细内容
-  Widget _buildDescription(ModDetail mod, ThemeData theme) {
-    // 富文本渲染:标题、加粗、颜色、图片、表格、列表等。
-    // 图片已包成 <a href=图片地址>，点击时走灯箱放大。
-    // 使用自写的 HtmlContent 渲染器，替代 flutter_widget_from_html
-    // 从根源上消除 MouseTracker 的 debug 报错。
+  /// 详细内容
+  List<Widget> _buildDescription(ModDetail mod, ThemeData theme) {
+    return [
+      _buildSectionTitle('模组介绍', Icons.article_rounded),
+      _getContentType(mod, theme),
+    ];
+  }
+
+  /// 按来源选择渲染器:
+  /// - MC百科:清洗后的 HTML → 自写 HtmlContent(替代 flutter_widget_from_html,
+  ///   正文零 MouseRegion,从根源上消除 MouseTracker 的 debug 报错)
+  /// - Modrinth:原始 Markdown → flutter_markdown_plus 直接渲染
+  Widget _getContentType(ModDetail mod, ThemeData theme) {
+    switch (mod.source) {
+      case ModSource.mcmod: return _buildHTML(mod, theme);
+      case ModSource.modrinth: return _buildMarkdown(mod, theme);
+    }
+  }
+
+  // 渲染 HTML
+  Widget _buildHTML(ModDetail mod, ThemeData theme) {
     return HtmlContent(
       html: mod.description!,
       textStyle: theme.textTheme.bodyMedium,
@@ -361,6 +364,44 @@ class _DetailPageState extends State<DetailPage> {
           _openUrl(url);
         }
       },
+    );
+  }
+
+  // 渲染 Markdown
+  Widget _buildMarkdown(ModDetail mod, ThemeData theme) {
+    return Markdown(
+      data: mod.description!,
+      // 详情页外层已有 ListView:Markdown 默认内部再包 ListView 会因
+      // 高度无限报错,noScroll 改为 Column 直接排版
+      noScroll: true,
+      // 页面布局自带留白
+      padding: EdgeInsets.zero,
+      styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+        // 包内 Text 的 textScaler 取自 styleSheet 而非 MediaQuery,
+        // 手动传入全局字体缩放设置
+        textScaler: TextScaler.linear(SettingsService.instance.fontScale),
+      ),
+      // 链接:图片地址走灯箱,其余按站内跳转/浏览器规则分流
+      onTapLink: (text, href, title) {
+        if (href == null || href.isEmpty) return;
+        if (_imageUrl(href)) {
+          _showLightbox(href);
+        } else {
+          _openUrl(href);
+        }
+      },
+      // 图片:点击走灯箱
+      imageBuilder: (uri, title, alt) => GestureDetector(
+        onTap: () => _showLightbox(uri.toString()),
+        child: Image.network(
+          uri.toString(),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => const SizedBox(
+            height: 120,
+            child: Center(child: Icon(Icons.broken_image_outlined)),
+          ),
+        ),
+      ),
     );
   }
 }

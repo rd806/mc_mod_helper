@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
-import 'package:markdown/markdown.dart' as md;
+import 'package:mc_mod_helper/api/source.dart';
 
 import '../model/mod_category.dart';
 import '../model/mod_detail.dart';
@@ -174,7 +174,7 @@ class ModrinthApi {
         (hit['downloads'] as num?)?.toInt(),
         (hit['follows'] as num?)?.toInt(),
       ),
-      source: 'modrinth',
+      source: ModSource.modrinth,
     );
   }
 
@@ -238,23 +238,24 @@ class ModrinthApi {
   }) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final title = (data['title'] as String?)?.trim() ?? '';
+    // 正文保留原始 Markdown,由详情页的 Markdown 控件渲染
+    // (markdown 解析器默认转义原生 HTML 标签,无需手工剥离 script/iframe)
     final markdown =
         (data['body'] as String?)?.trim() ??
         (fallbackDescription ?? (data['description'] as String?) ?? '');
-    final html = _markdownToHtml(markdown);
 
     return ModDetail(
       id: sourceId,
       title: title,
       subName: null,
-      description: html.isEmpty ? null : html,
+      description: markdown.isEmpty ? null : markdown,
       coverUrl: data['icon_url'] as String?,
       links: _buildLinks(data),
       mcVersions: (data['game_versions'] as List<dynamic>? ?? const [])
           .cast<String>(),
       platform: _buildPlatform(data),
       environment: _buildEnvironment(data),
-      source: 'modrinth',
+      source: ModSource.modrinth,
     );
   }
 
@@ -338,25 +339,4 @@ class ModrinthApi {
     return '$n';
   }
 
-  /// Markdown 正文转成适合 app 内渲染的 HTML。
-  ///
-  /// 复用 HtmlContent 渲染链:图片包 <a> 链接以走灯箱;
-  /// 表格的框线、表头居中、画廊布局均由渲染器负责,无需预处理。
-  static String _markdownToHtml(String markdown) {
-    var html = md.markdownToHtml(
-      markdown,
-      extensionSet: md.ExtensionSet.gitHubFlavored,
-    );
-    // markdown 包对原生 HTML 的透传行为各版本有差异,剥掉兜底
-    html = html
-        .replaceAll(RegExp(r'<script[^>]*>.*?</script>', dotAll: true), '')
-        .replaceAll(RegExp(r'<iframe[^>]*>.*?</iframe>', dotAll: true), '');
-    // 图片:包一层链接,点击时在灯箱中放大查看
-    html = html.replaceAllMapped(RegExp(r'<img([^>]*)>'), (m) {
-      final attrs = m.group(1)!;
-      final src = RegExp(r'src="([^"]*)"').firstMatch(attrs)?.group(1);
-      return (src == null || src.isEmpty) ? '<img$attrs>' : '<a href="$src"><img$attrs></a>';
-    });
-    return html;
-  }
 }

@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/modrinth.dart';
+import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/page/detail.dart';
 import 'package:mc_mod_helper/service/settings.dart';
@@ -91,19 +92,19 @@ void main() {
       final m = results.first;
       expect(m.id, 'sodium');
       expect(m.title, 'Sodium');
-      expect(m.source, 'modrinth');
+      expect(m.source, ModSource.modrinth);
       expect(m.statsText, '下载 863万 · 关注 3200');
       expect(m.pageUrl, 'https://modrinth.com/mod/sodium');
     });
 
-    test('getDetail 映射到 ModDetail(markdown 转换)', () async {
+    test('getDetail 映射到 ModDetail(保留原始 Markdown)', () async {
       final d = await ModrinthApi.getDetail('sodium');
       expect(d.id, 'sodium');
       expect(d.title, 'Sodium');
-      expect(d.source, 'modrinth');
-      // 表格保留为原生标签(框线/表头居中由 HtmlContent 渲染器负责)
-      expect(d.description, contains('<table'));
-      expect(d.description, contains('<th>'));
+      expect(d.source, ModSource.modrinth);
+      // 正文保留原始 Markdown,由详情页的 Markdown 控件渲染
+      expect(d.description, contains('## 简介'));
+      expect(d.description, contains('| 按键 | 功能 |'));
       expect(d.platform, 'Fabric');
       expect(d.environment, '仅客户端');
       expect(d.mcVersions, ['1.21.1']);

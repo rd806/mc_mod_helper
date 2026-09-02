@@ -1,3 +1,5 @@
+import 'package:mc_mod_helper/api/source.dart';
+
 import 'mod_link.dart';
 
 /// 模组详细信息(解析自详情页)
@@ -12,7 +14,7 @@ class ModDetail {
     this.mcVersions = const [],
     this.platform,
     this.environment,
-    this.source = 'mcmod',
+    this.source = ModSource.mcmod,
   });
 
   /// 统一模组标识(字符串):MC百科为数字字符串(如 '123'),Modrinth 为 slug(如 'jei')
@@ -24,8 +26,9 @@ class ModDetail {
   /// 次要名称
   final String? subName;
 
-  /// 模组介绍（富文本 HTML）
-  /// 来自详情页正文面板的全部内容；页面无正文面板时由搜索页 wiki 简介转换而来
+  /// 模组介绍,格式按来源区分:
+  /// - mcmod:清洗后的富文本 HTML(来自正文面板,无面板时回退 wiki 简介)
+  /// - modrinth:原始 Markdown(来自 API 的 body 字段)
   final String? description;
 
   /// 封面图地址
@@ -44,10 +47,8 @@ class ModDetail {
   final String? environment;
 
   /// 数据来源:'mcmod' 或 'modrinth'
-  final String source;
+  final ModSource source;
 
   /// 模组详情页地址(按数据来源返回)
-  String get pageUrl => source == 'modrinth'
-      ? 'https://modrinth.com/mod/$id'
-      : 'https://www.mcmod.cn/class/$id.html';
+  String get pageUrl => SourceManager.getUrl(source, id);
 }

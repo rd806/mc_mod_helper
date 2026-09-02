@@ -1,3 +1,5 @@
+import 'package:mc_mod_helper/api/source.dart';
+
 /// 搜索结果中的模组摘要
 class ModSummary {
   const ModSummary({
@@ -7,7 +9,7 @@ class ModSummary {
     this.subName,
     this.iconUrl,
     this.statsText,
-    this.source = 'mcmod',
+    this.source = ModSource.mcmod,
   });
 
   /// 统一模组标识(字符串):MC百科为数字字符串(如 '123'),Modrinth 为 slug(如 'jei')
@@ -19,7 +21,7 @@ class ModSummary {
   /// 简介(来自搜索页结果摘要)
   final String description;
 
-  /// 英文名(副标题),可能为空
+  /// 副标题，可能为空
   final String? subName;
 
   /// 模组图标地址(首页推荐列表有,搜索结果没有)
@@ -29,12 +31,10 @@ class ModSummary {
   final String? statsText;
 
   /// 数据来源:'mcmod' 或 'modrinth'
-  final String source;
+  final ModSource source;
 
   /// 模组详情页地址(按数据来源返回)
-  String get pageUrl => source == 'modrinth'
-      ? 'https://modrinth.com/mod/$id'
-      : 'https://www.mcmod.cn/class/$id.html';
+  String get pageUrl => SourceManager.getUrl(source, id);
 
   /// 去掉 `[缩写]` 前缀后的显示名
   String get displayName {
