@@ -35,8 +35,7 @@ class ModrinthApi {
   static final Map<String, List<ModSummary>> _searchCache = {};
   static final Map<String, ModDetail> _detailCache = {};
   static List<ModCategory>? _categoryCache;
-  static final Map<String, ({List<ModSummary> mods, int totalPages})>
-      _categoryModsCache = {};
+  static final Map<String, ({List<ModSummary> mods, int totalPages})> _categoryModsCache = {};
 
   @visibleForTesting
   static void clearCaches() {
@@ -214,7 +213,7 @@ class ModrinthApi {
         ModCategory(
           id: slug,
           name: _categoryNames[slug] ?? slug,
-          source: 'modrinth',
+          source: ModSource.modrinth,
         ),
       );
     }
@@ -331,23 +330,11 @@ class ModrinthApi {
     return loaders.isEmpty ? null : loaders.join(' / ');
   }
 
-  /// 运行环境:(client_side, server_side) 组合 → 中文,未知组合不显示
-  static const Map<String, String> _envMap = {
-    'required|required': '客户端与服务端',
-    'required|optional': '客户端（服务端可选）',
-    'required|unsupported': '仅客户端',
-    'optional|required': '服务端（客户端可选）',
-    'optional|optional': '客户端与服务端（可选）',
-    'optional|unsupported': '仅客户端（可选）',
-    'unsupported|required': '仅服务端',
-    'unsupported|optional': '仅服务端（可选）',
-  };
-
-  static String? _buildEnvironment(Map<String, dynamic> data) {
+  static List<String>? _buildEnvironment(Map<String, dynamic> data) {
     final client = data['client_side'] as String?;
     final server = data['server_side'] as String?;
     if (client == null || server == null) return null;
-    return _envMap['$client|$server'];
+    return [client, server];
   }
 
   /// 统计文本:如 '下载 7385.6万 · 关注 1.1万'

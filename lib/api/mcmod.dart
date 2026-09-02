@@ -495,11 +495,42 @@ class McmodApi {
       if (v.isNotEmpty && !mcVersions.contains(v)) mcVersions.add(v);
     }
 
-    // 左侧信息面板:支持平台 / 运行环境(直接对 HTML 文本做正则)
     String? field(String label) {
       final m = RegExp('$label[:：]\\s*([^<]+)<').firstMatch(html);
       final v = m?.group(1)?.trim();
       return (v == null || v.isEmpty) ? null : v;
+    }
+
+    // 左侧信息面板:支持平台 / 运行环境(直接对 HTML 文本做正则)
+    String convertToEnum(String chinese) {
+      switch (chinese) {
+        case '需装':
+        case '客户端需装':
+        case '服务端需装':
+          return 'required';
+        case '可选':
+        case '客户端可选':
+        case '服务端可选':
+          return 'optional';
+        case '无效':
+        case '客户端无效':
+        case '服务端无效':
+          return 'unsupported';
+        default:
+          return chinese; // 或者抛出异常
+      }
+    }
+
+    List<String>? getEnvironment(String? value) {
+      if (value == null || value.isEmpty) return null;
+      // 站点格式形如 '客户端需装，服务端无效',中英文逗号都可能出现,
+      // 且可能只有一侧;拆开后逐个转成 required/optional/unsupported
+      final parts = value
+          .split(RegExp(r'[,，]'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      return parts.map(convertToEnum).toList();
     }
 
     // 简介:取详情页正文面板(.text-area.common-text)的全部富文本 HTML,
@@ -517,7 +548,7 @@ class McmodApi {
       links: links,
       mcVersions: mcVersions,
       platform: field('支持平台'),
-      environment: field('运行环境'),
+      environment: getEnvironment(field('运行环境')),
     );
   }
 

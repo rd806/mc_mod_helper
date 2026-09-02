@@ -111,7 +111,9 @@ void main() {
       expect(d.description, contains('<table>'));
       expect(d.description, contains('<div style="color:red">原始HTML</div>'));
       expect(d.platform, 'Fabric');
-      expect(d.environment, '仅客户端');
+      // 环境为 [客户端, 服务端] 枚举值列表(client_side=required,
+      // server_side=unsupported → 仅客户端)
+      expect(d.environment, ['required', 'unsupported']);
       expect(d.mcVersions, ['1.21.1']);
       expect(d.links.map((l) => l.name), contains('GitHub'));
       expect(d.links.map((l) => l.name), contains('Discord'));
@@ -132,7 +134,7 @@ void main() {
       expect(cats.map((c) => c.name), containsAll(['科技', '魔法']));
       expect(cats.map((c) => c.name), isNot(contains('128x')));
       final tech = cats.firstWhere((c) => c.id == 'technology');
-      expect(tech.source, 'modrinth');
+      expect(tech.source, ModSource.modrinth);
       expect(tech.id, 'technology');
     });
 
@@ -161,7 +163,7 @@ void main() {
     await tester.pump();
 
     // 切来源:主页分类随之重拉(Modrinth 分类,MockClient 立即返回)
-    SettingsService.instance.setDataSource('modrinth');
+    SettingsService.instance.setDataSource(ModSource.modrinth);
     await tester.pumpAndSettle();
     expect(find.text('科技'), findsWidgets); // Modrinth 分类卡片已渲染
 
@@ -186,11 +188,19 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // 详情:标题(测量层+显示层可能出现两次)、版本芯片
+    // 详情:标题(测量层+显示层可能出现两次)
     expect(find.text('Sodium'), findsWidgets);
-    expect(find.text('1.21.1'), findsWidgets);
-    await tester.pumpAndSettle(); // 收尾路由动画(此时无挂起 Timer)
-    // 「模组介绍」在视口外(ListView 懒构建),向上拖动详情列表再断言。
+    await tester.pumpAndSettle();
+    // 宽屏右栏顺序:加载环境 → 相关链接 → 支持版本;环境区块把版本区
+    // 顶到视口外(ListView 懒构建不渲染),把右栏 ListView 往上拖再断言。
+    // 右栏 = DetailPage 下第二个 ListView(左栏是第一个)
+    final rightList = find
+        .descendant(of: find.byType(DetailPage), matching: find.byType(ListView))
+        .at(1);
+    await tester.drag(rightList, const Offset(0, -400));
+    await tester.pumpAndSettle();
+    expect(find.text('1.21.1', findRichText: true), findsWidgets);
+    // 「模组介绍」在左栏(宽屏)或下方(窄屏),向上拖动详情列表再断言。
     // hyper_render 在单个 RenderObject 里自绘文本,不能用 find.text 找,
     // 改为校验转换后的 HTML 已正确传入 HyperViewer
     await tester.drag(find.byType(DetailPage), const Offset(0, -600));

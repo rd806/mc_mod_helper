@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/api/source.dart';
 
 import '../api/mcmod.dart';
-import '../api/modrinth.dart';
 import '../model/mod_category.dart';
 import '../model/mod_summary.dart';
 import '../service/settings.dart';
@@ -37,7 +37,7 @@ class _HomePageState extends State<HomePage> {
   String? _lastFeaturedSource;
 
   /// 上次加载分类时使用的数据来源,用于判断设置变化是否需要重新拉取
-  String? _lastDataSource;
+  ModSource? _lastDataSource;
 
   /// 推荐请求序号:丢弃过期响应,防止快速切换排序/条数时旧结果覆盖新结果
   int _featuredSeq = 0;
@@ -114,9 +114,9 @@ class _HomePageState extends State<HomePage> {
     final dataSource = SettingsService.instance.dataSource;
     _lastDataSource = dataSource;
     try {
-      final cats = dataSource == 'modrinth'
-          ? await ModrinthApi.getCategories()
-          : await McmodApi.getCategories();
+      // 注意 await:返回值是 Future,未等待会变成未处理的异步错误,
+      // 且后续强转会失败
+      final cats = await SourceManager.getCategory(dataSource);
       if (!mounted) return;
       setState(() {
         _categories = cats;

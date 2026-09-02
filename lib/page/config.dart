@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/api/source.dart';
 
 import '../service/settings.dart';
 
@@ -250,14 +251,14 @@ class _ConfigPageState extends State<ConfigPage> {
         children: [
           Text('数据来源', style: theme.textTheme.bodyMedium),
           Spacer(),
-          SegmentedButton<String>(
+          SegmentedButton<ModSource>(
             segments: const [
-              ButtonSegment(value: 'mcmod', label: Text('MC百科')),
-              ButtonSegment(value: 'modrinth', label: Text('Modrinth')),
+              ButtonSegment(value: ModSource.mcmod, label: Text('MC百科')),
+              ButtonSegment(value: ModSource.modrinth, label: Text('Modrinth')),
             ],
             // 防御:存档值不在选项内时回落显示 "MC百科"
             selected: {
-              SettingsService.dataSources.contains(s.dataSource) ? s.dataSource : 'mcmod',
+              SettingsService.dataSources.contains(s.dataSource) ? s.dataSource : ModSource.mcmod,
             },
             showSelectedIcon: false,
             onSelectionChanged: (selection) =>

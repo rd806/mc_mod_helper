@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mc_mod_helper/api/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/service/settings.dart';
@@ -22,7 +23,7 @@ void main() {
     expect(SettingsService.instance.fontScale, 1.0);
     expect(SettingsService.instance.featuredMax, 20);
     expect(SettingsService.instance.featuredSource, 'createtime');
-    expect(SettingsService.instance.dataSource, 'mcmod');
+    expect(SettingsService.instance.dataSource, ModSource.mcmod);
     expect(SettingsService.instance.renderType, 'default');
     });
 
@@ -34,7 +35,7 @@ void main() {
         ..setFontScale(1.15)
         ..setFeaturedMax(35)
         ..setFeaturedSource('lastedittime')
-        ..setDataSource('modrinth')
+        ..setDataSource(ModSource.modrinth)
         ..setRenderType('hyperViewer');
 
     final prefs = await SharedPreferences.getInstance();
@@ -66,16 +67,14 @@ void main() {
     expect(SettingsService.instance.fontScale, 0.9);
     expect(SettingsService.instance.featuredMax, 45);
     expect(SettingsService.instance.featuredSource, 'lastedittime');
-    expect(SettingsService.instance.dataSource, 'modrinth');
+    expect(SettingsService.instance.dataSource, ModSource.modrinth);
     expect(SettingsService.instance.renderType, 'hyperViewer');
     });
 
-    test('dataSource 非法值被忽略', () async {
+    test('dataSource setter 生效', () async {
     await SettingsService.instance.load();
-    SettingsService.instance.setDataSource('bogus');
-    expect(SettingsService.instance.dataSource, 'mcmod');
-    SettingsService.instance.setDataSource('modrinth');
-    expect(SettingsService.instance.dataSource, 'modrinth');
+    SettingsService.instance.setDataSource(ModSource.modrinth);
+    expect(SettingsService.instance.dataSource, ModSource.modrinth);
     });
 
     test('renderType 非法值被忽略', () async {

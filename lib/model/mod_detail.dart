@@ -44,7 +44,7 @@ class ModDetail {
   final String? platform;
 
   /// 运行环境(如 客户端需装, 服务端无效)
-  final String? environment;
+  final List<String>? environment;
 
   /// 数据来源:'mcmod' 或 'modrinth'
   final ModSource source;

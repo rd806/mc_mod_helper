@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/api/source.dart';
 
-import '../api/mcmod.dart';
-import '../api/modrinth.dart';
 import '../model/mod_summary.dart';
 import '../service/settings.dart';
 import '../widget/error_view.dart';
@@ -45,9 +44,8 @@ class _SearchPageState extends State<SearchPage> {
     });
     try {
       // 按设置的数据来源选择搜索平台(提交时读取,切来源后重搜即生效)
-      final results = SettingsService.instance.dataSource == 'modrinth'
-          ? await ModrinthApi.search(keyword)
-          : await McmodApi.search(keyword);
+      final results =
+          await SourceManager.getSearch(SettingsService.instance.dataSource, keyword);
       if (!mounted) return;
       setState(() {
         _results = results;

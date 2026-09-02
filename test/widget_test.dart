@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/service/settings.dart';
 
@@ -115,7 +116,7 @@ void main() {
     await tester.tap(find.text('Modrinth'));
     // dataSource 不触发主页重拉(无新 Timer),pumpAndSettle 只收尾按钮动画,安全
     await tester.pumpAndSettle();
-    expect(SettingsService.instance.dataSource, 'modrinth');
+    expect(SettingsService.instance.dataSource, ModSource.modrinth);
     });
 
     testWidgets('点击刷新按钮重新加载本页', (tester) async {

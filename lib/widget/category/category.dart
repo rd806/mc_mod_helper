@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/api/source.dart';
 
 import '../../model/mod_category.dart';
 import '../../page/category.dart';
@@ -85,9 +86,9 @@ class CategoryCard extends StatelessWidget {
 
   /// 分类图标:按数据来源选择映射表
   IconData _categoryIcon(ModCategory category) {
-    if (category.source == 'modrinth') {
-      return _modrinthCategoryIcons[category.id] ?? Icons.category;
+    switch (category.source) {
+      case ModSource.mcmod: return _categoryIcons[category.id] ?? Icons.category;
+      case ModSource.modrinth: return _modrinthCategoryIcons[category.id] ?? Icons.category;
     }
-    return _categoryIcons[category.id] ?? Icons.category;
   }
 }

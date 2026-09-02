@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/api/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 应用设置(主题模式/强调色/字体缩放/推荐列表条数上限):
@@ -33,7 +34,10 @@ class SettingsService extends ChangeNotifier {
   ];
 
   /// 搜索/详情数据来源的合法取值
-  static const List<String> dataSources = ['mcmod', 'modrinth'];
+  static const List<ModSource> dataSources = [
+    ModSource.mcmod,
+    ModSource.modrinth
+  ];
 
   /// 渲染方法
   static const List<String> renderTypes = ['default', 'hyperViewer'];
@@ -43,7 +47,7 @@ class SettingsService extends ChangeNotifier {
   double _fontScale = 1.0;
   int _featuredMax = 20;
   String _featuredSource = "";
-  String _dataSource = 'mcmod';
+  ModSource _dataSource = ModSource.mcmod;
   String _renderType = 'default';
 
   ThemeMode get themeMode => _themeMode;
@@ -51,7 +55,7 @@ class SettingsService extends ChangeNotifier {
   double get fontScale => _fontScale;
   int get featuredMax => _featuredMax;
   String get featuredSource => _featuredSource;
-  String get dataSource => _dataSource;
+  ModSource get dataSource => _dataSource;
   String get renderType => _renderType;
 
   /// 启动时读取已保存的设置(在 runApp 前调用,避免启动后主题/字体跳变)。
@@ -61,26 +65,21 @@ class SettingsService extends ChangeNotifier {
   Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _themeMode =
-          ThemeMode.values.asNameMap()[prefs.getString(_themeModeKey)] ??
-          ThemeMode.system;
+      _themeMode = ThemeMode.values.asNameMap()[prefs.getString(_themeModeKey)] ?? ThemeMode.system;
       _seedColor = Color(prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32());
-      _fontScale = (prefs.getDouble(_fontScaleKey) ?? 1.0).clamp(
-        fontMin,
-        fontMax,
-      );
-      _featuredMax = (prefs.getInt(_featuredMaxKey) ?? 20).clamp(
-        featuredMin,
-        featuredMaxLimit,
-      );
+      _fontScale = (prefs.getDouble(_fontScaleKey) ?? 1.0).clamp(fontMin, fontMax,);
+      _featuredMax = (prefs.getInt(_featuredMaxKey) ?? 20).clamp(featuredMin, featuredMaxLimit,);
+
       final source = prefs.getString(_featuredSourceKey);
-      _featuredSource = (source != null && featuredSources.contains(source))
-          ? source
-          : 'createtime';
+      _featuredSource = (source != null && featuredSources.contains(source)) ? source : 'createtime';
+
       final ds = prefs.getString(_dataSourceKey);
-      _dataSource = (ds != null && dataSources.contains(ds)) ? ds : 'mcmod';
+      ModSource modSource = SourceManager.fromString(ds);
+      _dataSource = (ds != null && dataSources.contains(modSource)) ? modSource : ModSource.mcmod;
+
       final rt = prefs.getString(_renderTypeKey);
       _renderType = (rt != null && renderTypes.contains(rt)) ? rt : 'default';
+
       notifyListeners();
     } catch (_) {
       // 读取失败:保持默认值,不阻塞启动
@@ -123,11 +122,13 @@ class SettingsService extends ChangeNotifier {
   }
 
   /// 设置搜索/详情数据来源(MC百科/Modrinth),非法值忽略
-  void setDataSource(String source) {
+  void setDataSource(ModSource source) {
     if (!dataSources.contains(source) || source == _dataSource) return;
     _dataSource = source;
     notifyListeners();
-    _persist(_dataSourceKey, source);
+    // 磁盘存枚举的 name 字符串(与 setThemeMode 存 mode.name 一致);
+    // 直接存枚举对象的话 _persist 的 switch 没有对应分支,什么都不会写入
+    _persist(_dataSourceKey, source.name);
   }
 
   /// 设置首页推荐列表条数上限(自动截断到允许范围)

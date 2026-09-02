@@ -1,3 +1,5 @@
+import 'package:mc_mod_helper/api/source.dart';
+
 /// 模组分类(mcmod.cn 首页 / Modrinth categories)
 class ModCategory {
   const ModCategory({
@@ -5,7 +7,7 @@ class ModCategory {
     required this.name,
     this.slogan,
     this.description,
-    this.source = 'mcmod',
+    this.source = ModSource.mcmod,
   });
 
   /// 统一分类标识(字符串):MC百科为数字字符串(如 '1'),Modrinth 为分类名(如 'technology')
@@ -21,7 +23,7 @@ class ModCategory {
   final String? description;
 
   /// 数据来源:'mcmod' 或 'modrinth'
-  final String source;
+  final ModSource source;
 
   /// 分类第 1 页地址
   String get pageUrl => 'https://www.mcmod.cn/class/category/$id-1.html';

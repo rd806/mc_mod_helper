@@ -2,11 +2,14 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:hyper_render/hyper_render.dart';
 import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/render/hyper.dart';
 import 'package:mc_mod_helper/service/settings.dart';
 import 'package:mc_mod_helper/widget/description/cover.dart';
 import 'package:mc_mod_helper/widget/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../api/mcmod.dart';
+import '../api/modrinth.dart';
 import '../model/mod_detail.dart';
 import '../render/html_content.dart';
 import '../widget/description/collapsible_chips.dart';
@@ -61,9 +64,15 @@ class _DetailPageState extends State<DetailPage> {
 
   /// 获取详情:按数据来源选择 API
   Future<ModDetail> _load() {
-    return SourceManager.getModDetail(widget.source, widget);
+    switch (widget.source) {
+      case ModSource.mcmod:
+        return McmodApi.getDetail(widget.id, fallbackDescription: widget.initialDescription);
+      case ModSource.modrinth:
+        return ModrinthApi.getDetail(widget.id, fallbackDescription: widget.initialDescription);
+    }
   }
 
+  /// 重新加载
   void _reload() {
     setState(() {
       _future = _load();
@@ -74,6 +83,12 @@ class _DetailPageState extends State<DetailPage> {
   /// 默认在应用内跳转详情页,其余链接用浏览器打开。
   /// [forceExternal] 为 true 时一律走浏览器
   Future<void> _openUrl(String url, {bool forceExternal = false}) async {
+    // 打开图片灯箱
+    if (_imageUrl(url)) {
+      showImageBox(context, url);
+      return;
+    }
+    // 其他链接
     final uri = Uri.tryParse(url);
     if (uri == null) return;
     if (!forceExternal) {
@@ -99,6 +114,7 @@ class _DetailPageState extends State<DetailPage> {
         return;
       }
     }
+    // 打开链接
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
@@ -129,18 +145,10 @@ class _DetailPageState extends State<DetailPage> {
     return m?.group(1);
   }
 
-  /// 是否为图片地址(富文本里的图片已包成 <a href=图片地址>)
+  /// 是否为图片地址（富文本里的图片已包成 <a href=图片地址>）
   static bool _imageUrl(String url) {
-    final path = Uri
-        .tryParse(url)
-        ?.path
-        .toLowerCase() ?? '';
+    final path = Uri.tryParse(url)?.path.toLowerCase() ?? '';
     return RegExp(r'\.(jpe?g|png|webp|gif|bmp)(\?.*)?$').hasMatch(path) || url.contains('i.mcmod.cn');
-  }
-
-  /// 灯箱:全屏暗底放大查看图片,点击任意处或关闭按钮退出,支持缩放
-  void _showLightbox(String url) {
-    showImageBox(context, url);
   }
 
   @override
@@ -252,6 +260,7 @@ class _DetailPageState extends State<DetailPage> {
                   controller: _rightController,
                   padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
                   children: [
+                    ..._buildEnvironment(mod),
                     if (mod.links.isNotEmpty) ...[
                       ..._buildLinks(mod),
                     ],
@@ -275,6 +284,7 @@ class _DetailPageState extends State<DetailPage> {
       padding: const EdgeInsets.all(16),
       children: [
         ModCoverNarrow(mod: mod),
+        ..._buildEnvironment(mod),
         if (mod.links.isNotEmpty) ...[
           ..._buildLinks(mod),
         ],
@@ -312,6 +322,46 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
+  /// 支持版本
+  /// 运行环境:environment 为 [客户端需求, 服务端需求] 的枚举值列表,
+  /// 有时只有一侧(mcmod),按实际元素数量显示
+  List<Widget> _buildEnvironment(ModDetail mod) {
+    final env = mod.environment;
+    if (env == null || env.isEmpty) return [const SizedBox.shrink()];
+    // 首元素(客户端)必然存在;服务端可能缺位(mcmod 有时只标一侧)
+    final client = _getInfo(env[0]);
+    final server = env.length > 1 ? _getInfo(env[1]) : null;
+    return [
+      _buildSectionTitle('加载环境', Icons.construction_rounded),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (client != null)
+            Chip(
+              avatar: Icon(Icons.computer_rounded),
+              label: Text('客户端：$client')
+            ),
+          const SizedBox(height: 10),
+          if (server != null)
+            Chip(
+              avatar: Icon(Icons.storage_rounded),
+              label: Text('服务端：$server')
+            )
+        ],
+      ),
+      const Divider()
+    ];
+  }
+
+  String? _getInfo(String s) {
+    switch (s) {
+      case 'required': return '必需';
+      case 'optional': return '可选';
+      case 'unsupported': return '无效';
+      default: return '未知';
+    }
+  }
+
   /// 相关链接
   List<Widget> _buildLinks(ModDetail mod) {
     return [
@@ -334,9 +384,7 @@ class _DetailPageState extends State<DetailPage> {
   List<Widget> _buildModVersion(ModDetail mod) {
     return [
       _buildSectionTitle('支持版本', Icons.check_circle_rounded),
-      CollapsibleChips(
-        chips: [for (final v in mod.mcVersions) Chip(label: Text(v))],
-      ),
+      CollapsibleChips(chips: [for (final v in mod.mcVersions) Chip(label: Text(v))]),
       const Divider(),
     ];
   }
@@ -352,11 +400,7 @@ class _DetailPageState extends State<DetailPage> {
   /// 正文链接点击:图片地址(清洗时已包成 <a href=图片地址>)走灯箱,
   /// 其余按站内跳转/浏览器规则分流
   void _handleContentLink(String url) {
-    if (_imageUrl(url)) {
-      _showLightbox(url);
-    } else {
-      _openUrl(url);
-    }
+    _openUrl(url);
   }
 
   /// 渲染 HTML 正文(两种来源的描述都是清洗后的 HTML)。
@@ -373,21 +417,21 @@ class _DetailPageState extends State<DetailPage> {
       );
     }
     return _mouseDraggable(
-      HyperViewer(
-        html: mod.description!,
-        mode: HyperRenderMode.sync,
-        shrinkWrap: true,
-        selectable: false,
-        customCss: _hyperCss(theme),
-        onLinkTap: _handleContentLink,
-      ),
+        HyperViewer(
+          html: mod.description!,
+          mode: HyperRenderMode.sync,
+          shrinkWrap: true,
+          selectable: false,
+          customCss: HyperRender.hyperCss(theme),
+          onLinkTap: _handleContentLink,
+        )
     );
   }
 
   /// 桌面端 ScrollBehavior 默认只认触摸/手写笔拖拽,鼠标拖不动
   /// 正文里表格的横向滚动容器;包一层开启鼠标/触控板拖拽的配置
   /// (只作用于描述内容,不影响外层列表的既有滚动方式)
-  Widget _mouseDraggable(Widget child) {
+  Widget _mouseDraggable(Widget widget) {
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(
         dragDevices: {
@@ -398,28 +442,7 @@ class _DetailPageState extends State<DetailPage> {
           PointerDeviceKind.invertedStylus,
         },
       ),
-      child: child,
+      child: widget,
     );
-  }
-
-  /// hyper_render 的主题适配:包默认正文样式是 16px 深灰字,用 customCss
-  /// 注入正文颜色/字号/字体(字体缩放走 MediaQuery,包默认读取)。
-  /// 颜色取 bodyMedium 的常规字体颜色(与普通 Text 控件一致),
-  /// 不使用 colorScheme 主题色。
-  /// 注意:UDT 树根节点 tagName 是 'document'(HTML/Markdown 均是),
-  /// 用 'body' 选择器匹配不到任何节点;注入根节点后靠继承传播到正文,
-  /// 行内 style 优先级更高,正文里的颜色文字不受影响
-  String _hyperCss(ThemeData theme) {
-    final textStyle = theme.textTheme.bodyMedium;
-    final color = (textStyle?.color ?? theme.colorScheme.onSurface).toARGB32();
-    final hex = color.toRadixString(16).padLeft(8, '0').substring(2);
-    final family = textStyle?.fontFamily;
-    // 包内 CSS 解析器把 font-family 整值去引号后当作单个家族名,
-    // 不支持逗号分隔的回退列表;取 bodyMedium 的家族名(应用字体)
-    final familyCss =
-    (family == null || family.isEmpty) ? '' : 'font-family: $family; ';
-    return 'document { color: #$hex; '
-        'font-size: ${textStyle?.fontSize ?? 14}px; '
-        '$familyCss}';
   }
 }

@@ -82,7 +82,6 @@ abstract class ModCover extends StatelessWidget {
         if (mod.platform != null || mod.environment != null) ...[
           const SizedBox(height: 16),
           _buildPlatforms(mod),
-          const SizedBox(height: 16),
         ],
       ],
     );
@@ -107,7 +106,6 @@ abstract class ModCover extends StatelessWidget {
       runSpacing: 8,
       children: [
         if (mod.platform != null) _InfoChip(label: '平台: ${mod.platform}'),
-        if (mod.environment != null) _InfoChip(label: '环境: ${mod.environment}'),
       ],
     );
   }

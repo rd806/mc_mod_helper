@@ -25,6 +25,7 @@ class LinkIcons {
   // 视频站类
   static const IconData youtube = IconData(0xe901, fontFamily: linkFont);
 
+  /// 获取链接图标
   static IconData getLinkIcon(String name) {
     final n = name.toLowerCase();
     if (n.contains('github')) return github;
@@ -33,7 +34,8 @@ class LinkIcons {
     if (n.contains('wiki')) return wiki;
     if (n.contains('youtube')) return youtube;
     if (n.contains('curse') || n.contains('forge')) return curseforge;
-    if (n.contains('mcbbs') || n.contains('bbs')) return mcbbs;
+    if (n.contains('minecraft') || n.contains('mc')) return mcbbs;
+    if (n.contains('maven')) return Icons.code_rounded;
     return Icons.link;
   }
 }

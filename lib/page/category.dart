@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/api/source.dart';
 
 import '../model/mod_category.dart';
 import '../api/mcmod.dart';
@@ -57,9 +58,10 @@ class _CategoryPageState extends State<CategoryPage> {
 
   /// 按分类的数据来源拉取第 [page] 页
   Future<({List<ModSummary> mods, int totalPages})> _fetchPage(int page) {
-    return widget.category.source == 'modrinth'
-        ? ModrinthApi.getCategoryMods(widget.category.id, page: page)
-        : McmodApi.getCategoryMods(widget.category.id, page: page);
+    switch (widget.category.source) {
+      case ModSource.mcmod: return McmodApi.getCategoryMods(widget.category.id, page: page);
+      case ModSource.modrinth: return ModrinthApi.getCategoryMods(widget.category.id, page: page);
+    }
   }
 
   /// 加载首页内容

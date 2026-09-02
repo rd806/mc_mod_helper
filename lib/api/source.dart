@@ -1,6 +1,8 @@
-import 'package:mc_mod_helper/page/detail.dart';
 
-import '../model/mod_detail.dart';
+
+import 'package:mc_mod_helper/model/mod_category.dart';
+import 'package:mc_mod_helper/model/mod_summary.dart';
+
 import 'mcmod.dart';
 import 'modrinth.dart';
 
@@ -11,6 +13,30 @@ enum ModSource {
 }
 
 class SourceManager {
+
+  /// 字符串转ModSource
+  static ModSource fromString(String? value) {
+    return ModSource.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => ModSource.mcmod,
+    );
+  }
+
+  /// 获取主页分类
+  static Future<List<ModCategory>> getCategory(ModSource source) async {
+    switch (source) {
+      case ModSource.mcmod: return await McmodApi.getCategories();
+      case ModSource.modrinth: return await ModrinthApi.getCategories();
+    }
+  }
+
+  static Future<List<ModSummary>> getSearch(ModSource source, String keyword) async {
+    switch (source) {
+      case ModSource.mcmod: return await McmodApi.search(keyword);
+      case ModSource.modrinth: return await ModrinthApi.search(keyword);
+    }
+  }
+
   /// 根据来源获取地址
   static String getUrl(ModSource source, String id) {
     switch (source) {
@@ -24,22 +50,6 @@ class SourceManager {
     switch (source) {
       case ModSource.mcmod: return 'MC百科';
       case ModSource.modrinth: return 'Modrinth';
-    }
-  }
-
-  /// 获取详细信息
-  static Future<ModDetail> getModDetail(ModSource source, DetailPage widget) {
-    switch (source) {
-      case ModSource.mcmod:
-        return McmodApi.getDetail(
-          widget.id,
-          fallbackDescription: widget.initialDescription,
-        );
-      case ModSource.modrinth:
-        return ModrinthApi.getDetail(
-            widget.id,
-            fallbackDescription: widget.initialDescription
-        );
     }
   }
 }
