@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/api/source.dart';
 
 import '../model/mod_category.dart';
@@ -63,6 +64,8 @@ class _CategoryPageState extends State<CategoryPage> {
         return McmodApi.getCategoryMods(widget.category.id, page: page);
       case ModSource.modrinth:
         return ModrinthApi.getCategoryMods(widget.category.id, page: page);
+      case ModSource.curseforge:
+        return CurseforgeApi.getCategoryMods(widget.category.id, page: page);
     }
   }
 

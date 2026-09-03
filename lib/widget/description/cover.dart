@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/source.dart';
 
@@ -51,7 +52,7 @@ abstract class ModCover extends StatelessWidget {
     );
   }
 
-  /// 名称 + 副标题(非滚动 Column;ListView 在 Column/Row 里
+  /// 名称 + 副标题 + 统计信息(非滚动 Column;ListView 在 Column/Row 里
   /// 会因无限高约束而崩溃)
   Widget _buildName(BuildContext context) {
     final theme = Theme.of(context);
@@ -78,11 +79,8 @@ abstract class ModCover extends StatelessWidget {
         // 来源(始终有值,显示友好名称)
         const SizedBox(height: 10),
         _buildSource(context, mod),
-        // 支持平台
-        if (mod.platform != null || mod.environment != null) ...[
-          const SizedBox(height: 16),
-          _buildPlatforms(mod),
-        ],
+        const SizedBox(height: 16),
+        _buildStatistic(context, mod)
       ],
     );
   }
@@ -97,15 +95,61 @@ abstract class ModCover extends StatelessWidget {
     );
   }
 
-  // 支持平台
-  Widget _buildPlatforms(ModDetail mod) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        if (mod.platform != null) _InfoChip(label: '平台: ${mod.platform}'),
-      ],
+  // 统计信息
+  Widget _buildStatistic(BuildContext context, ModDetail mod) {
+    final statistic = mod.statistics;
+    if (statistic == null || statistic.isEmpty) return const SizedBox.shrink();
+    // 构建 Chips
+    final List<Widget> chips = [];
+    for (final entry in statistic) {
+      chips.add(_buildStatisticCard(entry));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 16),
+      child: Wrap(
+        spacing: 8.0, // 水平间距
+        runSpacing: 8.0, // 垂直间距（换行时）
+        children: chips,
+      ),
     );
+  }
+
+  // 根据字符串选择合适 Chips
+  Widget _buildStatisticCard((String, String) entry) {
+    switch (entry.$1) {
+      case 'downloads':
+        return Chip(
+          avatar: Icon(Icons.download),
+          label: Text('下载：${entry.$2}'),
+        );
+      case 'followers':
+        return Chip(
+          avatar: Icon(Icons.favorite_rounded),
+          label: Text('关注：${entry.$2}'),
+        );
+      case 'views':
+        return Chip(
+          avatar: Icon(Icons.visibility),
+          label: Text('总浏览：${entry.$2}'),
+        );
+      case 'index':
+        return Chip(
+          avatar: Icon(Icons.trending_up),
+          label: Text('昨日指数：${entry.$2}'),
+        );
+      case 'fillRate':
+        return Chip(
+          avatar: Icon(Icons.percent),
+          label: Text('资料填充率：${entry.$2}'),
+        );
+      default:
+        // 未知统计项(站点面板可能出现新标签):按原文展示,不丢弃
+        return Chip(
+          avatar: Icon(Icons.info_outline),
+          label: Text('${entry.$1}：${entry.$2}'),
+        );
+    }
   }
 }
 
@@ -115,13 +159,16 @@ class ModCoverNarrow extends ModCover {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildIcon(context, width: double.infinity, height: 200),
-        const SizedBox(height: 12),
-        _buildName(context),
-      ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildIcon(context, width: double.infinity, height: 200),
+          const SizedBox(height: 12),
+          _buildName(context),
+        ],
+      ),
     );
   }
 }
@@ -132,29 +179,16 @@ class ModCoverWide extends ModCover {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildIcon(context, width: 288, height: 180),
-        const SizedBox(width: 16),
-        Expanded(child: _buildName(context)),
-      ],
-    );
-  }
-}
-
-/// 紧凑的小标签
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      label: Text(label),
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildIcon(context, width: 288, height: 180),
+          const SizedBox(width: 16),
+          Expanded(child: _buildName(context)),
+        ],
+      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:hyper_render/hyper_render.dart';
+import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/render/hyper.dart';
 import 'package:mc_mod_helper/service/settings.dart';
@@ -75,6 +76,11 @@ class _DetailPageState extends State<DetailPage> {
           );
         case ModSource.modrinth:
           return await ModrinthApi.getDetail(
+            widget.id,
+            fallbackDescription: widget.initialDescription,
+          );
+        case ModSource.curseforge:
+          return await CurseforgeApi.getDetail(
             widget.id,
             fallbackDescription: widget.initialDescription,
           );
@@ -252,9 +258,14 @@ class _DetailPageState extends State<DetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 顶部:封面与标题（通栏）
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: ModCoverWide(mod: mod),
+        Column(
+          children: [
+            ModCoverWide(mod: mod),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+              child: const Divider(),
+            )
+          ],
         ),
         // 下方:左宽右窄两栏
         Expanded(
@@ -282,10 +293,12 @@ class _DetailPageState extends State<DetailPage> {
                   controller: _rightController,
                   padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
                   children: [
-                    _buildEnvironment(mod),
-                    if (mod.links.isNotEmpty) ...[_buildLinks(mod)],
+                    _buildEnvironment(mod, theme),
+                    if (mod.links.isNotEmpty) ...[
+                      _buildLinks(mod, theme)
+                    ],
                     if (mod.mcVersions.isNotEmpty) ...[
-                      _buildModVersion(context, mod),
+                      _buildModVersion(mod, theme),
                     ],
                   ],
                 ),
@@ -301,12 +314,13 @@ class _DetailPageState extends State<DetailPage> {
   Widget _buildNarrowPage(ModDetail mod) {
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(8),
       children: [
         ModCoverNarrow(mod: mod),
-        _buildEnvironment(mod),
-        if (mod.links.isNotEmpty) ...[_buildLinks(mod)],
-        if (mod.mcVersions.isNotEmpty) ...[_buildModVersion(context, mod)],
+        const Divider(),
+        _buildEnvironment(mod, theme),
+        if (mod.links.isNotEmpty) ...[_buildLinks(mod, theme)],
+        if (mod.mcVersions.isNotEmpty) ...[_buildModVersion(mod, theme)],
         if (mod.description != null && mod.description!.isNotEmpty) ...[
           _buildDescription(mod, theme),
         ],
@@ -315,8 +329,7 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   /// 区块标题:上间距 + titleLarge 标题 + 下间距,配合 ... 展开使用
-  Widget _buildSectionTitle(String title, IconData icon) {
-    final theme = Theme.of(context);
+  Widget _buildSectionTitle(String title, ThemeData theme, IconData icon) {
     return Padding(
       // 上下间距写入 Padding 中
       padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
@@ -343,7 +356,7 @@ class _DetailPageState extends State<DetailPage> {
   /// 加载环境
   /// 运行环境:environment 为 [客户端需求, 服务端需求] 的枚举值列表,
   /// 有时只有一侧(mcmod),按实际元素数量显示
-  Widget _buildEnvironment(ModDetail mod) {
+  Widget _buildEnvironment(ModDetail mod, ThemeData theme) {
     final env = mod.environment;
     if (env == null || env.isEmpty) return const SizedBox.shrink();
     // 首元素(客户端)必然存在;服务端可能缺位(mcmod 有时只标一侧)
@@ -375,7 +388,7 @@ class _DetailPageState extends State<DetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionTitle('加载环境', Icons.construction_rounded),
+            _buildSectionTitle('加载环境', theme, Icons.construction_rounded),
             Wrap(
               spacing: 8.0, // 水平间距
               runSpacing: 8.0, // 垂直间距（换行时）
@@ -402,14 +415,14 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   /// 相关链接
-  Widget _buildLinks(ModDetail mod) {
+  Widget _buildLinks(ModDetail mod, ThemeData theme) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 0, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionTitle('相关链接', Icons.insert_link_rounded),
+            _buildSectionTitle('相关链接', theme, Icons.insert_link_rounded),
             CollapsibleChips(
               chips: [
                 for (final link in mod.links)
@@ -427,15 +440,14 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   /// 支持版本：按加载器分组展示,每组一个加载器标签 + 折叠 chips
-  Widget _buildModVersion(BuildContext context, ModDetail mod) {
-    final theme = Theme.of(context);
+  Widget _buildModVersion(ModDetail mod, ThemeData theme) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 0, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionTitle('支持版本', Icons.check_circle_rounded),
+            _buildSectionTitle('支持版本', theme, Icons.check_circle_rounded),
             for (final entry in mod.mcVersions.entries)
               if (entry.value.isNotEmpty) ...[
                 Text(
@@ -465,7 +477,7 @@ class _DetailPageState extends State<DetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionTitle('模组介绍', Icons.article_rounded),
+            _buildSectionTitle('模组介绍', theme, Icons.article_rounded),
             _buildHTML(mod, theme),
           ],
         ),

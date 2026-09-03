@@ -135,12 +135,47 @@ void main() {
     final merged = tester.getRect(
       cellOf(find.textContaining('横跨两列', findRichText: true)),
     );
-    expect(merged.width, greaterThan(500)); // 合并格占满整行宽
-    // 下一行的两列与合并格左右边缘对齐(证明列宽跨行一致)
+    // 合并格宽 = 下一行两列宽度之和(证明横跨了两列,自然列宽布局)
     final a = tester.getRect(cellOf(find.text('甲', findRichText: true)));
     final b = tester.getRect(cellOf(find.text('乙', findRichText: true)));
+    expect((merged.width - (a.width + b.width)).abs(), lessThan(4));
+    // 左右边缘跨行对齐(证明列宽一致)
     expect(a.left - merged.left, lessThan(20));
     expect(merged.right - b.right, lessThan(20));
+  });
+
+  testWidgets('合并单元格表格:内容自然列宽,超宽横向滚动', (tester) async {
+    // 4 列 rowspan 表,长标题使每列达到 240 上限,总宽约 960 > 800 视口
+    await tester.pumpWidget(
+      _wrap(
+        '<table><tr>'
+        '<th>这是一个非常长的功能列标题说明文字内容甲</th>'
+        '<th>这是一个非常长的功能列标题说明文字内容乙</th>'
+        '<th>这是一个非常长的功能列标题说明文字内容丙</th>'
+        '<th>这是一个非常长的功能列标题说明文字内容丁</th>'
+        '</tr><tr>'
+        '<td rowspan="2">物品列表</td><td>搜索</td><td>作弊</td><td>设置</td>'
+        '</tr><tr><td>快捷键设置</td><td>其他功能</td><td>辅助说明</td></tr>'
+        '</table>',
+      ),
+    );
+
+    // 合并表格也包在横向滚动容器里
+    final scsv = tester.widget<SingleChildScrollView>(
+      find
+          .byWidgetPredicate(
+            (w) =>
+                w is SingleChildScrollView &&
+                w.scrollDirection == Axis.horizontal,
+          )
+          .first,
+    );
+    // 关键回归:表格按内容自然宽布局,总宽超过视口(不被压窄)
+    expect(tester.getSize(find.byWidget(scsv.child!)).width, greaterThan(800));
+    // 合并格与各行内容渲染正常
+    expect(find.textContaining('物品列表搜索', findRichText: true), findsNothing);
+    expect(find.textContaining('快捷键设置', findRichText: true), findsOneWidget);
+    expect(find.textContaining('辅助说明', findRichText: true), findsOneWidget);
   });
 
   testWidgets('含行内头像图片的表格:固有宽度测量不触发框架断言', (tester) async {

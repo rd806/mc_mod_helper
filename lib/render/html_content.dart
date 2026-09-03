@@ -434,13 +434,15 @@ class HtmlContent extends StatelessWidget {
   }
 
   /// 含合并单元格(rowspan/colspan)的表格:Flutter 的 Table 不支持,
-  /// 改用「IntrinsicHeight(Row) + Expanded(flex)」网格模型渲染。
+  /// 改用「IntrinsicHeight(Row) + 定宽单元格」网格模型渲染。
   ///
-  /// - 列宽权重:每列按其内容文本长度(CJK 字符约等于一个字符宽,上限 12),
-  ///   保证多列表格列宽不被等分压窄;
-  /// - 横向合并:单元格 Expanded(flex = 所跨列的权重和),天然对齐;
+  /// - 列宽:每列按内容自然宽(文本用 TextPainter 实测、图片取属性宽,
+  ///   横向合并格的内容宽按列数均摊),单列上限 240px——与文字表格
+  ///   路径一致,多列表格列宽不被压窄;
+  /// - 横向合并:单元格宽 = 所跨列宽之和,天然对齐;
   /// - 纵向合并:锚定格画内容,下方各行用带边线的占位格延续单元格轮廓
-  ///   (只画左右边线、最后一行补底边线),视觉上就是一个合并单元格。
+  ///   (只画左右边线、最后一行补底边线),视觉上就是一个合并单元格;
+  /// - 整表按内容自然宽布局,超出容器时横向滚动(桌面端支持鼠标拖拽)。
   Widget _buildSpanGrid(
     BuildContext context,
     ThemeData theme,
@@ -485,20 +487,39 @@ class HtmlContent extends StatelessWidget {
       }
     }
 
-    // 2. 列宽权重:每列取所覆盖单元格的最大文本长度(1..12)
-    final colFlex = List.generate(colCount, (c) {
-      var len = 1;
+    // 2. 列自然宽度:每列取所覆盖单元格的最大内容宽
+    //    (文本用 TextPainter 实测、图片取属性宽),加左右内边距,
+    //    单列上限 240px——与文字表格路径的列宽规则一致
+    double cellWidth(dom.Element el) {
+      // 文本自然宽(多行取最长行)
+      final tp = TextPainter(
+        text: TextSpan(text: el.text.trim(), style: base),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      var w = tp.width;
+      // 图片:取属性宽(如 100px 头像),无属性按图标尺寸兜底
+      for (final img in el.querySelectorAll('img')) {
+        final a = _attrPx(img.attributes['width']);
+        final iw = a ?? 24.0;
+        if (iw > w) w = iw;
+      }
+      return w;
+    }
+
+    final colWidth = List.generate(colCount, (c) {
+      var w = 0.0;
       for (final cell in placed) {
         if (cell.col <= c && c < cell.col + cell.colSpan) {
-          final l = cell.el.text.trim().length;
-          if (l > len) len = l;
+          // 横向合并格的内容宽按列数均摊到各列
+          final share = cellWidth(cell.el) / cell.colSpan;
+          if (share > w) w = share;
         }
       }
-      return len > 12 ? 12 : len;
+      return (w + 12).clamp(24.0, 240.0); // + 单元格左右内边距 6*2
     });
-    int flexOf(_GridCell cell) => colFlex
+    double cellTotal(_GridCell cell) => colWidth
         .sublist(cell.col, cell.col + cell.colSpan)
-        .fold(0, (a, b) => a + b);
+        .fold(0.0, (a, b) => a + b);
 
     // 3. 边框:外框画上/左边线,单元格只画右/底边线,
     //    相邻单元格共线呈现单线;合并单元格内部不画线
@@ -543,7 +564,9 @@ class HtmlContent extends StatelessWidget {
       return null;
     }
 
-    // 单行单元格序列:锚定格 → 内容格;被上方合并覆盖的位置 → 占位格
+    // 单行单元格序列:锚定格 → 内容格;被上方合并覆盖的位置 → 占位格。
+    // 每格按所跨列宽之和定宽,整表按内容自然宽布局,
+    // 超出容器时由外层横向滚动容器兜底
     List<Widget> rowCells(int r) {
       final children = <Widget>[];
       var c = 0;
@@ -557,14 +580,16 @@ class HtmlContent extends StatelessWidget {
         }
         if (cell != null) {
           c += cell.colSpan;
-          children.add(Expanded(flex: flexOf(cell), child: cellBox(cell)));
+          children.add(
+            SizedBox(width: cellTotal(cell), child: cellBox(cell)),
+          );
         } else {
           final anchor = anchorAt(r, c);
           final span = anchor?.colSpan ?? 1; // 兜底:畸形表格按 1 列
           c += span;
           children.add(
-            Expanded(
-              flex: anchor == null ? 1 : flexOf(anchor),
+            SizedBox(
+              width: anchor == null ? colWidth[0] : cellTotal(anchor),
               child: anchor == null ? const SizedBox() : placeholder(anchor, r),
             ),
           );
@@ -573,23 +598,25 @@ class HtmlContent extends StatelessWidget {
       return children;
     }
 
+    final grid = Container(
+      decoration: BoxDecoration(border: Border(top: side, left: side)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var r = 0; r < rows.length; r++)
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: rowCells(r),
+              ),
+            ),
+        ],
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        decoration: BoxDecoration(border: Border(top: side, left: side)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var r = 0; r < rows.length; r++)
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: rowCells(r),
-                ),
-              ),
-          ],
-        ),
-      ),
+      child: _wrapTableScroll(context, grid),
     );
   }
 

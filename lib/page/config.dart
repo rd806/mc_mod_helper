@@ -51,6 +51,11 @@ class _ConfigPageState extends State<ConfigPage> {
     ('Hyper', 'hyperViewer'),
   ];
 
+  static const List<(String, ModSource)> _modSource = [
+    ('MC百科', ModSource.mcmod),
+    ('Modrinth', ModSource.modrinth)
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -253,26 +258,41 @@ class _ConfigPageState extends State<ConfigPage> {
   /// 搜索/详情数据来源(MC百科/Modrinth),修改后持久化
   Widget _buildDataSourceSection(BuildContext context, SettingsService s) {
     final theme = Theme.of(context);
+
+    // 转换为 DropdownMenuItem 列表
+    final dropdownItems = _modSource.map<DropdownMenuItem<ModSource>>((item) {
+      final (label, value) = item;
+      return DropdownMenuItem<ModSource>(value: value, child: Text(label));
+    }).toList();
+
+    final selectedValue = SettingsService.dataSources.contains(s.dataSource)
+        ? s.dataSource
+        : ModSource.mcmod;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
       child: Row(
         children: [
           Text('数据来源', style: theme.textTheme.bodyMedium),
           Spacer(),
-          SegmentedButton<ModSource>(
-            segments: const [
-              ButtonSegment(value: ModSource.mcmod, label: Text('MC百科')),
-              ButtonSegment(value: ModSource.modrinth, label: Text('Modrinth')),
-            ],
-            // 防御:存档值不在选项内时回落显示 "MC百科"
-            selected: {
-              SettingsService.dataSources.contains(s.dataSource)
-                  ? s.dataSource
-                  : ModSource.mcmod,
+          // 使用下拉框
+          DropdownButton<ModSource>(
+            value: selectedValue,
+            items: dropdownItems,
+            onChanged: (ModSource? newValue) {
+              if (newValue != null) {
+                SettingsService.instance.setDataSource(newValue);
+              }
             },
-            showSelectedIcon: false,
-            onSelectionChanged: (selection) =>
-                SettingsService.instance.setDataSource(selection.first),
+            // 样式定制（可选）
+            style: theme.textTheme.bodyMedium,
+            // 设置为透明下划线
+            underline: Container(height: 0, color: Colors.transparent),
+            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
+            // 如果希望下拉框宽度自适应内容
+            isDense: false,
+            // 禁用焦点和悬停效果
+            focusColor: Colors.transparent,
           ),
         ],
       ),

@@ -9,6 +9,7 @@ class ModDetail {
     required this.title,
     this.subName,
     this.description,
+    this.statistics,
     this.coverUrl,
     this.links = const [],
     this.mcVersions = const {},
@@ -32,6 +33,9 @@ class ModDetail {
   /// - mcmod：来自正文面板的富文本 HTML,无面板时回退 wiki 简介
   /// - modrinth：API 的 body Markdown 经 markdownToHtml 转换,原生 HTML 透传
   final String? description;
+
+  /// 统计数据
+  final List<(String, String)>? statistics;
 
   /// 封面图地址
   final String? coverUrl;

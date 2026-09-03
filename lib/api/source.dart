@@ -1,3 +1,4 @@
+import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/model/mod_category.dart';
 import 'package:mc_mod_helper/model/mod_summary.dart';
 
@@ -5,10 +6,10 @@ import 'mcmod.dart';
 import 'modrinth.dart';
 
 /// 模组信息来源
-enum ModSource { mcmod, modrinth }
+enum ModSource { mcmod, modrinth, curseforge }
 
 class SourceManager {
-  /// 字符串转ModSource
+  /// 字符串转 ModSource
   static ModSource fromString(String? value) {
     return ModSource.values.firstWhere(
       (e) => e.name == value,
@@ -23,6 +24,8 @@ class SourceManager {
         return await McmodApi.getCategories();
       case ModSource.modrinth:
         return await ModrinthApi.getCategories();
+      case ModSource.curseforge:
+        return await CurseforgeApi.getCategories();
     }
   }
 
@@ -35,6 +38,8 @@ class SourceManager {
         return await McmodApi.search(keyword);
       case ModSource.modrinth:
         return await ModrinthApi.search(keyword);
+      case ModSource.curseforge:
+        return await CurseforgeApi.search(keyword);
     }
   }
 
@@ -45,6 +50,8 @@ class SourceManager {
         return 'https://www.mcmod.cn/class/$id.html';
       case ModSource.modrinth:
         return 'https://modrinth.com/mod/$id';
+      case ModSource.curseforge:
+        return 'https://www.curseforge.com/minecraft/mc-mods/$id';
     }
   }
 
@@ -55,6 +62,8 @@ class SourceManager {
         return 'MC百科';
       case ModSource.modrinth:
         return 'Modrinth';
+      case ModSource.curseforge:
+        return 'CurseForge';
     }
   }
 }

@@ -672,6 +672,33 @@ class McmodApi {
       return parts.map(convertToEnum).toList();
     }
 
+    // 统计信息(最多 3 项):总浏览、昨日指数,再补面板其余条目。
+    // 页面结构:.infos > .span 每块是 数值(.n) + 标签(.t);
+    // 昨日指数单独在头部文本里(如 '昨日指数: 9080')
+    List<(String, String)>? parseStatistics() {
+      final panel = <(String, String)>[];
+      for (final span in doc.querySelectorAll('.infos .span')) {
+        final n = span.querySelector('.n')?.text.trim() ?? '';
+        final t = span.querySelector('.t')?.text.trim() ?? '';
+        if (n.isEmpty || t.isEmpty) continue;
+        panel.add((_statKey(t), n));
+        if (panel.length >= 3) break;
+      }
+      if (panel.isEmpty) return null;
+      // 排序:面板第一条(通常总浏览)最前,其次昨日指数,再补其余条目
+      final stats = <(String, String)>[panel.first];
+      final index =
+          RegExp(r'昨日指数[:：]\s*([0-9]+)').firstMatch(doc.body?.text ?? '');
+      if (index != null && stats.length < 3) {
+        stats.add(('index', index.group(1)!));
+      }
+      for (final s in panel.skip(1)) {
+        if (stats.length >= 3) break;
+        stats.add(s);
+      }
+      return stats;
+    }
+
     // 简介:取详情页正文面板(.text-area.common-text)的全部富文本 HTML,
     // 即完整的“模组介绍”内容;页面没有该面板时回退到搜索页 wiki 简介
     final description =
@@ -688,7 +715,21 @@ class McmodApi {
       mcVersions: mcVersions,
       platform: field('支持平台'),
       environment: getEnvironment(field('运行环境')),
+      statistics: parseStatistics(),
     );
+  }
+
+  /// 统计面板标签 → 统计 key(cover 按 key 选图标;未知标签原样保留,
+  /// 由兜底卡片按原文展示)
+  static String _statKey(String label) {
+    switch (label) {
+      case '总浏览':
+        return 'views';
+      case '资料填充率':
+        return 'fillRate';
+      default:
+        return label;
+    }
   }
 
   /// 提取详情页正文面板的全部富文本 HTML。

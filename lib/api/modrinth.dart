@@ -263,6 +263,7 @@ class ModrinthApi {
       title: title,
       subName: null,
       description: html.isEmpty ? null : html,
+      statistics: _getStatistic(data),
       coverUrl: data['icon_url'] as String?,
       links: _buildLinks(data),
       mcVersions: _parseVersionsByLoader(versionsBody),
@@ -271,6 +272,27 @@ class ModrinthApi {
       source: ModSource.modrinth,
     );
   }
+
+
+  /// 获取统计信息
+  /// - 下载：downloads
+  /// - 关注：followers
+  static List<(String, String)> _getStatistic(Map<String, dynamic> data) {
+    List<(String, String)> statistic = [];
+
+    final downloads = (data['downloads'] as num?)?.toInt();
+    if (downloads != null) {
+      statistic.add(('downloads', _formatCount(downloads)));
+    }
+
+    final followers = (data['followers'] as num?)?.toInt();
+    if (followers != null) {
+      statistic.add(('followers', _formatCount(followers)));
+    }
+
+    return statistic;
+  }
+
 
   /// 版本列表 → 加载器 → 版本号 的分组映射。
   ///

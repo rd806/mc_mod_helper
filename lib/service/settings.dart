@@ -37,6 +37,7 @@ class SettingsService extends ChangeNotifier {
   static const List<ModSource> dataSources = [
     ModSource.mcmod,
     ModSource.modrinth,
+    ModSource.curseforge
   ];
 
   /// 渲染方法

@@ -109,12 +109,15 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // 数据来源区块存在,切到 Modrinth
+    // 数据来源区块存在,下拉框切到 Modrinth(选项文本只在菜单打开后出现)
     expect(find.text('数据来源'), findsOneWidget);
-    await tester.ensureVisible(find.text('Modrinth'));
+    await tester.ensureVisible(find.byType(DropdownButton<ModSource>));
     await tester.pump();
-    await tester.tap(find.text('Modrinth'));
-    // dataSource 不触发主页重拉(无新 Timer),pumpAndSettle 只收尾按钮动画,安全
+    await tester.tap(find.byType(DropdownButton<ModSource>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Modrinth').last);
+    // dataSource 变化触发主页分类重拉(ModrinthApi 首次请求无节流 Timer),
+    // pumpAndSettle 收尾重拉与按钮动画,安全
     await tester.pumpAndSettle();
     expect(SettingsService.instance.dataSource, ModSource.modrinth);
   });
