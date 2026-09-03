@@ -16,18 +16,33 @@ import 'package:mc_mod_helper/service/settings.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
 http.Response _json(Object data) => http.Response.bytes(
-      utf8.encode(jsonEncode(data)),
-      200,
-      headers: {'content-type': 'application/json; charset=utf-8'},
-    );
+  utf8.encode(jsonEncode(data)),
+  200,
+  headers: {'content-type': 'application/json; charset=utf-8'},
+);
 
 /// 搜索 + 详情两条路由的假响应
 Future<http.Response> _handler(http.Request request) async {
   if (request.url.path == '/v2/tag/category') {
     return _json([
-      {'icon': '', 'name': 'technology', 'project_type': 'mod', 'header': 'categories'},
-      {'icon': '', 'name': 'magic', 'project_type': 'mod', 'header': 'categories'},
-      {'icon': '', 'name': '128x', 'project_type': 'resourcepack', 'header': 'resolutions'},
+      {
+        'icon': '',
+        'name': 'technology',
+        'project_type': 'mod',
+        'header': 'categories',
+      },
+      {
+        'icon': '',
+        'name': 'magic',
+        'project_type': 'mod',
+        'header': 'categories',
+      },
+      {
+        'icon': '',
+        'name': '128x',
+        'project_type': 'resourcepack',
+        'header': 'resolutions',
+      },
     ]);
   }
   if (request.url.path == '/v2/search') {
@@ -64,7 +79,8 @@ Future<http.Response> _handler(http.Request request) async {
   if (request.url.path == '/v2/project/sodium') {
     return _json({
       'title': 'Sodium',
-      'body': '## 简介\n\n高性能渲染引擎。\n\n<div style="color:red">原始HTML</div>\n\n'
+      'body':
+          '## 简介\n\n高性能渲染引擎。\n\n<div style="color:red">原始HTML</div>\n\n'
           '| 按键 | 功能 |\n| --- | --- |\n| F3 | 调试信息 |',
       'icon_url': 'https://cdn.modrinth.com/data/sodium_icon.png',
       'game_versions': ['1.21.1'],
@@ -81,8 +97,14 @@ Future<http.Response> _handler(http.Request request) async {
   if (request.url.path == '/v2/project/sodium/version') {
     // 版本列表:条目带 loaders[] 与 game_versions[],按加载器聚合
     return _json([
-      {'loaders': ['fabric'], 'game_versions': ['1.21.1', '1.20.4']},
-      {'loaders': ['forge'], 'game_versions': ['1.20.4']},
+      {
+        'loaders': ['fabric'],
+        'game_versions': ['1.21.1', '1.20.4'],
+      },
+      {
+        'loaders': ['forge'],
+        'game_versions': ['1.20.4'],
+      },
     ]);
   }
   return http.Response('not found', 404);
@@ -209,7 +231,10 @@ void main() {
     // 顶到视口外(ListView 懒构建不渲染),把右栏 ListView 往上拖再断言。
     // 右栏 = DetailPage 下第二个 ListView(左栏是第一个)
     final rightList = find
-        .descendant(of: find.byType(DetailPage), matching: find.byType(ListView))
+        .descendant(
+          of: find.byType(DetailPage),
+          matching: find.byType(ListView),
+        )
         .at(1);
     await tester.drag(rightList, const Offset(0, -400));
     await tester.pumpAndSettle();

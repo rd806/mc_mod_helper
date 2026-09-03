@@ -28,14 +28,16 @@ class ModTile extends StatelessWidget {
           ),
         ),
         // 描述
-        subtitle: mod.description.isEmpty ? null : Text(
-          mod.description,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant
-          ),
-        ),
+        subtitle: mod.description.isEmpty
+            ? null
+            : Text(
+                mod.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           Navigator.of(context).push(

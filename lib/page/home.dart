@@ -275,7 +275,7 @@ class _HomePageState extends State<HomePage> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           // 固定高度的卡片
-          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent (
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 300,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,

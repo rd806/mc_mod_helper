@@ -46,7 +46,7 @@ class _CollapsibleChipsState extends State<CollapsibleChips> {
     if (wrapBox == null || chipBox == null || !mounted) return;
     setState(() {
       _measured = true;
-      _twoLineHeight = chipBox.size.height * 2 + 8; // runSpacing 8
+      _twoLineHeight = chipBox.size.height * 2 + 6; // runSpacing 6
       _overflow = wrapBox.size.height > _twoLineHeight + 1;
     });
   }
@@ -56,8 +56,8 @@ class _CollapsibleChipsState extends State<CollapsibleChips> {
   Widget _buildWrap({GlobalKey? wrapKey, bool tagFirst = false}) {
     return Wrap(
       key: wrapKey,
-      spacing: 8,
-      runSpacing: 8,
+      spacing: 6,
+      runSpacing: 6,
       children: [
         for (var i = 0; i < widget.chips.length; i++)
           KeyedSubtree(

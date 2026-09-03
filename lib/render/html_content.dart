@@ -14,7 +14,8 @@ import 'package:html/parser.dart' as html_parser;
 /// 支持的标签:块级 p/div/h1-h6/ul/ol/li/table/blockquote/pre/
 /// details/hr/center;行内 b/strong/i/em/u/del/code/a/img/br/span
 /// (样式取 color、background-color、font-weight、font-style、
-/// text-decoration、font-size)。与 fwfh 一致,表格不支持 colspan/rowspan(单元格按出现顺序渲染)。
+/// text-decoration、font-size)。表格支持 colspan/rowspan 合并单元格
+/// (含合并单元格的表格走自定义网格模型渲染)。
 class HtmlContent extends StatelessWidget {
   const HtmlContent({
     super.key,
@@ -89,16 +90,20 @@ class HtmlContent extends StatelessWidget {
       case 'h5':
       case 'h6':
         // 标题:按级别放大加粗(与 bbcode [h1=]~[h4=] 的系数一致)
-        const sizes = {'h1': 1.5, 'h2': 1.35, 'h3': 1.2, 'h4': 1.1, 'h5': 1.05, 'h6': 1.0};
+        const sizes = {
+          'h1': 1.5,
+          'h2': 1.35,
+          'h3': 1.2,
+          'h4': 1.1,
+          'h5': 1.05,
+          'h6': 1.0,
+        };
         final size = (base.fontSize ?? 14) * sizes[el.localName]!;
         final spans = _buildInline(context, theme, base, el.nodes);
         return _block(
           Text.rich(
             TextSpan(
-              style: base.copyWith(
-                fontSize: size,
-                fontWeight: FontWeight.bold,
-              ),
+              style: base.copyWith(fontSize: size, fontWeight: FontWeight.bold),
               children: spans,
             ),
           ),
@@ -144,31 +149,38 @@ class HtmlContent extends StatelessWidget {
       case 'details':
         // 剧透内容(bbcode [spoiler]):折叠块,点击展开;
         // 不用 ExpansionTile(内部 InkWell 会引入 MouseRegion)
-        final summary =
-            el.querySelector('summary')?.text.trim() ?? '展开';
+        final summary = el.querySelector('summary')?.text.trim() ?? '展开';
         return _Spoiler(
           summary: summary.isEmpty ? '展开' : summary,
           builder: (context) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: _buildBlocks(
-              context,
-              theme,
-              base,
-              [
-                for (final n in el.nodes)
-                  if (!(n is dom.Element && n.localName == 'summary')) n,
-              ],
-              listDepth,
-            ),
+            children: _buildBlocks(context, theme, base, [
+              for (final n in el.nodes)
+                if (!(n is dom.Element && n.localName == 'summary')) n,
+            ], listDepth),
           ),
         );
       case 'br':
         return const SizedBox(height: 4);
+      case 'img':
+        // 块级位置的图片(如单元格里 <img><br>文字 的结构,图片未被
+        // <a> 包裹):按属性尺寸或自然尺寸渲染,不进入行内兜底
+        return _block(
+          _image(
+            el.attributes['src'] ?? '',
+            height: _attrPx(el.attributes['height']) ?? 0,
+            width: _attrPx(el.attributes['width']),
+          ),
+          bottom: 8,
+        );
       default:
         // 未知标签(span 等):按行内渲染兜底
         final spans = _buildInline(context, theme, base, el.nodes);
         if (spans.isEmpty) return null;
-        return _block(Text.rich(TextSpan(style: base, children: spans)), bottom: 8);
+        return _block(
+          Text.rich(TextSpan(style: base, children: spans)),
+          bottom: 8,
+        );
     }
   }
 
@@ -182,12 +194,14 @@ class HtmlContent extends StatelessWidget {
   ) {
     final src = _imageOnlySrc(el);
     if (src != null) {
-      return _blockImage(src, height: _contentImageHeight, onTap: () => onLinkTap(src));
+      return _blockImage(
+        src,
+        height: _contentImageHeight,
+        onTap: () => onLinkTap(src),
+      );
     }
     final style = _parseBlockStyle(el.attributes['style']);
-    final align = el.localName == 'center'
-        ? TextAlign.center
-        : style.align;
+    final align = el.localName == 'center' ? TextAlign.center : style.align;
     final pBase = base.copyWith(
       fontSize: (base.fontSize ?? 14) * style.fontSizeFactor,
       fontWeight: style.bold ? FontWeight.bold : base.fontWeight,
@@ -214,8 +228,8 @@ class HtmlContent extends StatelessWidget {
   ) {
     final ordered = el.localName == 'ol';
     final items = el.children.whereType<dom.Element>().where(
-          (c) => c.localName == 'li',
-        );
+      (c) => c.localName == 'li',
+    );
     var index = 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -233,7 +247,13 @@ class HtmlContent extends StatelessWidget {
                     child: Text(ordered ? '${++index}.' : '•', style: base),
                   ),
                   Expanded(
-                    child: _richContent(context, theme, base, li, listDepth + 1),
+                    child: _richContent(
+                      context,
+                      theme,
+                      base,
+                      li,
+                      listDepth + 1,
+                    ),
                   ),
                 ],
               ),
@@ -266,28 +286,75 @@ class HtmlContent extends StatelessWidget {
     ];
     if (rows.isEmpty) return const SizedBox.shrink();
     final colCount = rows.fold<int>(0, (m, r) => r.length > m ? r.length : m);
-    // 画廊判定:存在只含图片的单元格
-    final isGallery = rows.any((r) => r.any((c) => _imageOnlySrc(c) != null));
+    // 画廊判定:存在只含图片的单元格,或单图+图下说明的图注格
+    final isGallery = rows.any(
+      (r) => r.any(
+        (c) => _imageOnlySrc(c) != null || _captionImageSrc(c) != null,
+      ),
+    );
+    // 合并单元格(rowspan/colspan):Table 控件不支持,
+    // 改用自定义网格模型渲染(见 _buildSpanGrid)
+    final hasSpan = rows.any(
+      (r) => r.any((c) {
+        final rs = int.tryParse(c.attributes['rowspan'] ?? '');
+        final cs = int.tryParse(c.attributes['colspan'] ?? '');
+        return (rs != null && rs > 1) || (cs != null && cs > 1);
+      }),
+    );
+    if (hasSpan) {
+      return _buildSpanGrid(context, theme, base, rows, colCount, isGallery);
+    }
+    final table = Table(
+      columnWidths: isGallery
+          // 画廊:等宽列,图片随容器缩放
+          ? {for (var i = 0; i < colCount; i++) i: const FlexColumnWidth(1)}
+          // 文字表格:每列按内容自然宽度(上限 240px,过长才在列内换行)。
+          // 多列表格(如 JEI 的物品表)列宽不再被等分压窄
+          : {
+              for (var i = 0; i < colCount; i++)
+                i: const _CappedIntrinsicColumnWidth(240),
+            },
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      // 画廊与文字表格统一单线框线(TableBorder.all 一条边只画一次)
+      border: TableBorder.all(color: theme.colorScheme.outlineVariant),
+      children: [
+        for (final row in rows)
+          TableRow(
+            children: [
+              for (var i = 0; i < colCount; i++)
+                if (i < row.length)
+                  _buildCell(context, theme, base, row[i], isGallery)
+                else
+                  const TableCell(child: SizedBox()),
+            ],
+          ),
+      ],
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Table(
-        columnWidths: {
-          for (var i = 0; i < colCount; i++) i: const FlexColumnWidth(1),
+      child: isGallery
+          ? table
+          // 文字表格:总宽超过容器时横向滚动(桌面端支持鼠标拖拽)
+          : _wrapTableScroll(context, table),
+    );
+  }
+
+  /// 文字表格的横向滚动容器:表格总宽超过容器时左右滚动,
+  /// 桌面端 ScrollBehavior 默认不认鼠标拖拽,补上鼠标/触控板
+  Widget _wrapTableScroll(BuildContext context, Widget table) {
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(
+        dragDevices: {
+          PointerDeviceKind.touch,
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.stylus,
+          PointerDeviceKind.trackpad,
+          PointerDeviceKind.invertedStylus,
         },
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        border: isGallery ? null : TableBorder.all(color: theme.colorScheme.outlineVariant),
-        children: [
-          for (final row in rows)
-            TableRow(
-              children: [
-                for (var i = 0; i < colCount; i++)
-                  if (i < row.length)
-                    _buildCell(context, theme, base, row[i], isGallery)
-                  else
-                    const TableCell(child: SizedBox()),
-              ],
-            ),
-        ],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: table,
       ),
     );
   }
@@ -301,36 +368,227 @@ class HtmlContent extends StatelessWidget {
     dom.Element cell,
     bool isGallery,
   ) {
+    return TableCell(
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: _cellContent(context, theme, base, cell, isGallery),
+      ),
+    );
+  }
+
+  /// 单元格内容构建(Table 路径与合并单元格网格路径共用)
+  Widget _cellContent(
+    BuildContext context,
+    ThemeData theme,
+    TextStyle base,
+    dom.Element cell,
+    bool isGallery,
+  ) {
     final src = _imageOnlySrc(cell);
-    final Widget content;
     if (src != null) {
-      content = _image(
+      return _image(
         src,
         height: isGallery ? _galleryImageHeight : _contentImageHeight,
+        width: double.infinity,
         onTap: () => onLinkTap(src),
       );
-    } else if (cell.children.whereType<dom.Element>().any(_isBlockTag)) {
-      content = Column(
+    }
+    // 图注格:单图 + 图下方说明文字 → 图片可点灯箱,说明渲染在下方
+    final captionSrc = _captionImageSrc(cell);
+    if (captionSrc != null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _image(
+            captionSrc,
+            height: isGallery ? _galleryImageHeight : _contentImageHeight,
+            width: double.infinity,
+            onTap: () => onLinkTap(captionSrc),
+          ),
+          ..._captionBlocks(context, theme, base, cell),
+        ],
+      );
+    }
+    if (cell.children.whereType<dom.Element>().any(_isBlockTag)) {
+      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: _buildBlocks(context, theme, base, cell.nodes, 0),
       );
-    } else if (cell.localName == 'th') {
-      content = Text.rich(
+    }
+    if (cell.localName == 'th') {
+      return Text.rich(
         TextSpan(
           style: base.copyWith(fontWeight: FontWeight.bold),
           children: _buildInline(context, theme, base, cell.nodes),
         ),
         textAlign: TextAlign.center,
       );
-    } else {
-      content = Text.rich(
-        TextSpan(style: base, children: _buildInline(context, theme, base, cell.nodes)),
+    }
+    return Text.rich(
+      TextSpan(
+        style: base,
+        children: _buildInline(context, theme, base, cell.nodes),
+      ),
+    );
+  }
+
+  /// 含合并单元格(rowspan/colspan)的表格:Flutter 的 Table 不支持,
+  /// 改用「IntrinsicHeight(Row) + Expanded(flex)」网格模型渲染。
+  ///
+  /// - 列宽权重:每列按其内容文本长度(CJK 字符约等于一个字符宽,上限 12),
+  ///   保证多列表格列宽不被等分压窄;
+  /// - 横向合并:单元格 Expanded(flex = 所跨列的权重和),天然对齐;
+  /// - 纵向合并:锚定格画内容,下方各行用带边线的占位格延续单元格轮廓
+  ///   (只画左右边线、最后一行补底边线),视觉上就是一个合并单元格。
+  Widget _buildSpanGrid(
+    BuildContext context,
+    ThemeData theme,
+    TextStyle base,
+    List<List<dom.Element>> rows,
+    int colCount,
+    bool isGallery,
+  ) {
+    // 1. 按 rowspan/colspan 填充占用网格,收集锚定格
+    final occupied = List.generate(
+      rows.length,
+      (_) => List.filled(colCount, false),
+    );
+    final placed = <_GridCell>[];
+    for (var r = 0; r < rows.length; r++) {
+      var c = 0;
+      for (final cell in rows[r]) {
+        // 跳过被上方合并单元格占用的位置
+        while (c < colCount && occupied[r][c]) {
+          c++;
+        }
+        if (c >= colCount) break; // 畸形行:超出列数,丢弃多余单元格
+        final rs = int.tryParse(cell.attributes['rowspan'] ?? '');
+        final cs = int.tryParse(cell.attributes['colspan'] ?? '');
+        final rowSpan = (rs == null || rs < 1) ? 1 : rs;
+        final colSpan = (cs == null || cs < 1) ? 1 : cs;
+        for (var rr = r; rr < r + rowSpan && rr < rows.length; rr++) {
+          for (var cc = c; cc < c + colSpan && cc < colCount; cc++) {
+            occupied[rr][cc] = true;
+          }
+        }
+        placed.add(
+          _GridCell(
+            el: cell,
+            row: r,
+            col: c,
+            rowSpan: rowSpan,
+            colSpan: colSpan,
+          ),
+        );
+        c += colSpan;
+      }
+    }
+
+    // 2. 列宽权重:每列取所覆盖单元格的最大文本长度(1..12)
+    final colFlex = List.generate(colCount, (c) {
+      var len = 1;
+      for (final cell in placed) {
+        if (cell.col <= c && c < cell.col + cell.colSpan) {
+          final l = cell.el.text.trim().length;
+          if (l > len) len = l;
+        }
+      }
+      return len > 12 ? 12 : len;
+    });
+    int flexOf(_GridCell cell) => colFlex
+        .sublist(cell.col, cell.col + cell.colSpan)
+        .fold(0, (a, b) => a + b);
+
+    // 3. 边框:外框画上/左边线,单元格只画右/底边线,
+    //    相邻单元格共线呈现单线;合并单元格内部不画线
+    final side = BorderSide(color: theme.colorScheme.outlineVariant);
+    Widget cellBox(_GridCell cell) {
+      return Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          // 纵向合并的锚定格不画底边(由占位格延续轮廓)
+          border: Border(
+            right: side,
+            bottom: cell.rowSpan == 1 ? side : BorderSide.none,
+          ),
+        ),
+        child: Center(
+          child: _cellContent(context, theme, base, cell.el, isGallery),
+        ),
       );
     }
-    return TableCell(
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: content,
+
+    Widget placeholder(_GridCell anchor, int r) {
+      final isLastRow = anchor.row + anchor.rowSpan - 1 == r;
+      return Container(
+        decoration: BoxDecoration(
+          border: Border(
+            right: side,
+            bottom: isLastRow ? side : BorderSide.none,
+          ),
+        ),
+      );
+    }
+
+    _GridCell? anchorAt(int r, int c) {
+      for (final cell in placed) {
+        if (cell.row < r &&
+            cell.row + cell.rowSpan > r &&
+            cell.col <= c &&
+            cell.col + cell.colSpan > c) {
+          return cell;
+        }
+      }
+      return null;
+    }
+
+    // 单行单元格序列:锚定格 → 内容格;被上方合并覆盖的位置 → 占位格
+    List<Widget> rowCells(int r) {
+      final children = <Widget>[];
+      var c = 0;
+      while (c < colCount) {
+        _GridCell? cell;
+        for (final p in placed) {
+          if (p.row == r && p.col == c) {
+            cell = p;
+            break;
+          }
+        }
+        if (cell != null) {
+          c += cell.colSpan;
+          children.add(Expanded(flex: flexOf(cell), child: cellBox(cell)));
+        } else {
+          final anchor = anchorAt(r, c);
+          final span = anchor?.colSpan ?? 1; // 兜底:畸形表格按 1 列
+          c += span;
+          children.add(
+            Expanded(
+              flex: anchor == null ? 1 : flexOf(anchor),
+              child: anchor == null ? const SizedBox() : placeholder(anchor, r),
+            ),
+          );
+        }
+      }
+      return children;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        decoration: BoxDecoration(border: Border(top: side, left: side)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var r = 0; r < rows.length; r++)
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: rowCells(r),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -386,24 +644,30 @@ class HtmlContent extends StatelessWidget {
         style = const TextStyle(decoration: TextDecoration.lineThrough);
         break;
       case 'code':
-        style = _monoStyle(theme, base).copyWith(
-          fontSize: (base.fontSize ?? 14) * 0.9,
-        );
+        style = _monoStyle(
+          theme,
+          base,
+        ).copyWith(fontSize: (base.fontSize ?? 14) * 0.9);
         break;
       case 'br':
         return const TextSpan(text: '\n');
       case 'img':
-        // 行内图片(表格里图标与文字混排等):自然尺寸,加载失败显示占位
+        // 行内图片(头像、图标与文字混排):带宽高属性时按属性尺寸
+        // (如贡献者表格的 100px 头像),否则自然尺寸。
+        // 宽度必须有界:无限宽会触发固有宽度测量的框架断言
+        final w = _attrPx(el.attributes['width']);
+        final h = _attrPx(el.attributes['height']);
         return WidgetSpan(
           alignment: PlaceholderAlignment.middle,
-          child: _image(el.attributes['src'] ?? '', height: 0),
+          child: _image(el.attributes['src'] ?? '', height: h ?? 0, width: w),
         );
       case 'a':
         // 链接:TextSpan recognizer 处理点击,不包 MouseRegion。
         // 注意:RenderParagraph 命中测试只把字形所在的最深层 span 加入
         // 命中路径,识别器必须挂在叶子文本 span 上才生效
         final href = el.attributes['href'] ?? '';
-        final recognizer = TapGestureRecognizer()..onTap = () => onLinkTap(href);
+        final recognizer = TapGestureRecognizer()
+          ..onTap = () => onLinkTap(href);
         final children = _attachRecognizer(
           _buildInline(context, theme, base, el.nodes),
           recognizer,
@@ -466,7 +730,10 @@ class HtmlContent extends StatelessWidget {
       );
     }
     return Text.rich(
-      TextSpan(style: base, children: _buildInline(context, theme, base, el.nodes)),
+      TextSpan(
+        style: base,
+        children: _buildInline(context, theme, base, el.nodes),
+      ),
     );
   }
 
@@ -475,20 +742,36 @@ class HtmlContent extends StatelessWidget {
   static const double _galleryImageHeight = 180;
   static const double _contentImageHeight = 280;
 
-  /// 图片:固定高度占满宽度、contain 不裁切;加载中/失败显示占位
-  Widget _image(String url, {required double height, VoidCallback? onTap}) {
-    final placeholderHeight = height <= 0 ? 80.0 : height;
+  /// 解析 '100px'/'100px;' 形式的宽高属性为数值,非法返回 null
+  static double? _attrPx(String? value) {
+    if (value == null) return null;
+    final m = RegExp(r'\d+(?:\.\d+)?').firstMatch(value);
+    return m == null ? null : double.parse(m.group(0)!);
+  }
+
+  /// 图片:给定 [width] 时为固定宽盒(块级图片传 double.infinity 占满行宽),
+  /// 为 null 时按自然宽度(行内图标/头像)。
+  /// 占位尺寸必须有界:行内图片在段落里参与固有宽度测量,
+  /// 无限宽会让 TextPainter 断言 'maxIntrinsicLineExtent.isFinite' 失败
+  Widget _image(
+    String url, {
+    required double height,
+    double? width,
+    VoidCallback? onTap,
+  }) {
+    final placeholderHeight = height <= 0 ? 24.0 : height;
+    final placeholderWidth = width ?? placeholderHeight;
     final img = Image.network(
       url,
       fit: BoxFit.contain,
-      width: double.infinity,
+      width: width,
       height: height <= 0 ? null : height,
-      // 加载中占位:保持固定高度,加载前后不引起纵向布局移动
+      // 加载中占位:保持固定尺寸,加载前后不引起布局移动
       loadingBuilder: (context, child, progress) => progress == null
           ? child
           : SizedBox(
               height: placeholderHeight,
-              width: double.infinity,
+              width: placeholderWidth,
               child: const Center(
                 child: SizedBox(
                   width: 24,
@@ -499,11 +782,11 @@ class HtmlContent extends StatelessWidget {
             ),
       errorBuilder: (context, error, stackTrace) => SizedBox(
         height: placeholderHeight,
-        width: double.infinity,
+        width: placeholderWidth,
         child: Center(
           child: Icon(
             Icons.broken_image_outlined,
-            size: 40,
+            size: placeholderHeight > 60 ? 40 : 20,
             color: Theme.of(context).colorScheme.outline,
           ),
         ),
@@ -515,10 +798,14 @@ class HtmlContent extends StatelessWidget {
   }
 
   /// 块级单图:上下留白 + 灯箱点击
-  Widget _blockImage(String url, {required double height, required VoidCallback onTap}) {
+  Widget _blockImage(
+    String url, {
+    required double height,
+    required VoidCallback onTap,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 8),
-      child: _image(url, height: height, onTap: onTap),
+      child: _image(url, height: height, width: double.infinity, onTap: onTap),
     );
   }
 
@@ -531,16 +818,146 @@ class HtmlContent extends StatelessWidget {
     return (src == null || src.isEmpty) ? null : src;
   }
 
+  /// 图注格:单张图片 + 图下方说明文字(画廊常见结构
+  /// `<a><img></a><br>说明`),与 JEI 的同行混排(`<a><img></a>物品名`)
+  /// 区分:图片与文字之间隔着块级换行才算图注
+  static String? _captionImageSrc(dom.Element el) {
+    if (el.text.trim().isEmpty) return null; // 纯图格走 _imageOnlySrc
+    final imgs = el.querySelectorAll('img');
+    if (imgs.length != 1) return null;
+    final src = imgs.first.attributes['src']?.trim() ?? '';
+    if (src.isEmpty) return null;
+    // 信号 1:站点图注结构 <span class="figcaption">说明</span>
+    // (mcmod 画廊「更多展示」,图片与文字同包在 span.figure 里,
+    // 没有块级换行分隔)
+    if (el.querySelector('.figcaption') != null) return src;
+    // 信号 2:图片与文字之间隔着块级换行(其他画廊结构
+    // <a><img></a><br>说明)
+    // 图片所在的顶层节点(裸 img 或 a/p/div 包裹)
+    dom.Node? top;
+    for (final n in el.nodes) {
+      if (n is dom.Element && n.querySelector('img') != null) {
+        top = n;
+        break;
+      }
+    }
+    if (top == null) return null;
+    // 图片之前不能有非空白文本(同行混排,如物品名在图片前)
+    var seen = false;
+    for (final n in el.nodes) {
+      if (!seen) {
+        if (identical(n, top)) {
+          seen = true;
+        } else if (n is dom.Text && n.text.trim().isNotEmpty) {
+          return null;
+        } else if (n is dom.Element && n.querySelector('img') == null) {
+          return null; // 图片前的兄弟元素,视为混排
+        }
+        continue;
+      }
+      // 图片之后:直接跟同行文本 → JEI 混排;块级换行 → 图注
+      if (n is dom.Text) {
+        if (n.text.trim().isEmpty) continue;
+        return null;
+      }
+      if (n is dom.Element && _captionBreaks.contains(n.localName)) {
+        return src;
+      }
+    }
+    return null;
+  }
+
+  /// 图注格中图片之外的说明内容(去掉图片节点与紧随其后的换行)
+  List<Widget> _captionBlocks(
+    BuildContext context,
+    ThemeData theme,
+    TextStyle base,
+    dom.Element cell,
+  ) {
+    // 站点图注结构:取 figcaption 的文本,居中显示在图片下方
+    final figcaption = cell.querySelector('.figcaption');
+    if (figcaption != null) {
+      final text = figcaption.text.trim();
+      if (text.isEmpty) return const [];
+      return [
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ];
+    }
+    // 块级换行结构:图片之后的顶层节点(去掉紧随的换行占位)
+    final nodes = <dom.Node>[];
+    var seen = false;
+    for (final n in cell.nodes) {
+      if (!seen) {
+        if (n is dom.Element && n.querySelector('img') != null) {
+          seen = true;
+        }
+        continue;
+      }
+      nodes.add(n);
+    }
+    // 图片与说明之间的换行占位直接丢弃
+    if (nodes.isNotEmpty &&
+        nodes.first is dom.Element &&
+        (nodes.first as dom.Element).localName == 'br') {
+      nodes.removeAt(0);
+    }
+    return _buildBlocks(context, theme, base, nodes, 0);
+  }
+
+  /// 图注的块级分隔标签(说明文字位于图片下方的标志)
+  static const Set<String> _captionBreaks = {
+    'br',
+    'p',
+    'div',
+    'center',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+  };
+
   static bool _isBlockTag(dom.Element el) => const {
-        'p', 'div', 'ul', 'ol', 'table', 'blockquote', 'pre', 'details', 'hr',
-        'center', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      }.contains(el.localName);
+    'p',
+    'div',
+    'ul',
+    'ol',
+    'table',
+    'blockquote',
+    'pre',
+    'details',
+    'hr',
+    'center',
+    'br',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+  }.contains(el.localName);
 
   // ---------- 样式解析 ----------
 
   /// 块级 style 解析:text-align、margin(px)、font-size(em/%)、font-weight
-  static ({TextAlign? align, double marginTop, double marginBottom, double fontSizeFactor, bool bold})
-      _parseBlockStyle(String? css) {
+  static ({
+    TextAlign? align,
+    double marginTop,
+    double marginBottom,
+    double fontSizeFactor,
+    bool bold,
+  })
+  _parseBlockStyle(String? css) {
     final align = _matchCss(css, 'text-align');
     final margin = _parseMargin(_matchCss(css, 'margin'));
     final size = _parseFontFactor(_matchCss(css, 'font-size'));
@@ -548,10 +965,10 @@ class HtmlContent extends StatelessWidget {
       align: align == 'center'
           ? TextAlign.center
           : align == 'right'
-              ? TextAlign.right
-              : align == 'left'
-                  ? TextAlign.left
-                  : null,
+          ? TextAlign.right
+          : align == 'left'
+          ? TextAlign.left
+          : null,
       marginTop: margin.$1,
       marginBottom: margin.$2,
       fontSizeFactor: size,
@@ -578,8 +995,8 @@ class HtmlContent extends StatelessWidget {
       decoration: decoration == 'underline'
           ? TextDecoration.underline
           : decoration == 'line-through'
-              ? TextDecoration.lineThrough
-              : null,
+          ? TextDecoration.lineThrough
+          : null,
       fontSize: size > 0 ? (base.fontSize ?? 14) * size : null,
     );
     return style == const TextStyle() ? null : style;
@@ -607,8 +1024,12 @@ class HtmlContent extends StatelessWidget {
   /// 字号解析:'1.35em' → 1.35、'120%' → 1.2、'14px' → 14/基准
   static double _parseFontFactor(String? value) {
     if (value == null) return 1;
-    if (value.endsWith('em')) return double.tryParse(value.replaceAll('em', '')) ?? 1;
-    if (value.endsWith('%')) return (double.tryParse(value.replaceAll('%', '')) ?? 100) / 100;
+    if (value.endsWith('em')) {
+      return double.tryParse(value.replaceAll('em', '')) ?? 1;
+    }
+    if (value.endsWith('%')) {
+      return (double.tryParse(value.replaceAll('%', '')) ?? 100) / 100;
+    }
     final px = double.tryParse(value.replaceAll('px', ''));
     return px == null ? 1 : px / 14;
   }
@@ -626,7 +1047,8 @@ class HtmlContent extends StatelessWidget {
       if (n == null) return null;
       return Color(0xFF000000 | n);
     }
-    final rgb = RegExp(r'rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)').firstMatch(v);
+    final rgb = RegExp(r'rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)')
+        .firstMatch(v);
     if (rgb != null) {
       return Color.fromARGB(
         255,
@@ -732,4 +1154,54 @@ class _SpoilerState extends State<_Spoiler> {
       ),
     );
   }
+}
+
+/// 文字表格列宽:按单元格内容自然宽度,单列最多 [cap] 逻辑像素。
+///
+/// 与 FlexColumnWidth 等分不同,多列表格每列按各自内容宽,
+/// 内容过长(超过上限)时在列内换行;表格总宽超过容器时由
+/// 横向滚动容器兜底
+class _CappedIntrinsicColumnWidth extends TableColumnWidth {
+  const _CappedIntrinsicColumnWidth(this.cap);
+
+  final double cap;
+
+  @override
+  double minIntrinsicWidth(
+    Iterable<RenderBox> cells,
+    double containerWidth,
+  ) => 0;
+
+  @override
+  double maxIntrinsicWidth(
+    Iterable<RenderBox> cells,
+    double containerWidth,
+  ) {
+    var maxWidth = 0.0;
+    for (final cell in cells) {
+      final w = cell.getMaxIntrinsicWidth(double.infinity);
+      if (w > maxWidth) maxWidth = w;
+    }
+    return maxWidth > cap ? cap : maxWidth;
+  }
+
+  @override
+  double? flex(Iterable<RenderBox> cells) => null;
+}
+
+/// 合并单元格网格模型中的锚定格(rowspan/colspan 展开为占用区域)
+class _GridCell {
+  const _GridCell({
+    required this.el,
+    required this.row,
+    required this.col,
+    required this.rowSpan,
+    required this.colSpan,
+  });
+
+  final dom.Element el;
+  final int row;
+  final int col;
+  final int rowSpan;
+  final int colSpan;
 }

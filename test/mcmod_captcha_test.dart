@@ -31,7 +31,9 @@ http.Response _captchaResponse(
   String? question,
 }) {
   return http.Response.bytes(
-    utf8.encode(_captchaHtml(question: question ?? '图中有多少个青金石 (Lapis Lazuli)?')),
+    utf8.encode(
+      _captchaHtml(question: question ?? '图中有多少个青金石 (Lapis Lazuli)?'),
+    ),
     status,
     headers: headers,
   );
@@ -45,11 +47,11 @@ void main() {
 
   test('403 挑战页解析为验证码异常(问题/图片/提交地址)', () async {
     McmodApi.clientFactory = () => MockClient(
-          (request) async => _captchaResponse(
-            403,
-            headers: {'set-cookie': 'MCMOD_SEED=seed123; path=/'},
-          ),
-        );
+      (request) async => _captchaResponse(
+        403,
+        headers: {'set-cookie': 'MCMOD_SEED=seed123; path=/'},
+      ),
+    );
 
     McmodCaptchaChallenge? captured;
     try {
@@ -118,8 +120,8 @@ void main() {
 
   test('非挑战页的 403 抛出普通异常(不触发验证码流程)', () async {
     McmodApi.clientFactory = () => MockClient(
-          (request) async => http.Response('<html>Forbidden</html>', 403),
-        );
+      (request) async => http.Response('<html>Forbidden</html>', 403),
+    );
     await expectLater(
       McmodApi.getDetail('1'),
       throwsA(

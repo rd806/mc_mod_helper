@@ -8,17 +8,16 @@ import 'package:hyper_render/hyper_render.dart';
 /// (包默认正文是 16px 深灰字,且 'body' 选择器在 UDT 树里匹配不到)。
 void main() {
   test('document 选择器注入颜色/字号并继承,行内颜色优先', () {
-    final doc = DocumentNode(children: [
-      BlockNode(
-        tagName: 'p',
-        children: [TextNode('普通正文')],
-      ),
-      BlockNode(
-        tagName: 'p',
-        attributes: {'style': 'color:#ff0000'},
-        children: [TextNode('红色文字')],
-      ),
-    ]);
+    final doc = DocumentNode(
+      children: [
+        BlockNode(tagName: 'p', children: [TextNode('普通正文')]),
+        BlockNode(
+          tagName: 'p',
+          attributes: {'style': 'color:#ff0000'},
+          children: [TextNode('红色文字')],
+        ),
+      ],
+    );
 
     final resolver = StyleResolver();
     resolver.parseCss(
@@ -42,18 +41,18 @@ void main() {
   testWidgets('表格默认横向滚动,百分比宽度表格走 fitWidth(不滚动)', (tester) async {
     // 外层不用滚动容器,find.byType(SingleChildScrollView) 只统计表格包装
     Widget wrap(String table) => MaterialApp(
-          home: Scaffold(
-            body: Align(
-              alignment: Alignment.topLeft,
-              child: HyperViewer(
-                html: '<p>前文</p>$table',
-                mode: HyperRenderMode.sync,
-                shrinkWrap: true,
-                selectable: false,
-              ),
-            ),
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topLeft,
+          child: HyperViewer(
+            html: '<p>前文</p>$table',
+            mode: HyperRenderMode.sync,
+            shrinkWrap: true,
+            selectable: false,
           ),
-        );
+        ),
+      ),
+    );
 
     // 无百分比宽度:引擎默认 TableStrategy.horizontalScroll,包横向滚动容器
     await tester.pumpWidget(
@@ -65,8 +64,8 @@ void main() {
     await tester.pump();
     expect(
       find.byWidgetPredicate(
-        (w) => w is SingleChildScrollView &&
-            w.scrollDirection == Axis.horizontal,
+        (w) =>
+            w is SingleChildScrollView && w.scrollDirection == Axis.horizontal,
       ),
       findsOneWidget,
     );

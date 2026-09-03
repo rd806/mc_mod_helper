@@ -43,12 +43,12 @@ class _ConfigPageState extends State<ConfigPage> {
   static const List<(String, String)> _sortMethod = [
     ('默认', ''),
     ('最新收录', 'createtime'),
-    ('最新编辑', 'lastedittime')
+    ('最新编辑', 'lastedittime'),
   ];
 
   static const List<(String, String)> _renderType = [
     ('默认', 'default'),
-    ('Hyper', 'hyperViewer')
+    ('Hyper', 'hyperViewer'),
   ];
 
   @override
@@ -103,12 +103,14 @@ class _ConfigPageState extends State<ConfigPage> {
             Icon(_getIconForThemeMode(value)),
             const SizedBox(width: 10),
             Text(label),
-          ]
-        )
+          ],
+        ),
       );
     }).toList();
     // 确定当前选中的值（防御性处理）
-    final selectedValue = _themeMode.any((f) => f.$2 == themeMode) ? themeMode : ThemeMode.system;
+    final selectedValue = _themeMode.any((f) => f.$2 == themeMode)
+        ? themeMode
+        : ThemeMode.system;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
@@ -128,14 +130,8 @@ class _ConfigPageState extends State<ConfigPage> {
             // 样式定制（可选）
             style: theme.textTheme.bodyMedium,
             // 设置为透明下划线
-            underline: Container(
-              height: 0,
-              color: Colors.transparent,
-            ),
-            icon: Icon(
-              Icons.arrow_drop_down,
-              color: theme.iconTheme.color,
-            ),
+            underline: Container(height: 0, color: Colors.transparent),
+            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
             // 如果希望下拉框宽度自适应内容
             isDense: false,
             // 禁用焦点和悬停效果
@@ -149,9 +145,12 @@ class _ConfigPageState extends State<ConfigPage> {
   // 获取图标
   IconData _getIconForThemeMode(ThemeMode mode) {
     switch (mode) {
-      case ThemeMode.system: return Icons.settings_suggest;
-      case ThemeMode.light: return Icons.light_mode;
-      case ThemeMode.dark: return Icons.dark_mode;
+      case ThemeMode.system:
+        return Icons.settings_suggest;
+      case ThemeMode.light:
+        return Icons.light_mode;
+      case ThemeMode.dark:
+        return Icons.dark_mode;
     }
   }
 
@@ -173,7 +172,12 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   // 颜色按钮
-  Widget _buildColor(String label, Color color, int selectedArgb, ThemeData theme) {
+  Widget _buildColor(
+    String label,
+    Color color,
+    int selectedArgb,
+    ThemeData theme,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5),
       child: Tooltip(
@@ -199,9 +203,13 @@ class _ConfigPageState extends State<ConfigPage> {
                     Icons.check,
                     size: 20,
                     // 按色块明暗选白/黑对勾
-                    color: ThemeData.estimateBrightnessForColor(color) == Brightness.dark
-                        ? Colors.white : Colors.black87,
-                  ) : null,
+                    color:
+                        ThemeData.estimateBrightnessForColor(color) ==
+                            Brightness.dark
+                        ? Colors.white
+                        : Colors.black87,
+                  )
+                : null,
           ),
         ),
       ),
@@ -258,14 +266,16 @@ class _ConfigPageState extends State<ConfigPage> {
             ],
             // 防御:存档值不在选项内时回落显示 "MC百科"
             selected: {
-              SettingsService.dataSources.contains(s.dataSource) ? s.dataSource : ModSource.mcmod,
+              SettingsService.dataSources.contains(s.dataSource)
+                  ? s.dataSource
+                  : ModSource.mcmod,
             },
             showSelectedIcon: false,
             onSelectionChanged: (selection) =>
                 SettingsService.instance.setDataSource(selection.first),
-          )
+          ),
         ],
-      )
+      ),
     );
   }
 
@@ -276,14 +286,13 @@ class _ConfigPageState extends State<ConfigPage> {
     // 转换为 DropdownMenuItem 列表
     final dropdownItems = _sortMethod.map<DropdownMenuItem<String>>((item) {
       final (label, value) = item;
-      return DropdownMenuItem<String>(
-        value: value,
-        child: Text(label),
-      );
+      return DropdownMenuItem<String>(value: value, child: Text(label));
     }).toList();
 
-    final selectedValue = SettingsService.featuredSources.contains(s.featuredSource)
-        ? s.featuredSource : 'createtime';
+    final selectedValue =
+        SettingsService.featuredSources.contains(s.featuredSource)
+        ? s.featuredSource
+        : 'createtime';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
@@ -303,19 +312,13 @@ class _ConfigPageState extends State<ConfigPage> {
             // 样式定制（可选）
             style: theme.textTheme.bodyMedium,
             // 设置为透明下划线
-            underline: Container(
-              height: 0,
-              color: Colors.transparent,
-            ),
-            icon: Icon(
-              Icons.arrow_drop_down,
-              color: theme.iconTheme.color,
-            ),
+            underline: Container(height: 0, color: Colors.transparent),
+            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
             // 如果希望下拉框宽度自适应内容
             isDense: false,
             // 禁用焦点和悬停效果
             focusColor: Colors.transparent,
-          )
+          ),
         ],
       ),
     );
@@ -364,14 +367,12 @@ class _ConfigPageState extends State<ConfigPage> {
     // 转换为 DropdownMenuItem 列表
     final dropdownItems = _renderType.map<DropdownMenuItem<String>>((item) {
       final (label, value) = item;
-      return DropdownMenuItem<String>(
-        value: value,
-        child: Text(label),
-      );
+      return DropdownMenuItem<String>(value: value, child: Text(label));
     }).toList();
 
     final selectedValue = SettingsService.renderTypes.contains(s.renderType)
-        ? s.renderType : 'default';
+        ? s.renderType
+        : 'default';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
@@ -391,19 +392,13 @@ class _ConfigPageState extends State<ConfigPage> {
             // 样式定制（可选）
             style: theme.textTheme.bodyMedium,
             // 设置为透明下划线
-            underline: Container(
-              height: 0,
-              color: Colors.transparent,
-            ),
-            icon: Icon(
-              Icons.arrow_drop_down,
-              color: theme.iconTheme.color,
-            ),
+            underline: Container(height: 0, color: Colors.transparent),
+            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
             // 如果希望下拉框宽度自适应内容
             isDense: false,
             // 禁用焦点和悬停效果
             focusColor: Colors.transparent,
-          )
+          ),
         ],
       ),
     );

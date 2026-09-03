@@ -59,8 +59,10 @@ class _CategoryPageState extends State<CategoryPage> {
   /// 按分类的数据来源拉取第 [page] 页
   Future<({List<ModSummary> mods, int totalPages})> _fetchPage(int page) {
     switch (widget.category.source) {
-      case ModSource.mcmod: return McmodApi.getCategoryMods(widget.category.id, page: page);
-      case ModSource.modrinth: return ModrinthApi.getCategoryMods(widget.category.id, page: page);
+      case ModSource.mcmod:
+        return McmodApi.getCategoryMods(widget.category.id, page: page);
+      case ModSource.modrinth:
+        return ModrinthApi.getCategoryMods(widget.category.id, page: page);
     }
   }
 

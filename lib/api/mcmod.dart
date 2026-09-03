@@ -81,11 +81,10 @@ class McmodApi {
 
   /// 请求头 + 会话 Cookie
   static Map<String, String> get _requestHeaders => {
-        ..._headers,
-        if (_cookies.isNotEmpty)
-          'Cookie':
-              _cookies.entries.map((e) => '${e.key}=${e.value}').join('; '),
-      };
+    ..._headers,
+    if (_cookies.isNotEmpty)
+      'Cookie': _cookies.entries.map((e) => '${e.key}=${e.value}').join('; '),
+  };
 
   /// 搜索请求的最小间隔(站点限流阈值约为 3 秒)
   static const Duration _searchMinInterval = Duration(seconds: 3);
@@ -100,7 +99,8 @@ class McmodApi {
   static final Map<String, List<ModSummary>> _searchCache = {};
   static final Map<String, ModDetail> _detailCache = {};
   static List<ModCategory>? _categoryCache;
-  static final Map<String, ({List<ModSummary> mods, int totalPages})> _categoryModsCache = {};
+  static final Map<String, ({List<ModSummary> mods, int totalPages})>
+  _categoryModsCache = {};
 
   /// 推荐列表的分页缓存
   /// key='$sort-$page'；
@@ -353,8 +353,7 @@ class McmodApi {
     const prefix = 'data:image/png;base64,';
     if (!imgSrc.startsWith(prefix)) return null;
     final bytes = base64Decode(imgSrc.substring(prefix.length));
-    final question =
-        doc.querySelector('.captcha-question')?.text.trim() ?? '';
+    final question = doc.querySelector('.captcha-question')?.text.trim() ?? '';
     return McmodCaptchaChallenge(
       // 表单无 action 属性 → POST 回被拦请求的原始地址
       postUrl: requestUri,
@@ -738,7 +737,9 @@ class McmodApi {
       final cleaned = attrs
           .replaceAll(RegExp(r'\s+(width|height)="[^"]*"'), '')
           .replaceAll(RegExp(r'\s+(class|style)="[^"]*"'), '');
-      return (src == null || src.isEmpty) ? '<img$cleaned>' : '<a href="$src"><img$cleaned></a>';
+      return (src == null || src.isEmpty)
+          ? '<img$cleaned>'
+          : '<a href="$src"><img$cleaned></a>';
     });
     // 文字表格:剥掉站点自带的百分比宽度。
     // hyper_render 对带百分比宽度的表格走 fitWidth 策略(列压窄、
@@ -757,9 +758,11 @@ class McmodApi {
           final cleaned = sm
               .group(1)!
               .split(';')
-              .where((decl) =>
-                  !(decl.toLowerCase().contains('width') &&
-                      decl.contains('%')))
+              .where(
+                (decl) =>
+                    !(decl.toLowerCase().contains('width') &&
+                        decl.contains('%')),
+              )
               .join(';');
           return cleaned.trim().isEmpty ? '' : 'style="$cleaned"';
         });

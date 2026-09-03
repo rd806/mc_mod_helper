@@ -112,7 +112,9 @@ class _DetailPageState extends State<DetailPage> {
         // 跳过指向当前模组自身的链接,避免堆叠重复详情页
         if (widget.source != ModSource.modrinth && mcmod == widget.id) return;
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => DetailPage(id: mcmod, source: ModSource.mcmod)),
+          MaterialPageRoute(
+            builder: (_) => DetailPage(id: mcmod, source: ModSource.mcmod),
+          ),
         );
         return;
       }
@@ -120,10 +122,13 @@ class _DetailPageState extends State<DetailPage> {
       final modrinth = _modrinthUrl(uri);
       if (modrinth != null) {
         // 跳过指向当前项目自身的链接
-        if (widget.source == ModSource.modrinth && modrinth == widget.id) return;
+        if (widget.source == ModSource.modrinth && modrinth == widget.id) {
+          return;
+        }
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => DetailPage(id: modrinth, source: ModSource.modrinth),
+            builder: (_) =>
+                DetailPage(id: modrinth, source: ModSource.modrinth),
           ),
         );
         return;
@@ -134,7 +139,8 @@ class _DetailPageState extends State<DetailPage> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('无法打开链接')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('无法打开链接')));
       }
     }
   }
@@ -145,7 +151,8 @@ class _DetailPageState extends State<DetailPage> {
     if (uri.host != 'modrinth.com' && uri.host != 'www.modrinth.com') {
       return null;
     }
-    final m = RegExp(r'^/(?:mod|project)/([a-zA-Z0-9_-]+)/?$').firstMatch(uri.path.toLowerCase());
+    final m = RegExp(r'^/(?:mod|project)/([a-zA-Z0-9_-]+)/?$')
+        .firstMatch(uri.path.toLowerCase());
     return m?.group(1);
   }
 
@@ -163,7 +170,8 @@ class _DetailPageState extends State<DetailPage> {
   /// 是否为图片地址（富文本里的图片已包成 <a href=图片地址>）
   static bool _imageUrl(String url) {
     final path = Uri.tryParse(url)?.path.toLowerCase() ?? '';
-    return RegExp(r'\.(jpe?g|png|webp|gif|bmp)(\?.*)?$').hasMatch(path) || url.contains('i.mcmod.cn');
+    return RegExp(r'\.(jpe?g|png|webp|gif|bmp)(\?.*)?$').hasMatch(path) ||
+        url.contains('i.mcmod.cn');
   }
 
   @override
@@ -183,11 +191,10 @@ class _DetailPageState extends State<DetailPage> {
           IconButton(
             tooltip: '在浏览器中打开',
             icon: const Icon(Icons.open_in_browser),
-            onPressed: () =>
-                _openUrl(
-                  SourceManager.getUrl(widget.source, widget.id),
-                  forceExternal: true,
-                ),
+            onPressed: () => _openUrl(
+              SourceManager.getUrl(widget.source, widget.id),
+              forceExternal: true,
+            ),
           ),
         ],
       ),
@@ -232,8 +239,7 @@ class _DetailPageState extends State<DetailPage> {
   Widget _buildSuccess(ModDetail mod) {
     // 按宽度选择布局:窄屏单列滚动,宽屏左右双列独立滚动
     return LayoutBuilder(
-      builder: (context, constraints) =>
-      constraints.maxWidth < 480
+      builder: (context, constraints) => constraints.maxWidth < 480
           ? _buildNarrowPage(mod)
           : _buildWidePage(mod),
     );
@@ -260,10 +266,11 @@ class _DetailPageState extends State<DetailPage> {
                 flex: 2,
                 child: ListView(
                   controller: _leftController,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
                   children: [
-                    if (mod.description != null && mod.description!.isNotEmpty) ...[
-                      ..._buildDescription(mod, theme),
+                    if (mod.description != null &&
+                        mod.description!.isNotEmpty) ...[
+                      _buildDescription(mod, theme),
                     ],
                   ],
                 ),
@@ -273,14 +280,12 @@ class _DetailPageState extends State<DetailPage> {
                 flex: 1,
                 child: ListView(
                   controller: _rightController,
-                  padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
                   children: [
-                    ..._buildEnvironment(mod),
-                    if (mod.links.isNotEmpty) ...[
-                      ..._buildLinks(mod),
-                    ],
+                    _buildEnvironment(mod),
+                    if (mod.links.isNotEmpty) ...[_buildLinks(mod)],
                     if (mod.mcVersions.isNotEmpty) ...[
-                      ..._buildModVersion(context, mod),
+                      _buildModVersion(context, mod),
                     ],
                   ],
                 ),
@@ -299,15 +304,11 @@ class _DetailPageState extends State<DetailPage> {
       padding: const EdgeInsets.all(16),
       children: [
         ModCoverNarrow(mod: mod),
-        ..._buildEnvironment(mod),
-        if (mod.links.isNotEmpty) ...[
-          ..._buildLinks(mod),
-        ],
-        if (mod.mcVersions.isNotEmpty) ...[
-          ..._buildModVersion(context, mod),
-        ],
+        _buildEnvironment(mod),
+        if (mod.links.isNotEmpty) ...[_buildLinks(mod)],
+        if (mod.mcVersions.isNotEmpty) ...[_buildModVersion(context, mod)],
         if (mod.description != null && mod.description!.isNotEmpty) ...[
-          ..._buildDescription(mod, theme),
+          _buildDescription(mod, theme),
         ],
       ],
     );
@@ -329,7 +330,9 @@ class _DetailPageState extends State<DetailPage> {
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -340,9 +343,9 @@ class _DetailPageState extends State<DetailPage> {
   /// 加载环境
   /// 运行环境:environment 为 [客户端需求, 服务端需求] 的枚举值列表,
   /// 有时只有一侧(mcmod),按实际元素数量显示
-  List<Widget> _buildEnvironment(ModDetail mod) {
+  Widget _buildEnvironment(ModDetail mod) {
     final env = mod.environment;
-    if (env == null || env.isEmpty) return [const SizedBox.shrink()];
+    if (env == null || env.isEmpty) return const SizedBox.shrink();
     // 首元素(客户端)必然存在;服务端可能缺位(mcmod 有时只标一侧)
     final client = _getInfo(env[0]);
     final server = env.length > 1 ? _getInfo(env[1]) : null;
@@ -366,74 +369,108 @@ class _DetailPageState extends State<DetailPage> {
       );
     }
 
-    return [
-      _buildSectionTitle('加载环境', Icons.construction_rounded),
-      Wrap(
-        spacing: 8.0,  // 水平间距
-        runSpacing: 8.0, // 垂直间距（换行时）
-        children: chips,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 0, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle('加载环境', Icons.construction_rounded),
+            Wrap(
+              spacing: 8.0, // 水平间距
+              runSpacing: 8.0, // 垂直间距（换行时）
+              children: chips,
+            ),
+          ],
+        ),
       ),
-      const Divider()
-    ];
+    );
   }
 
+  // 转换描述文字
   String? _getInfo(String s) {
     switch (s) {
-      case 'required': return '必需';
-      case 'optional': return '可选';
-      case 'unsupported': return '无效';
-      default: return '未知';
+      case 'required':
+        return '必需';
+      case 'optional':
+        return '可选';
+      case 'unsupported':
+        return '无效';
+      default:
+        return '未知';
     }
   }
 
   /// 相关链接
-  List<Widget> _buildLinks(ModDetail mod) {
-    return [
-      _buildSectionTitle('相关链接', Icons.insert_link_rounded),
-      CollapsibleChips(
-        chips: [
-          for (final link in mod.links)
-            ActionChip(
-              avatar: Icon(LinkIcons.getLinkIcon(link.name), size: 18),
-              label: Text(link.name),
-              onPressed: () => _openUrl(link.url),
+  Widget _buildLinks(ModDetail mod) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 0, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle('相关链接', Icons.insert_link_rounded),
+            CollapsibleChips(
+              chips: [
+                for (final link in mod.links)
+                  ActionChip(
+                    avatar: Icon(LinkIcons.getLinkIcon(link.name), size: 18),
+                    label: Text(link.name),
+                    onPressed: () => _openUrl(link.url),
+                  ),
+              ],
             ),
-        ],
+          ],
+        ),
       ),
-      const Divider(),
-    ];
+    );
   }
 
-  /// 支持版本:按加载器分组展示,每组一个加载器标签 + 折叠 chips
-  List<Widget> _buildModVersion(BuildContext context, ModDetail mod) {
+  /// 支持版本：按加载器分组展示,每组一个加载器标签 + 折叠 chips
+  Widget _buildModVersion(BuildContext context, ModDetail mod) {
     final theme = Theme.of(context);
-    return [
-      _buildSectionTitle('支持版本', Icons.check_circle_rounded),
-      for (final entry in mod.mcVersions.entries)
-        if (entry.value.isNotEmpty) ...[
-          Text(
-            entry.key,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          CollapsibleChips(
-            chips: [for (final v in entry.value) Chip(label: Text(v))],
-          ),
-          const SizedBox(height: 12),
-        ],
-      const Divider(),
-    ];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 0, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle('支持版本', Icons.check_circle_rounded),
+            for (final entry in mod.mcVersions.entries)
+              if (entry.value.isNotEmpty) ...[
+                Text(
+                  entry.key,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                CollapsibleChips(
+                  chips: [for (final v in entry.value) Chip(label: Text(v))],
+                ),
+                const SizedBox(height: 12),
+              ],
+          ],
+        ),
+      ),
+    );
   }
 
   /// 详细内容
-  List<Widget> _buildDescription(ModDetail mod, ThemeData theme) {
-    return [
-      _buildSectionTitle('模组介绍', Icons.article_rounded),
-      _buildHTML(mod, theme),
-    ];
+  Widget _buildDescription(ModDetail mod, ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle('模组介绍', Icons.article_rounded),
+            _buildHTML(mod, theme),
+          ],
+        ),
+      ),
+    );
   }
 
   /// 正文链接点击:图片地址(清洗时已包成 <a href=图片地址>)走灯箱,
@@ -456,14 +493,14 @@ class _DetailPageState extends State<DetailPage> {
       );
     }
     return _mouseDraggable(
-        HyperViewer(
-          html: mod.description!,
-          mode: HyperRenderMode.sync,
-          shrinkWrap: true,
-          selectable: false,
-          customCss: HyperRender.hyperCss(theme),
-          onLinkTap: _handleContentLink,
-        )
+      HyperViewer(
+        html: mod.description!,
+        mode: HyperRenderMode.sync,
+        shrinkWrap: true,
+        selectable: false,
+        customCss: HyperRender.hyperCss(theme),
+        onLinkTap: _handleContentLink,
+      ),
     );
   }
 

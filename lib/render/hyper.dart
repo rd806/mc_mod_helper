@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class HyperRender {
-
   /// hyper_render 的主题适配:包默认正文样式是 16px 深灰字,用 customCss
   /// 注入正文颜色/字号/字体(字体缩放走 MediaQuery,包默认读取)。
   /// 颜色取 bodyMedium 的常规字体颜色(与普通 Text 控件一致),
@@ -16,8 +15,9 @@ class HyperRender {
     final family = textStyle?.fontFamily;
     // 包内 CSS 解析器把 font-family 整值去引号后当作单个家族名,
     // 不支持逗号分隔的回退列表;取 bodyMedium 的家族名(应用字体)
-    final familyCss =
-    (family == null || family.isEmpty) ? '' : 'font-family: $family; ';
+    final familyCss = (family == null || family.isEmpty)
+        ? ''
+        : 'font-family: $family; ';
     return 'document { color: #$hex; '
         'font-size: ${textStyle?.fontSize ?? 14}px; '
         '$familyCss}';

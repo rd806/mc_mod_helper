@@ -46,8 +46,10 @@ class _SearchPageState extends State<SearchPage> {
     });
     try {
       // 按设置的数据来源选择搜索平台(提交时读取,切来源后重搜即生效)
-      final results =
-          await SourceManager.getSearch(SettingsService.instance.dataSource, keyword);
+      final results = await SourceManager.getSearch(
+        SettingsService.instance.dataSource,
+        keyword,
+      );
       if (!mounted) return;
       setState(() {
         _results = results;

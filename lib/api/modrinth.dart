@@ -35,7 +35,8 @@ class ModrinthApi {
   static final Map<String, List<ModSummary>> _searchCache = {};
   static final Map<String, ModDetail> _detailCache = {};
   static List<ModCategory>? _categoryCache;
-  static final Map<String, ({List<ModSummary> mods, int totalPages})> _categoryModsCache = {};
+  static final Map<String, ({List<ModSummary> mods, int totalPages})>
+  _categoryModsCache = {};
 
   @visibleForTesting
   static void clearCaches() {
@@ -84,8 +85,9 @@ class ModrinthApi {
     final body = await _get(uri);
     // 项目详情只有扁平的 game_versions,不含版本↔加载器的关联;
     // 版本列表接口的每个条目带 loaders[] 与 game_versions[],按加载器分组
-    final versionsUri =
-        Uri.parse('https://api.modrinth.com/v2/project/$sourceId/version');
+    final versionsUri = Uri.parse(
+      'https://api.modrinth.com/v2/project/$sourceId/version',
+    );
     final versionsBody = await _get(versionsUri);
     final detail = _parseDetail(
       body,
@@ -226,7 +228,9 @@ class ModrinthApi {
     return cats;
   }
 
-  static ({List<ModSummary> mods, int totalPages}) _parseCategoryPage(String body) {
+  static ({List<ModSummary> mods, int totalPages}) _parseCategoryPage(
+    String body,
+  ) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final hits = (data['hits'] as List<dynamic>? ?? const []);
     final mods = [
@@ -276,10 +280,10 @@ class ModrinthApi {
     final data = jsonDecode(body) as List<dynamic>;
     final map = <String, List<String>>{};
     for (final v in data.cast<Map<String, dynamic>>()) {
-      final loaders =
-          (v['loaders'] as List<dynamic>? ?? const []).cast<String>();
-      final versions =
-          (v['game_versions'] as List<dynamic>? ?? const []).cast<String>();
+      final loaders = (v['loaders'] as List<dynamic>? ?? const [])
+          .cast<String>();
+      final versions = (v['game_versions'] as List<dynamic>? ?? const [])
+          .cast<String>();
       for (final loader in loaders) {
         final list = map.putIfAbsent(loader, () => []);
         for (final gv in versions) {
@@ -318,7 +322,9 @@ class ModrinthApi {
   static List<ModLink> _buildLinks(Map<String, dynamic> data) {
     final links = <ModLink>[];
     void add(String name, String? url) {
-      if (url != null && url.isNotEmpty) links.add(ModLink(name: name, url: url));
+      if (url != null && url.isNotEmpty) {
+        links.add(ModLink(name: name, url: url));
+      }
     }
 
     final source = data['source_url'] as String?;
@@ -351,9 +357,11 @@ class ModrinthApi {
   static String? _buildPlatform(Map<String, dynamic> data) {
     final loaders = (data['loaders'] as List<dynamic>? ?? const [])
         .cast<String>()
-        .map((l) => l.isEmpty
-            ? l
-            : '${l[0].toUpperCase()}${l.substring(1).toLowerCase()}')
+        .map(
+          (l) => l.isEmpty
+              ? l
+              : '${l[0].toUpperCase()}${l.substring(1).toLowerCase()}',
+        )
         .toList();
     return loaders.isEmpty ? null : loaders.join(' / ');
   }
@@ -381,5 +389,4 @@ class ModrinthApi {
     if (n >= 10000) return '${trim((n / 10000).toStringAsFixed(1))}万';
     return '$n';
   }
-
 }

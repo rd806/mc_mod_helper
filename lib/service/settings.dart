@@ -36,7 +36,7 @@ class SettingsService extends ChangeNotifier {
   /// 搜索/详情数据来源的合法取值
   static const List<ModSource> dataSources = [
     ModSource.mcmod,
-    ModSource.modrinth
+    ModSource.modrinth,
   ];
 
   /// 渲染方法
@@ -65,17 +65,29 @@ class SettingsService extends ChangeNotifier {
   Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _themeMode = ThemeMode.values.asNameMap()[prefs.getString(_themeModeKey)] ?? ThemeMode.system;
+      _themeMode =
+          ThemeMode.values.asNameMap()[prefs.getString(_themeModeKey)] ??
+          ThemeMode.system;
       _seedColor = Color(prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32());
-      _fontScale = (prefs.getDouble(_fontScaleKey) ?? 1.0).clamp(fontMin, fontMax,);
-      _featuredMax = (prefs.getInt(_featuredMaxKey) ?? 20).clamp(featuredMin, featuredMaxLimit,);
+      _fontScale = (prefs.getDouble(_fontScaleKey) ?? 1.0).clamp(
+        fontMin,
+        fontMax,
+      );
+      _featuredMax = (prefs.getInt(_featuredMaxKey) ?? 20).clamp(
+        featuredMin,
+        featuredMaxLimit,
+      );
 
       final source = prefs.getString(_featuredSourceKey);
-      _featuredSource = (source != null && featuredSources.contains(source)) ? source : 'createtime';
+      _featuredSource = (source != null && featuredSources.contains(source))
+          ? source
+          : 'createtime';
 
       final ds = prefs.getString(_dataSourceKey);
       ModSource modSource = SourceManager.fromString(ds);
-      _dataSource = (ds != null && dataSources.contains(modSource)) ? modSource : ModSource.mcmod;
+      _dataSource = (ds != null && dataSources.contains(modSource))
+          ? modSource
+          : ModSource.mcmod;
 
       final rt = prefs.getString(_renderTypeKey);
       _renderType = (rt != null && renderTypes.contains(rt)) ? rt : 'default';

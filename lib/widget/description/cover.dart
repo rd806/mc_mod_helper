@@ -93,9 +93,7 @@ abstract class ModCover extends StatelessWidget {
     String source = SourceManager.getSourceString(mod.source);
     return Text(
       source,
-      style: theme.textTheme.titleMedium?.copyWith(
-        color: Colors.grey,
-      ),
+      style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
     );
   }
 
@@ -160,4 +158,3 @@ class _InfoChip extends StatelessWidget {
     );
   }
 }
-
