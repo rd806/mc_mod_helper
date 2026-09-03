@@ -12,6 +12,7 @@ import '../api/mcmod.dart';
 import '../api/modrinth.dart';
 import '../model/mod_detail.dart';
 import '../render/html_content.dart';
+import '../widget/captcha_dialog.dart';
 import '../widget/description/collapsible_chips.dart';
 import '../widget/description/image_box.dart';
 
@@ -62,13 +63,27 @@ class _DetailPageState extends State<DetailPage> {
     super.dispose();
   }
 
-  /// 获取详情:按数据来源选择 API
-  Future<ModDetail> _load() {
-    switch (widget.source) {
-      case ModSource.mcmod:
-        return McmodApi.getDetail(widget.id, fallbackDescription: widget.initialDescription);
-      case ModSource.modrinth:
-        return ModrinthApi.getDetail(widget.id, fallbackDescription: widget.initialDescription);
+  /// 获取详情:按数据来源选择 API;
+  /// 被站点安全验证拦截时弹窗人工输入验证码,通过后自动重试
+  Future<ModDetail> _load() async {
+    try {
+      switch (widget.source) {
+        case ModSource.mcmod:
+          return await McmodApi.getDetail(
+            widget.id,
+            fallbackDescription: widget.initialDescription,
+          );
+        case ModSource.modrinth:
+          return await ModrinthApi.getDetail(
+            widget.id,
+            fallbackDescription: widget.initialDescription,
+          );
+      }
+    } on McmodCaptchaException catch (e) {
+      if (!mounted) rethrow;
+      final ok = await resolveCaptcha(context, e.challenge);
+      if (!ok) rethrow; // 用户取消:走错误界面(显示验证提示 + 重试按钮)
+      return _load();
     }
   }
 
@@ -265,7 +280,7 @@ class _DetailPageState extends State<DetailPage> {
                       ..._buildLinks(mod),
                     ],
                     if (mod.mcVersions.isNotEmpty) ...[
-                      ..._buildModVersion(mod),
+                      ..._buildModVersion(context, mod),
                     ],
                   ],
                 ),
@@ -289,7 +304,7 @@ class _DetailPageState extends State<DetailPage> {
           ..._buildLinks(mod),
         ],
         if (mod.mcVersions.isNotEmpty) ...[
-          ..._buildModVersion(mod),
+          ..._buildModVersion(context, mod),
         ],
         if (mod.description != null && mod.description!.isNotEmpty) ...[
           ..._buildDescription(mod, theme),
@@ -322,7 +337,7 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-  /// 支持版本
+  /// 加载环境
   /// 运行环境:environment 为 [客户端需求, 服务端需求] 的枚举值列表,
   /// 有时只有一侧(mcmod),按实际元素数量显示
   List<Widget> _buildEnvironment(ModDetail mod) {
@@ -331,23 +346,32 @@ class _DetailPageState extends State<DetailPage> {
     // 首元素(客户端)必然存在;服务端可能缺位(mcmod 有时只标一侧)
     final client = _getInfo(env[0]);
     final server = env.length > 1 ? _getInfo(env[1]) : null;
+    // 收集所有有效的 Chip
+    // 使用 Wrap 实现响应式布局
+    final List<Widget> chips = [];
+    if (client != null) {
+      chips.add(
+        Chip(
+          avatar: Icon(Icons.computer_rounded, size: 18),
+          label: Text('客户端：$client'),
+        ),
+      );
+    }
+    if (server != null) {
+      chips.add(
+        Chip(
+          avatar: Icon(Icons.storage_rounded, size: 18),
+          label: Text('服务端：$server'),
+        ),
+      );
+    }
+
     return [
       _buildSectionTitle('加载环境', Icons.construction_rounded),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (client != null)
-            Chip(
-              avatar: Icon(Icons.computer_rounded),
-              label: Text('客户端：$client')
-            ),
-          const SizedBox(height: 10),
-          if (server != null)
-            Chip(
-              avatar: Icon(Icons.storage_rounded),
-              label: Text('服务端：$server')
-            )
-        ],
+      Wrap(
+        spacing: 8.0,  // 水平间距
+        runSpacing: 8.0, // 垂直间距（换行时）
+        children: chips,
       ),
       const Divider()
     ];
@@ -380,11 +404,26 @@ class _DetailPageState extends State<DetailPage> {
     ];
   }
 
-  /// 支持版本
-  List<Widget> _buildModVersion(ModDetail mod) {
+  /// 支持版本:按加载器分组展示,每组一个加载器标签 + 折叠 chips
+  List<Widget> _buildModVersion(BuildContext context, ModDetail mod) {
+    final theme = Theme.of(context);
     return [
       _buildSectionTitle('支持版本', Icons.check_circle_rounded),
-      CollapsibleChips(chips: [for (final v in mod.mcVersions) Chip(label: Text(v))]),
+      for (final entry in mod.mcVersions.entries)
+        if (entry.value.isNotEmpty) ...[
+          Text(
+            entry.key,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          CollapsibleChips(
+            chips: [for (final v in entry.value) Chip(label: Text(v))],
+          ),
+          const SizedBox(height: 12),
+        ],
       const Divider(),
     ];
   }

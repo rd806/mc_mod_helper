@@ -5,6 +5,7 @@ import '../api/mcmod.dart';
 import '../model/mod_category.dart';
 import '../model/mod_summary.dart';
 import '../service/settings.dart';
+import '../widget/captcha_dialog.dart';
 import '../widget/category/category.dart';
 import '../widget/error_view.dart';
 import '../widget/mod/mod_tile.dart';
@@ -92,6 +93,18 @@ class _HomePageState extends State<HomePage> {
         _featuredLoading = false;
         _featuredError = null;
       });
+    } on McmodCaptchaException catch (e) {
+      if (!mounted || seq != _featuredSeq) return;
+      final ok = await resolveCaptcha(context, e.challenge);
+      if (!mounted || seq != _featuredSeq) return;
+      if (!ok) {
+        setState(() {
+          _featuredError = e.toString();
+          _featuredLoading = false;
+        });
+        return;
+      }
+      await _loadFeatured(silent: silent);
     } catch (e) {
       if (!mounted || seq != _featuredSeq) return;
       setState(() {
@@ -123,6 +136,18 @@ class _HomePageState extends State<HomePage> {
         _categoriesLoading = false;
         _categoriesError = null;
       });
+    } on McmodCaptchaException catch (e) {
+      if (!mounted) return;
+      final ok = await resolveCaptcha(context, e.challenge);
+      if (!mounted) return;
+      if (!ok) {
+        setState(() {
+          _categoriesError = e.toString();
+          _categoriesLoading = false;
+        });
+        return;
+      }
+      await _loadCategories(silent: silent);
     } catch (e) {
       if (!mounted) return;
       setState(() {

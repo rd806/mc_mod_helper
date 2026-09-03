@@ -78,6 +78,13 @@ Future<http.Response> _handler(http.Request request) async {
       'donation_urls': [],
     });
   }
+  if (request.url.path == '/v2/project/sodium/version') {
+    // 版本列表:条目带 loaders[] 与 game_versions[],按加载器聚合
+    return _json([
+      {'loaders': ['fabric'], 'game_versions': ['1.21.1', '1.20.4']},
+      {'loaders': ['forge'], 'game_versions': ['1.20.4']},
+    ]);
+  }
   return http.Response('not found', 404);
 }
 
@@ -114,7 +121,11 @@ void main() {
       // 环境为 [客户端, 服务端] 枚举值列表(client_side=required,
       // server_side=unsupported → 仅客户端)
       expect(d.environment, ['required', 'unsupported']);
-      expect(d.mcVersions, ['1.21.1']);
+      // 版本按加载器分组(版本列表接口聚合,去重保序)
+      expect(d.mcVersions, {
+        'fabric': ['1.21.1', '1.20.4'],
+        'forge': ['1.20.4'],
+      });
       expect(d.links.map((l) => l.name), contains('GitHub'));
       expect(d.links.map((l) => l.name), contains('Discord'));
       expect(d.pageUrl, 'https://modrinth.com/mod/sodium');
@@ -181,10 +192,13 @@ void main() {
     expect(find.text('Sodium'), findsOneWidget);
     expect(find.text('A modern rendering engine'), findsOneWidget);
 
-    // 点结果进详情:ModrinthApi 距上次搜索不足 1s,有节流 Timer,显式推进
+    // 点结果进详情:详情要发两个请求(项目详情 + 版本列表),每个都受
+    // 1s 节流且与上次搜索有间隔,显式推进两轮节流计时器
     await tester.tap(find.text('Sodium'));
     await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1)); // 节流 → 项目详情请求发出
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1)); // 节流 → 版本列表请求发出
     await tester.pump();
     await tester.pump();
 

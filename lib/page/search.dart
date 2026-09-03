@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/source.dart';
 
+import '../api/mcmod.dart';
 import '../model/mod_summary.dart';
 import '../service/settings.dart';
+import '../widget/captcha_dialog.dart';
 import '../widget/error_view.dart';
 import '../widget/mod/mod_tile.dart';
 
@@ -51,6 +53,20 @@ class _SearchPageState extends State<SearchPage> {
         _results = results;
         _searching = false;
       });
+    } on McmodCaptchaException catch (e) {
+      if (!mounted) return;
+      final ok = await resolveCaptcha(context, e.challenge);
+      if (!mounted) return;
+      if (!ok) {
+        setState(() {
+          _searchError = e.toString();
+          _searching = false;
+        });
+        return;
+      }
+      // 解除入口锁后重试(弹窗期间 UI 被模态挡住,无重入风险)
+      _searching = false;
+      await _search(keyword);
     } catch (e) {
       if (!mounted) return;
       setState(() {

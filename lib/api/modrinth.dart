@@ -82,8 +82,14 @@ class ModrinthApi {
 
     final uri = Uri.parse('https://api.modrinth.com/v2/project/$sourceId');
     final body = await _get(uri);
+    // 项目详情只有扁平的 game_versions,不含版本↔加载器的关联;
+    // 版本列表接口的每个条目带 loaders[] 与 game_versions[],按加载器分组
+    final versionsUri =
+        Uri.parse('https://api.modrinth.com/v2/project/$sourceId/version');
+    final versionsBody = await _get(versionsUri);
     final detail = _parseDetail(
       body,
+      versionsBody: versionsBody,
       sourceId: sourceId,
       fallbackDescription: fallbackDescription,
     );
@@ -233,6 +239,7 @@ class ModrinthApi {
 
   static ModDetail _parseDetail(
     String body, {
+    required String versionsBody,
     required String sourceId,
     String? fallbackDescription,
   }) {
@@ -254,12 +261,33 @@ class ModrinthApi {
       description: html.isEmpty ? null : html,
       coverUrl: data['icon_url'] as String?,
       links: _buildLinks(data),
-      mcVersions: (data['game_versions'] as List<dynamic>? ?? const [])
-          .cast<String>(),
+      mcVersions: _parseVersionsByLoader(versionsBody),
       platform: _buildPlatform(data),
       environment: _buildEnvironment(data),
       source: ModSource.modrinth,
     );
+  }
+
+  /// 版本列表 → 加载器 → 版本号 的分组映射。
+  ///
+  /// /v2/project/{id}/version 返回全部版本条目,每个条目带 loaders[]
+  /// 与 game_versions[];按加载器聚合并去重(保持接口返回顺序)
+  static Map<String, List<String>> _parseVersionsByLoader(String body) {
+    final data = jsonDecode(body) as List<dynamic>;
+    final map = <String, List<String>>{};
+    for (final v in data.cast<Map<String, dynamic>>()) {
+      final loaders =
+          (v['loaders'] as List<dynamic>? ?? const []).cast<String>();
+      final versions =
+          (v['game_versions'] as List<dynamic>? ?? const []).cast<String>();
+      for (final loader in loaders) {
+        final list = map.putIfAbsent(loader, () => []);
+        for (final gv in versions) {
+          if (!list.contains(gv)) list.add(gv);
+        }
+      }
+    }
+    return map;
   }
 
   /// Markdown 正文转成适合 app 内渲染的 HTML。

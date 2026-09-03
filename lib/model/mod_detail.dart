@@ -11,13 +11,15 @@ class ModDetail {
     this.description,
     this.coverUrl,
     this.links = const [],
-    this.mcVersions = const [],
+    this.mcVersions = const {},
     this.platform,
     this.environment,
     this.source = ModSource.mcmod,
   });
 
-  /// 统一模组标识(字符串):MC百科为数字字符串(如 '123'),Modrinth 为 slug(如 'jei')
+  /// 统一模组标识(字符串):
+  /// - MC百科为数字字符串(如 '123'),
+  /// - Modrinth 为 slug(如 'jei')
   final String id;
 
   /// 主要名称
@@ -27,8 +29,8 @@ class ModDetail {
   final String? subName;
 
   /// 模组介绍(清洗后的 HTML,两种来源统一):
-  /// - mcmod:来自正文面板的富文本 HTML,无面板时回退 wiki 简介
-  /// - modrinth:API 的 body Markdown 经 markdownToHtml 转换,原生 HTML 透传
+  /// - mcmod：来自正文面板的富文本 HTML,无面板时回退 wiki 简介
+  /// - modrinth：API 的 body Markdown 经 markdownToHtml 转换,原生 HTML 透传
   final String? description;
 
   /// 封面图地址
@@ -37,16 +39,19 @@ class ModDetail {
   /// 相关链接(CurseForge / GitHub 等)
   final List<ModLink> links;
 
-  /// 支持的 MC 版本
-  final List<String> mcVersions;
+  /// 支持的 MC 版本,按加载器分组:
+  /// key 为加载器名(Forge/NeoForge/Fabric 等,与数据源原始写法一致),
+  /// value 为该加载器支持的 MC 版本列表
+  final Map<String, List<String>> mcVersions;
 
   /// 支持平台(如 Java版)
   final String? platform;
 
-  /// 运行环境(如 客户端需装, 服务端无效)
+  /// 加载环境（如 客户端需装, 服务端无效）
+  /// 使用 Modrinth 标准：[required|required]
   final List<String>? environment;
 
-  /// 数据来源:'mcmod' 或 'modrinth'
+  /// 数据来源：'mcmod' 或 'modrinth'
   final ModSource source;
 
   /// 模组详情页地址(按数据来源返回)

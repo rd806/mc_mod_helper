@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
@@ -17,16 +19,54 @@ class McmodThrottledException implements Exception {
   String toString() => '请求太频繁，请稍后再试';
 }
 
+/// 站点安全验证挑战(图形验证码,需用户手动输入)。
+///
+/// 表单无 action 属性,提交到被拦请求的原始地址;
+/// 挑战页通过 MCMOD_SEED cookie 与提交绑定(由 McmodApi 会话 Cookie 罐维护)。
+class McmodCaptchaChallenge {
+  const McmodCaptchaChallenge({
+    required this.postUrl,
+    required this.imageBytes,
+    required this.question,
+  });
+
+  /// 提交验证码的地址(被拦请求的原始地址)
+  final Uri postUrl;
+
+  /// 验证码图片 PNG 字节(挑战页内嵌 data URI)
+  final Uint8List imageBytes;
+
+  /// 验证码问题文本(如 '图中有多少个青金石 (Lapis Lazuli)?')
+  final String question;
+}
+
+/// 请求被站点安全验证拦截时抛出的异常;捕获后应弹窗让用户手动输入
+class McmodCaptchaException implements Exception {
+  const McmodCaptchaException(this.challenge);
+
+  final McmodCaptchaChallenge challenge;
+
+  @override
+  String toString() => '需要完成安全验证';
+}
+
 /// MC百科(mcmod.cn)数据获取服务。
 ///
 /// 站点没有官方公开 API,这里直接抓取搜索页 / 详情页 HTML 并解析。
 ///
 /// 站点对搜索接口有频率限制(约 3 秒内连续请求会返回“搜索太频繁”),
 /// 因此本服务在客户端做了限速,并对限流响应做一次等待重试。
+///
+/// 站点对自动化请求部署了图形验证码(403 + 安全验证挑战页),
+/// 应用侧维护会话 Cookie 罐,验证码由用户手动输入后提交。
 class McmodApi {
   McmodApi._();
 
-  static final http.Client _client = http.Client();
+  /// 测试可替换的客户端工厂(测试中用 MockClient 注入假响应)
+  @visibleForTesting
+  static http.Client Function() clientFactory = http.Client.new;
+  static http.Client? _clientInstance;
+  static http.Client get _client => _clientInstance ??= clientFactory();
 
   /// 模拟浏览器请求头,避免被站点拦截
   static const Map<String, String> _headers = {
@@ -35,6 +75,17 @@ class McmodApi {
         '(KHTML, like Gecko) Chrome/126.0 Safari/537.36',
     'Referer': 'https://www.mcmod.cn/',
   };
+
+  /// 会话 Cookie 罐:安全验证的 MCMOD_SEED 与验证通过后的凭证
+  static final Map<String, String> _cookies = {};
+
+  /// 请求头 + 会话 Cookie
+  static Map<String, String> get _requestHeaders => {
+        ..._headers,
+        if (_cookies.isNotEmpty)
+          'Cookie':
+              _cookies.entries.map((e) => '${e.key}=${e.value}').join('; '),
+      };
 
   /// 搜索请求的最小间隔(站点限流阈值约为 3 秒)
   static const Duration _searchMinInterval = Duration(seconds: 3);
@@ -55,6 +106,20 @@ class McmodApi {
   /// key='$sort-$page'；
   /// 按页缓存而不是按 sort 缓存整份结果：条数上限变化时已抓页复用，只增量抓新页
   static final Map<String, List<ModSummary>> _featuredPageCache = {};
+
+  @visibleForTesting
+  static void clearCaches() {
+    _searchCache.clear();
+    _detailCache.clear();
+    _categoryCache = null;
+    _categoryModsCache.clear();
+    _featuredPageCache.clear();
+    _cookies.clear();
+    _lastSearchAt = null;
+    _lastWwwAt = null;
+    // 重置惰性缓存的客户端,让测试可以替换 clientFactory
+    _clientInstance = null;
+  }
 
   /// 按关键词搜索模组,返回摘要列表
   static Future<List<ModSummary>> search(String keyword) async {
@@ -244,11 +309,78 @@ class McmodApi {
     }
     // 在发出请求前记录时间,保证后续请求的间隔计算正确
     _record(uri);
-    final resp = await _client.get(uri, headers: _headers);
+    final resp = await _client.get(uri, headers: _requestHeaders);
+    // 保存会话 Cookie(MCMOD_SEED 在挑战页响应里下发,提交验证码要用)
+    _storeCookies(resp);
+    if (resp.statusCode == 403) {
+      final challenge = _parseCaptchaChallenge(uri, resp);
+      if (challenge != null) throw McmodCaptchaException(challenge);
+      throw Exception('请求被站点安全验证拦截(HTTP 403)');
+    }
     if (resp.statusCode != 200) {
       throw Exception('请求失败: HTTP ${resp.statusCode}');
     }
     return utf8.decode(resp.bodyBytes);
+  }
+
+  /// 从响应头解析 Set-Cookie 存入会话 Cookie 罐。
+  ///
+  /// 多个 Set-Cookie 由 http 包折叠成逗号分隔的单个值,
+  /// 而 Expires 属性里也含逗号——按 'name=' 开头切分规避
+  static void _storeCookies(http.Response resp) {
+    final values = resp.headers['set-cookie'];
+    if (values == null || values.isEmpty) return;
+    for (final part in values.split(RegExp(r', (?=[A-Za-z0-9_-]+=)'))) {
+      final pair = part.split(';').first.trim();
+      final i = pair.indexOf('=');
+      if (i > 0) {
+        _cookies[pair.substring(0, i).trim()] = pair.substring(i + 1).trim();
+      }
+    }
+  }
+
+  /// 从 403 响应解析安全验证挑战;不是挑战页时返回 null
+  static McmodCaptchaChallenge? _parseCaptchaChallenge(
+    Uri requestUri,
+    http.Response resp,
+  ) {
+    // 用 bodyBytes 按 UTF-8 解析:resp.body 在响应头缺 charset 时
+    // 会按 latin1 解码,中文问题文本会变乱码
+    final doc = html_parser.parse(utf8.decode(resp.bodyBytes));
+    if (doc.querySelector('#captchaForm') == null) return null;
+    // 挑战页内嵌 data URI 的 PNG 验证码图片
+    final imgSrc = doc.querySelector('#captchaImage')?.attributes['src'] ?? '';
+    const prefix = 'data:image/png;base64,';
+    if (!imgSrc.startsWith(prefix)) return null;
+    final bytes = base64Decode(imgSrc.substring(prefix.length));
+    final question =
+        doc.querySelector('.captcha-question')?.text.trim() ?? '';
+    return McmodCaptchaChallenge(
+      // 表单无 action 属性 → POST 回被拦请求的原始地址
+      postUrl: requestUri,
+      imageBytes: bytes,
+      question: question,
+    );
+  }
+
+  /// 提交安全验证答案(表单字段 cc_captcha_answer + cc_captcha_submit)。
+  ///
+  /// 返回 null 表示验证通过(后续请求应携带验证凭证 Cookie);
+  /// 返回新的 [McmodCaptchaChallenge] 表示答案错误,需要重新输入
+  static Future<McmodCaptchaChallenge?> submitCaptcha(
+    McmodCaptchaChallenge challenge,
+    String answer,
+  ) async {
+    final resp = await _client.post(
+      challenge.postUrl,
+      headers: {
+        ..._requestHeaders,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: {'cc_captcha_answer': answer, 'cc_captcha_submit': '1'},
+    );
+    _storeCookies(resp);
+    return _parseCaptchaChallenge(challenge.postUrl, resp);
   }
 
   /// 抓取页面;被站点限流时等待 5 秒重试一次,仍限流则抛出异常
@@ -488,11 +620,19 @@ class McmodApi {
       }
     }
 
-    // 支持的 MC 版本(去重,保持顺序)
-    final mcVersions = <String>[];
-    for (final a in doc.querySelectorAll('li.mcver a')) {
-      final v = a.text.trim();
-      if (v.isNotEmpty && !mcVersions.contains(v)) mcVersions.add(v);
+    // 支持的 MC 版本:按加载器分组(去重,保持页面顺序)。
+    // 页面结构:li.mcver > ul > ul,每个内层 ul 的首个 li 是加载器标签
+    // (如 'Forge: '),其余 li 的链接为版本号
+    final mcVersions = <String, List<String>>{};
+    for (final group in doc.querySelectorAll('li.mcver > ul > ul')) {
+      final label = group.querySelector('li')?.text.trim() ?? '';
+      final loader = label.replaceFirst(RegExp(r'[:：]\s*$'), '');
+      final versions = <String>[];
+      for (final a in group.querySelectorAll('li a')) {
+        final v = a.text.trim();
+        if (v.isNotEmpty && !versions.contains(v)) versions.add(v);
+      }
+      if (loader.isNotEmpty) mcVersions[loader] = versions;
     }
 
     String? field(String label) {
