@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/widget/link_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../service/settings.dart';
+import '../../service/settings.dart';
 
 /// 设置页:主题(模式/强调色)、字体大小、推荐列表条数上限
 class ConfigPage extends StatefulWidget {
@@ -77,10 +78,12 @@ class _ConfigPageState extends State<ConfigPage> {
               _buildRenderType(context, s),
               _sectionTitle(context, '字体设置'),
               _buildFontScaleSection(context, s),
-              _sectionTitle(context, '首页设置'),
+              _sectionTitle(context, '数据设置'),
               _buildDataSourceSection(context, s),
               _buildListSource(context, s),
               _buildListMaxSection(context, s),
+              _sectionTitle(context, '关于项目'),
+              _buildLink(),
             ],
           );
         },
@@ -219,6 +222,50 @@ class _ConfigPageState extends State<ConfigPage> {
                 : null,
           ),
         ),
+      ),
+    );
+  }
+
+  /// 渲染方法
+  Widget _buildRenderType(BuildContext context, SettingsService s) {
+    final theme = Theme.of(context);
+
+    // 转换为 DropdownMenuItem 列表
+    final dropdownItems = _renderType.map<DropdownMenuItem<String>>((item) {
+      final (label, value) = item;
+      return DropdownMenuItem<String>(value: value, child: Text(label));
+    }).toList();
+
+    final selectedValue = SettingsService.renderTypes.contains(s.renderType)
+        ? s.renderType
+        : 'default';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+      child: Row(
+        children: [
+          Text('渲染方法', style: theme.textTheme.bodyMedium),
+          Spacer(),
+          // 使用下拉框
+          DropdownButton<String>(
+            value: selectedValue,
+            items: dropdownItems,
+            onChanged: (String? newValue) {
+              if (newValue != null) {
+                SettingsService.instance.setRenderType(newValue);
+              }
+            },
+            // 样式定制（可选）
+            style: theme.textTheme.bodyMedium,
+            // 设置为透明下划线
+            underline: Container(height: 0, color: Colors.transparent),
+            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
+            // 如果希望下拉框宽度自适应内容
+            isDense: false,
+            // 禁用焦点和悬停效果
+            focusColor: Colors.transparent,
+          ),
+        ],
       ),
     );
   }
@@ -393,44 +440,21 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
-  /// 渲染方法
-  Widget _buildRenderType(BuildContext context, SettingsService s) {
-    final theme = Theme.of(context);
-
-    // 转换为 DropdownMenuItem 列表
-    final dropdownItems = _renderType.map<DropdownMenuItem<String>>((item) {
-      final (label, value) = item;
-      return DropdownMenuItem<String>(value: value, child: Text(label));
-    }).toList();
-
-    final selectedValue = SettingsService.renderTypes.contains(s.renderType)
-        ? s.renderType
-        : 'default';
-
+  Widget _buildLink() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
       child: Row(
         children: [
-          Text('渲染方法', style: theme.textTheme.bodyMedium),
-          Spacer(),
-          // 使用下拉框
-          DropdownButton<String>(
-            value: selectedValue,
-            items: dropdownItems,
-            onChanged: (String? newValue) {
-              if (newValue != null) {
-                SettingsService.instance.setRenderType(newValue);
-              }
+          const Text('项目地址'),
+          const Spacer(),
+          TextButton(
+            onPressed: () {
+              launchUrl(
+                Uri.parse('https://github.com/rd806/mc_mod_helper'),
+                mode: LaunchMode.externalApplication,
+              );
             },
-            // 样式定制（可选）
-            style: theme.textTheme.bodyMedium,
-            // 设置为透明下划线
-            underline: Container(height: 0, color: Colors.transparent),
-            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
-            // 如果希望下拉框宽度自适应内容
-            isDense: false,
-            // 禁用焦点和悬停效果
-            focusColor: Colors.transparent,
+            child: Chip(avatar: Icon(LinkIcons.github), label: Text('点击打开')),
           ),
         ],
       ),

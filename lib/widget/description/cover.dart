@@ -98,18 +98,14 @@ abstract class ModCover extends StatelessWidget {
   Widget _buildStatistic(BuildContext context, ModDetail mod) {
     final statistic = mod.statistics;
     if (statistic == null || statistic.isEmpty) return const SizedBox.shrink();
-    // 构建 Chips
-    final List<Widget> chips = [];
-    for (final entry in statistic) {
-      chips.add(_buildStatisticCard(entry));
-    }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 16),
-      child: Wrap(
-        spacing: 8.0, // 水平间距
-        runSpacing: 8.0, // 垂直间距（换行时）
-        children: chips,
+    return SizedBox(
+      height: 40,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: statistic.length,
+        itemBuilder: (context, index) =>
+            Align(child: _buildStatisticCard(statistic[index])),
       ),
     );
   }
@@ -141,10 +137,13 @@ abstract class ModCover extends StatelessWidget {
         break;
     }
 
-    return Chip(
-      avatar: Icon(icon),
-      visualDensity: VisualDensity.standard,
-      label: Text(label),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 0, 12, 0),
+      child: Chip(
+        avatar: Icon(icon),
+        visualDensity: VisualDensity.standard,
+        label: Text(label),
+      ),
     );
   }
 }

@@ -1,13 +1,15 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/widget/link_icons.dart';
 
-import '../api/mcmod.dart';
-import '../model/mod_summary.dart';
-import '../service/settings.dart';
-import '../widget/captcha_dialog.dart';
-import '../widget/error_view.dart';
-import '../widget/mod/mod_tile.dart';
+import '../../api/mcmod.dart';
+import '../../model/mod_summary.dart';
+import '../../service/settings.dart';
+import '../../widget/captcha_dialog.dart';
+import '../../widget/common/error_view.dart';
+import '../../widget/mod/mod_tile.dart';
 
 /// 搜索页：按关键词搜索模组，点击结果进入详情页
 class SearchPage extends StatefulWidget {
@@ -152,20 +154,61 @@ class _SearchPageState extends State<SearchPage> {
       );
     }
     // 显示搜索结果:左栏来源切换,右栏当前来源的结果
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 480) {
+          return _buildSearchResultNarrow();
+        }
+        return _buildSearchResultWide();
+      },
+    );
+  }
+
+  /// 宽屏搜索结果
+  /// 左右分栏
+  Widget _buildSearchResultWide() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 左栏:来源切换(高亮当前来源,标注结果条数/失败)
-        Expanded(
-          flex: 1,
+        // 左栏:来源切换(高亮当前来源,标注结果条数/失败)，固定宽度
+        SizedBox(
+          width: min(200, MediaQuery.of(context).size.width * 0.5),
           child: ListView.builder(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(2),
             itemCount: _source.length,
-            itemBuilder: (context, index) => _buildSourceButton(index),
+            itemBuilder: (context, index) => Align(
+              alignment: Alignment.centerLeft,
+              child: _buildSourceButton(index),
+            ),
           ),
         ),
-        // 右栏:当前来源的搜索结果
-        Expanded(flex: 3, child: _showResults()),
+        // 右栏:当前来源的搜索结果，铺满右侧空间
+        Expanded(flex: 1, child: _showResults()),
+      ],
+    );
+  }
+
+  /// 窄屏搜索结果
+  /// 上下分栏
+  Widget _buildSearchResultNarrow() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 上栏:来源切换(高亮当前来源,标注结果条数/失败)，固定宽度
+        SizedBox(
+          height: 100,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.all(2),
+            itemCount: _source.length,
+            itemBuilder: (context, index) => Align(
+              alignment: Alignment.centerLeft,
+              child: _buildSourceButton(index),
+            ),
+          ),
+        ),
+        // 下栏:当前来源的搜索结果，铺满下侧空间
+        Expanded(flex: 1, child: _showResults()),
       ],
     );
   }
@@ -184,7 +227,7 @@ class _SearchPageState extends State<SearchPage> {
     return _totalResults.containsKey(preferred) ? preferred : _source.first;
   }
 
-  /// 左栏来源按钮
+  /// 来源按钮
   Widget _buildSourceButton(int index) {
     final theme = Theme.of(context);
     final source = _source[index];
@@ -218,7 +261,7 @@ class _SearchPageState extends State<SearchPage> {
     setState(() => _selectedSource = _source[index]);
   }
 
-  /// 右栏:当前来源的搜索结果;来源失败时展示该来源的错误与重试
+  /// 当前来源的搜索结果;来源失败时展示该来源的错误与重试
   Widget _showResults() {
     final error = _sourceErrors[_selectedSource];
     if (error != null) {

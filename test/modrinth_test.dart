@@ -8,10 +8,11 @@ import 'package:http/testing.dart';
 import 'package:hyper_render/hyper_render.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/main.dart';
-import 'package:mc_mod_helper/page/detail.dart';
+import 'package:mc_mod_helper/page/more/detail.dart';
 import 'package:mc_mod_helper/service/settings.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
@@ -235,29 +236,36 @@ void main() {
     // 本用例验证 hyper_render 渲染路径,显式指定渲染方法
     // (默认 'default' 是 HtmlContent,详情页不会出现 HyperViewer)
     SettingsService.instance.setRenderType('hyperViewer');
+    // 重置 mcmod 节流时间戳:保证启动时的推荐请求立即发出
+    McmodApi.clearCaches();
 
-    // 启动应用:主页两个请求(真实 HTTP 400)按既有节奏推完
+    // 启动应用:推荐/分类两个页签的请求(真实 HTTP 400)按既有节奏推完
     await tester.pumpWidget(const McModHelper());
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     await tester.pump();
 
-    // 切来源:主页分类随之重拉(Modrinth 分类,MockClient 立即返回)
+    // 切来源:推荐页与分类页随之重拉(Modrinth,MockClient)。
+    // 推荐请求无节流立即发出,分类请求挂在 1s 节流计时器上
     SettingsService.instance.setDataSource(ModSource.modrinth);
-    await tester.pumpAndSettle();
+    await tester.pump(); // 推荐请求发出
+    await tester.pump(const Duration(seconds: 1)); // 节流 → 分类请求发出
+    await tester.pump(); // 两个响应 → setState
+    await tester.pump();
+
+    // 分类在「分类」页签(IndexedStack 默认停在推荐页签)
+    await tester.tap(find.text('分类'));
+    await tester.pump();
     expect(find.text('科技'), findsWidgets); // Modrinth 分类卡片已渲染
 
-    // 进搜索页
-    await tester.tap(find.byIcon(Icons.search));
-    await tester.pumpAndSettle();
+    // 进搜索页签
+    await tester.tap(find.text('搜索'));
+    await tester.pump();
 
-    // 搜索:数据来源切换同时触发了主页分类与推荐重拉,分类请求先占节流
-    // 时间戳,推荐请求再占下一段,搜索请求要等两段 1s 节流计时器
+    // 搜索:分类请求已占用节流时间戳,搜索请求要等 1s 节流计时器
     await tester.enterText(find.byType(TextField), 'sodium');
     await tester.tap(find.byIcon(Icons.arrow_forward));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1)); // 节流 → 推荐请求发出
     await tester.pump();
     await tester.pump(const Duration(seconds: 1)); // 节流 → 搜索请求发出
     await tester.pump();

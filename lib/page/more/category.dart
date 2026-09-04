@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/api/source.dart';
 
-import '../model/mod_category.dart';
-import '../api/mcmod.dart';
-import '../api/modrinth.dart';
-import '../model/mod_summary.dart';
-import '../widget/error_view.dart';
-import '../widget/mod/mod_card.dart';
+import '../../model/mod_category.dart';
+import '../../api/mcmod.dart';
+import '../../api/modrinth.dart';
+import '../../model/mod_summary.dart';
+import '../../widget/common/error_view.dart';
+import '../../widget/mod/mod_card.dart';
 
 /// 分类模组列表页：网格卡片展示，滚动到底自动加载下一页
 class CategoryPage extends StatefulWidget {

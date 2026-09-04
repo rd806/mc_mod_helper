@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 /// 简单的文字标签
 class Label extends StatelessWidget {
-  const Label({super.key, required this.entry});
+  const Label({super.key, required this.entry, this.icon});
+
+  final IconData? icon;
 
   final String entry;
 
@@ -17,7 +19,11 @@ class Label extends StatelessWidget {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [Text(entry, style: theme.textTheme.labelMedium)],
+        children: [
+          if (icon != null) Icon(icon!),
+          const SizedBox(width: 2),
+          Text(entry, style: theme.textTheme.labelMedium),
+        ],
       ),
     );
   }

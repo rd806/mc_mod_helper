@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/page/home.dart';
 
-import 'page/home.dart';
 import 'service/settings.dart';
 
 /// 应用程序入口

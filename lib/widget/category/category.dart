@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/source.dart';
 
 import '../../model/mod_category.dart';
-import '../../page/category.dart';
+import '../../page/more/category.dart';
 
 /// MC百科的分类 id(数字字符串) → 图标(实时抓取的分类中未知的 id 用兜底图标)
 const Map<String, IconData> _categoryIcons = {

@@ -6,17 +6,17 @@ import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/render/hyper.dart';
 import 'package:mc_mod_helper/service/settings.dart';
 import 'package:mc_mod_helper/widget/description/cover.dart';
-import 'package:mc_mod_helper/widget/description/label.dart';
+import 'package:mc_mod_helper/widget/common/label.dart';
 import 'package:mc_mod_helper/widget/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../api/mcmod.dart';
-import '../api/modrinth.dart';
-import '../model/mod_detail.dart';
-import '../render/html_content.dart';
-import '../widget/captcha_dialog.dart';
-import '../widget/description/collapsible_widgets.dart';
-import '../widget/description/image_box.dart';
+import '../../api/mcmod.dart';
+import '../../api/modrinth.dart';
+import '../../model/mod_detail.dart';
+import '../../render/html_content.dart';
+import '../../widget/captcha_dialog.dart';
+import '../../widget/common/collapsible_widgets.dart';
+import '../../widget/description/image_box.dart';
 
 /// 模组详情页
 class DetailPage extends StatefulWidget {

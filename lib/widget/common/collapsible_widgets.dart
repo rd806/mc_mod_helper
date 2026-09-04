@@ -137,12 +137,18 @@ class _CollapsibleWidgetsState extends State<CollapsibleWidgets> {
 
   // 展开按钮
   Widget _buildExpandButton() {
+    final theme = Theme.of(context);
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton.icon(
         onPressed: () => setState(() => _expanded = !_expanded),
         icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more, size: 18),
-        label: Text(_expanded ? '收起' : '展开'),
+        label: Text(
+          _expanded ? '收起' : '展开',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onPrimaryContainer,
+          ),
+        ),
       ),
     );
   }

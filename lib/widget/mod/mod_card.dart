@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../model/mod_summary.dart';
-import '../../page/detail.dart';
+import '../../page/more/detail.dart';
 
 /// 分类页模组卡片的公共基类:
 /// 卡片外壳(涟漪+跳转详情页)、标题拆分、标题与统计构建等公共逻辑放这里,
