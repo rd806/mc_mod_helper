@@ -8,13 +8,58 @@ import 'modrinth.dart';
 /// 模组信息来源
 enum ModSource { mcmod, modrinth, curseforge }
 
+enum FeatureSource { none, createTime, lastEditTime }
+
+/// 管理信息来源
 class SourceManager {
   /// 字符串转 ModSource
-  static ModSource fromString(String? value) {
+  static ModSource sourceToString(String? value) {
     return ModSource.values.firstWhere(
       (e) => e.name == value,
       orElse: () => ModSource.mcmod,
     );
+  }
+
+  /// 字符串转 FeatherSource
+  static FeatureSource featureToString(String? value) {
+    return FeatureSource.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => FeatureSource.none,
+    );
+  }
+
+  /// 获取主页推荐，需要三个参数：
+  /// - 来源，
+  /// - 排序方法，
+  /// - 数量限制
+  ///
+  /// mcmod 用列表页 sort 参数；modrinth/curseforge 各自由
+  /// [ModrinthApi.getFeaturedMods] / [CurseforgeApi.getFeaturedMods]
+  /// 把 [featureSource] 映射成平台自己的排序参数
+  static Future<List<ModSummary>> getFeature(
+    ModSource modSource,
+    FeatureSource featureSource,
+    int limit,
+  ) async {
+    switch (modSource) {
+      case ModSource.mcmod:
+        final sort = switch (featureSource) {
+          FeatureSource.none => '',
+          FeatureSource.createTime => 'createtime',
+          FeatureSource.lastEditTime => 'lastedittime',
+        };
+        return await McmodApi.getFeaturedMods(sort: sort, limit: limit);
+      case ModSource.modrinth:
+        return await ModrinthApi.getFeaturedMods(
+          sort: featureSource,
+          limit: limit,
+        );
+      case ModSource.curseforge:
+        return await CurseforgeApi.getFeaturedMods(
+          sort: featureSource,
+          limit: limit,
+        );
+    }
   }
 
   /// 获取主页分类

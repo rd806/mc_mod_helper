@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/widget/link_icons.dart';
 
 import '../service/settings.dart';
 
@@ -14,7 +15,7 @@ class ConfigPage extends StatefulWidget {
 class _ConfigPageState extends State<ConfigPage> {
   /// 推荐条数滑条草稿值:拖动过程中只改草稿,松手(onChangeEnd)才提交,
   /// 避免每个档位变化都触发主页重新拉取(多页抓取耗时较长)
-  late double _featuredDraft = SettingsService.instance.featuredMax.toDouble();
+  late double _featuredDraft = SettingsService.instance.featuredNum.toDouble();
 
   /// 字体缩放滑条草稿值(独立于推荐条数草稿)
   late double _fontScaleDraft = SettingsService.instance.fontScale.clamp(
@@ -39,11 +40,12 @@ class _ConfigPageState extends State<ConfigPage> {
   ];
 
   // 推荐方法
-  // 与 settings 中的一致
-  static const List<(String, String)> _sortMethod = [
-    ('默认', ''),
-    ('最新收录', 'createtime'),
-    ('最新编辑', 'lastedittime'),
+  // 与 settings 中的一致(语义对应 mcmod 列表页 sort 参数:
+  // createtime=最新收录,lastedittime=最新编辑)
+  static const List<(String, FeatureSource)> _sortMethod = [
+    ('默认', FeatureSource.none),
+    ('最新收录', FeatureSource.createTime),
+    ('最新编辑', FeatureSource.lastEditTime),
   ];
 
   static const List<(String, String)> _renderType = [
@@ -53,7 +55,7 @@ class _ConfigPageState extends State<ConfigPage> {
 
   static const List<(String, ModSource)> _modSource = [
     ('MC百科', ModSource.mcmod),
-    ('Modrinth', ModSource.modrinth)
+    ('Modrinth', ModSource.modrinth),
   ];
 
   @override
@@ -262,7 +264,16 @@ class _ConfigPageState extends State<ConfigPage> {
     // 转换为 DropdownMenuItem 列表
     final dropdownItems = _modSource.map<DropdownMenuItem<ModSource>>((item) {
       final (label, value) = item;
-      return DropdownMenuItem<ModSource>(value: value, child: Text(label));
+      return DropdownMenuItem<ModSource>(
+        value: value,
+        child: Row(
+          children: [
+            Icon(_getIconForDataSource(value)),
+            const SizedBox(width: 10),
+            Text(label),
+          ],
+        ),
+      );
     }).toList();
 
     final selectedValue = SettingsService.dataSources.contains(s.dataSource)
@@ -299,20 +310,34 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
+  // 获取图标
+  IconData _getIconForDataSource(ModSource source) {
+    switch (source) {
+      case ModSource.mcmod:
+        return LinkIcons.mc;
+      case ModSource.modrinth:
+        return LinkIcons.modrinth;
+      case ModSource.curseforge:
+        return LinkIcons.curseforge;
+    }
+  }
+
   /// 推荐列表来源(最新收录/最新编辑),修改后持久化,主页监听变化自动重拉
   Widget _buildListSource(BuildContext context, SettingsService s) {
     final theme = Theme.of(context);
 
     // 转换为 DropdownMenuItem 列表
-    final dropdownItems = _sortMethod.map<DropdownMenuItem<String>>((item) {
+    final dropdownItems = _sortMethod.map<DropdownMenuItem<FeatureSource>>((
+      item,
+    ) {
       final (label, value) = item;
-      return DropdownMenuItem<String>(value: value, child: Text(label));
+      return DropdownMenuItem<FeatureSource>(value: value, child: Text(label));
     }).toList();
 
     final selectedValue =
-        SettingsService.featuredSources.contains(s.featuredSource)
+        SettingsService.featuredTypes.contains(s.featuredSource)
         ? s.featuredSource
-        : 'createtime';
+        : FeatureSource.none;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
@@ -321,10 +346,10 @@ class _ConfigPageState extends State<ConfigPage> {
           Text('推荐来源', style: theme.textTheme.bodyMedium),
           Spacer(),
           // 使用下拉框
-          DropdownButton<String>(
+          DropdownButton<FeatureSource>(
             value: selectedValue,
             items: dropdownItems,
-            onChanged: (String? newValue) {
+            onChanged: (FeatureSource? newValue) {
               if (newValue != null) {
                 SettingsService.instance.setFeaturedSource(newValue);
               }
@@ -368,7 +393,7 @@ class _ConfigPageState extends State<ConfigPage> {
           Slider(
             value: _featuredDraft,
             min: SettingsService.featuredMin.toDouble(),
-            max: SettingsService.featuredMaxLimit.toDouble(),
+            max: SettingsService.featuredMax.toDouble(),
             divisions: 9,
             label: '${_featuredDraft.round()} 条',
             onChanged: (v) => setState(() => _featuredDraft = v),

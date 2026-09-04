@@ -86,16 +86,12 @@ void main() {
     expect(
       find.byWidgetPredicate(
         (w) =>
-            w is SingleChildScrollView &&
-            w.scrollDirection == Axis.horizontal,
+            w is SingleChildScrollView && w.scrollDirection == Axis.horizontal,
       ),
       findsOneWidget,
     );
     // 关键回归:表格按内容自然宽布局,总宽超过视口(不被等分压窄)
-    expect(
-      tester.getSize(find.byType(Table)).width,
-      greaterThan(800),
-    );
+    expect(tester.getSize(find.byType(Table)).width, greaterThan(800));
   });
 
   testWidgets('rowspan 纵向合并单元格:JEI 物品列表样式渲染正确', (tester) async {

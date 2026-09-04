@@ -687,8 +687,8 @@ class McmodApi {
       if (panel.isEmpty) return null;
       // 排序:面板第一条(通常总浏览)最前,其次昨日指数,再补其余条目
       final stats = <(String, String)>[panel.first];
-      final index =
-          RegExp(r'昨日指数[:：]\s*([0-9]+)').firstMatch(doc.body?.text ?? '');
+      final index = RegExp(r'昨日指数[:：]\s*([0-9]+)')
+          .firstMatch(doc.body?.text ?? '');
       if (index != null && stats.length < 3) {
         stats.add(('index', index.group(1)!));
       }

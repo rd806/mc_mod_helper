@@ -180,6 +180,54 @@ void main() {
       expect(r2.mods, hasLength(1));
       expect(r2.totalPages, 3);
     });
+
+    test('getFeaturedMods 按排序映射 index 并传递条数', () async {
+      final uris = <Uri>[];
+      ModrinthApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        return _json({
+          'hits': [
+            {
+              'slug': 'sodium',
+              'title': 'Sodium',
+              'description': '',
+              'icon_url': null,
+              'downloads': 8630000,
+              'follows': 3200,
+            },
+          ],
+          'total_hits': 1,
+        });
+      });
+
+      final mods = await ModrinthApi.getFeaturedMods(
+        sort: FeatureSource.none,
+        limit: 5,
+      );
+      expect(mods.single.id, 'sodium');
+      expect(uris.single.queryParameters['index'], 'downloads');
+      expect(uris.single.queryParameters['limit'], '5');
+      expect(uris.single.queryParameters['facets'], '[["project_type:mod"]]');
+
+      await ModrinthApi.getFeaturedMods(
+        sort: FeatureSource.createTime,
+        limit: 20,
+      );
+      expect(uris.last.queryParameters['index'], 'newest');
+      await ModrinthApi.getFeaturedMods(
+        sort: FeatureSource.lastEditTime,
+        limit: 20,
+      );
+      expect(uris.last.queryParameters['index'], 'updated');
+
+      // limit=0 短路,不发请求
+      final before = uris.length;
+      expect(
+        await ModrinthApi.getFeaturedMods(sort: FeatureSource.none, limit: 0),
+        isEmpty,
+      );
+      expect(uris.length, before);
+    });
   });
 
   testWidgets('数据来源切到 Modrinth 后搜索与详情走 Modrinth', (tester) async {
@@ -204,11 +252,14 @@ void main() {
     await tester.tap(find.byIcon(Icons.search));
     await tester.pumpAndSettle();
 
-    // 搜索:主页分类请求已占用节流时间戳,搜索请求需等约 1s 节流计时器
+    // 搜索:数据来源切换同时触发了主页分类与推荐重拉,分类请求先占节流
+    // 时间戳,推荐请求再占下一段,搜索请求要等两段 1s 节流计时器
     await tester.enterText(find.byType(TextField), 'sodium');
     await tester.tap(find.byIcon(Icons.arrow_forward));
     await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1)); // 节流 → 推荐请求发出
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1)); // 节流 → 搜索请求发出
     await tester.pump();
     await tester.pump();
     expect(find.text('Sodium'), findsOneWidget);

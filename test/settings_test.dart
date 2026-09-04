@@ -21,8 +21,8 @@ void main() {
       Colors.blue.toARGB32(),
     );
     expect(SettingsService.instance.fontScale, 1.0);
-    expect(SettingsService.instance.featuredMax, 20);
-    expect(SettingsService.instance.featuredSource, 'createtime');
+    expect(SettingsService.instance.featuredNum, 20);
+    expect(SettingsService.instance.featuredSource, FeatureSource.none);
     expect(SettingsService.instance.dataSource, ModSource.mcmod);
     expect(SettingsService.instance.renderType, 'default');
   });
@@ -34,7 +34,7 @@ void main() {
       ..setSeedColor(Colors.orange)
       ..setFontScale(1.15)
       ..setFeaturedMax(35)
-      ..setFeaturedSource('lastedittime')
+      ..setFeaturedSource(FeatureSource.lastEditTime)
       ..setDataSource(ModSource.modrinth)
       ..setRenderType('hyperViewer');
 
@@ -43,7 +43,8 @@ void main() {
     expect(prefs.getInt('seed_color'), Colors.orange.toARGB32());
     expect(prefs.getDouble('font_scale'), 1.15);
     expect(prefs.getInt('featured_max'), 35);
-    expect(prefs.getString('featured_source'), 'lastedittime');
+    // 存枚举的 name 字符串(与 data_source 一致)
+    expect(prefs.getString('featured_source'), 'lastEditTime');
     expect(prefs.getString('data_source'), 'modrinth');
     expect(prefs.getString('render_type'), 'hyperViewer');
   });
@@ -54,7 +55,7 @@ void main() {
       'seed_color': Colors.deepPurple.toARGB32(),
       'font_scale': 0.9,
       'featured_max': 45,
-      'featured_source': 'lastedittime',
+      'featured_source': 'lastEditTime',
       'data_source': 'modrinth',
       'render_type': 'hyperViewer',
     });
@@ -65,8 +66,8 @@ void main() {
       Colors.deepPurple.toARGB32(),
     );
     expect(SettingsService.instance.fontScale, 0.9);
-    expect(SettingsService.instance.featuredMax, 45);
-    expect(SettingsService.instance.featuredSource, 'lastedittime');
+    expect(SettingsService.instance.featuredNum, 45);
+    expect(SettingsService.instance.featuredSource, FeatureSource.lastEditTime);
     expect(SettingsService.instance.dataSource, ModSource.modrinth);
     expect(SettingsService.instance.renderType, 'hyperViewer');
   });
@@ -85,19 +86,26 @@ void main() {
     expect(SettingsService.instance.renderType, 'hyperViewer');
   });
 
-  test('featuredSource 非法值被忽略', () async {
+  test('featuredSource setter 生效', () async {
     await SettingsService.instance.load();
-    SettingsService.instance.setFeaturedSource('bogus');
-    expect(SettingsService.instance.featuredSource, 'createtime');
-    SettingsService.instance.setFeaturedSource('lastedittime');
-    expect(SettingsService.instance.featuredSource, 'lastedittime');
+    SettingsService.instance.setFeaturedSource(FeatureSource.lastEditTime);
+    expect(SettingsService.instance.featuredSource, FeatureSource.lastEditTime);
+    // 同值短路,不写盘不通知
+    SettingsService.instance.setFeaturedSource(FeatureSource.lastEditTime);
+    expect(SettingsService.instance.featuredSource, FeatureSource.lastEditTime);
+  });
+
+  test('featuredSource 非法存储值回落到默认', () async {
+    SharedPreferences.setMockInitialValues({'featured_source': 'bogus'});
+    await SettingsService.instance.load();
+    expect(SettingsService.instance.featuredSource, FeatureSource.none);
   });
 
   test('featuredMax 超出范围时被截断', () async {
     await SettingsService.instance.load();
     SettingsService.instance.setFeaturedMax(500);
-    expect(SettingsService.instance.featuredMax, 50);
+    expect(SettingsService.instance.featuredNum, 50);
     SettingsService.instance.setFeaturedMax(1);
-    expect(SettingsService.instance.featuredMax, 5);
+    expect(SettingsService.instance.featuredNum, 5);
   });
 }

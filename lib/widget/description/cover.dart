@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/source.dart';
 
@@ -80,7 +79,7 @@ abstract class ModCover extends StatelessWidget {
         const SizedBox(height: 10),
         _buildSource(context, mod),
         const SizedBox(height: 16),
-        _buildStatistic(context, mod)
+        _buildStatistic(context, mod),
       ],
     );
   }
@@ -117,39 +116,36 @@ abstract class ModCover extends StatelessWidget {
 
   // 根据字符串选择合适 Chips
   Widget _buildStatisticCard((String, String) entry) {
+    IconData icon = Icons.info_outline;
+    String label = '${entry.$1}：${entry.$2}';
     switch (entry.$1) {
       case 'downloads':
-        return Chip(
-          avatar: Icon(Icons.download),
-          label: Text('下载：${entry.$2}'),
-        );
+        icon = Icons.download;
+        label = '下载：${entry.$2}';
+        break;
       case 'followers':
-        return Chip(
-          avatar: Icon(Icons.favorite_rounded),
-          label: Text('关注：${entry.$2}'),
-        );
+        icon = Icons.favorite_rounded;
+        label = '关注：${entry.$2}';
+        break;
       case 'views':
-        return Chip(
-          avatar: Icon(Icons.visibility),
-          label: Text('总浏览：${entry.$2}'),
-        );
+        icon = Icons.visibility;
+        label = '总浏览：${entry.$2}';
+        break;
       case 'index':
-        return Chip(
-          avatar: Icon(Icons.trending_up),
-          label: Text('昨日指数：${entry.$2}'),
-        );
+        icon = Icons.trending_up;
+        label = '昨日指数：${entry.$2}';
+        break;
       case 'fillRate':
-        return Chip(
-          avatar: Icon(Icons.percent),
-          label: Text('资料填充率：${entry.$2}'),
-        );
-      default:
-        // 未知统计项(站点面板可能出现新标签):按原文展示,不丢弃
-        return Chip(
-          avatar: Icon(Icons.info_outline),
-          label: Text('${entry.$1}：${entry.$2}'),
-        );
+        icon = Icons.percent;
+        label = '资料填充率：${entry.$2}';
+        break;
     }
+
+    return Chip(
+      avatar: Icon(icon),
+      visualDensity: VisualDensity.standard,
+      label: Text(label),
+    );
   }
 }
 
@@ -180,7 +176,7 @@ class ModCoverWide extends ModCover {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

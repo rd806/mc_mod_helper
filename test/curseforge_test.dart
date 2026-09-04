@@ -10,10 +10,10 @@ import 'package:mc_mod_helper/api/source.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
 http.Response _json(Object data) => http.Response.bytes(
-      utf8.encode(jsonEncode(data)),
-      200,
-      headers: {'content-type': 'application/json; charset=utf-8'},
-    );
+  utf8.encode(jsonEncode(data)),
+  200,
+  headers: {'content-type': 'application/json; charset=utf-8'},
+);
 
 /// 搜索 / 分类 / 详情 / 文件 四条路由的假响应
 Future<http.Response> _handler(http.Request request) async {
@@ -76,8 +76,12 @@ Future<http.Response> _handler(http.Request request) async {
   if (path == '/v1/mods/238222/files') {
     return _json({
       'data': [
-        {'gameVersions': ['1.21.1', 'Fabric']},
-        {'gameVersions': ['1.20.4', 'Forge', 'NeoForge']},
+        {
+          'gameVersions': ['1.21.1', 'Fabric'],
+        },
+        {
+          'gameVersions': ['1.20.4', 'Forge', 'NeoForge'],
+        },
       ],
     });
   }
@@ -137,5 +141,42 @@ void main() {
     // 非法分类 id:空结果而非异常
     final bad = await CurseforgeApi.getCategoryMods('not-a-number');
     expect(bad.mods, isEmpty);
+  });
+
+  test('getFeaturedMods 按排序映射 sortField 并传递条数', () async {
+    final uris = <Uri>[];
+    CurseforgeApi.clientFactory = () => MockClient((request) async {
+      uris.add(request.url);
+      return _handler(request);
+    });
+
+    final mods = await CurseforgeApi.getFeaturedMods(
+      sort: FeatureSource.none,
+      limit: 20,
+    );
+    expect(mods.single.id, '238222');
+    expect(uris.single.queryParameters['sortField'], '1');
+    expect(uris.single.queryParameters['pageSize'], '20');
+
+    await CurseforgeApi.getFeaturedMods(
+      sort: FeatureSource.createTime,
+      limit: 5,
+    );
+    expect(uris.last.queryParameters['sortField'], '11');
+    expect(uris.last.queryParameters['pageSize'], '5');
+    await CurseforgeApi.getFeaturedMods(
+      sort: FeatureSource.lastEditTime,
+      limit: 60,
+    );
+    expect(uris.last.queryParameters['sortField'], '3');
+    expect(uris.last.queryParameters['pageSize'], '50'); // 上限截断
+
+    // limit=0 短路,不发请求
+    final before = uris.length;
+    expect(
+      await CurseforgeApi.getFeaturedMods(sort: FeatureSource.none, limit: 0),
+      isEmpty,
+    );
+    expect(uris.length, before);
   });
 }

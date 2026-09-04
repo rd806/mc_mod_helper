@@ -28,9 +28,9 @@ class CurseforgeApi {
   static const String _apiKey = 'YOUR_API_KEY_HERE';
 
   static Map<String, String> get _headers => {
-        'x-api-key': _apiKey,
-        'User-Agent': 'MCModHelper/1.0.0',
-      };
+    'x-api-key': _apiKey,
+    'User-Agent': 'MCModHelper/1.0.0',
+  };
 
   /// 请求最小间隔(礼貌限速;与其它 Api 的节流互相独立)
   static const Duration _minInterval = Duration(seconds: 1);
@@ -41,7 +41,10 @@ class CurseforgeApi {
   static final Map<String, ModDetail> _detailCache = {};
   static List<ModCategory>? _categoryCache;
   static final Map<String, ({List<ModSummary> mods, int totalPages})>
-      _categoryModsCache = {};
+  _categoryModsCache = {};
+
+  /// 推荐列表缓存:key='$sortField-$limit'(limit 影响 API 返回条数,一起作 key)
+  static final Map<String, List<ModSummary>> _featuredCache = {};
 
   /// Minecraft 游戏 ID(CurseForge 中 Minecraft 的 gameId 固定为 432)
   static const int _gameId = 432;
@@ -84,6 +87,7 @@ class CurseforgeApi {
     _detailCache.clear();
     _categoryCache = null;
     _categoryModsCache.clear();
+    _featuredCache.clear();
     _lastAt = null;
     // 重置惰性缓存的客户端,让测试可以替换 clientFactory
     _clientInstance = null;
@@ -134,10 +138,7 @@ class CurseforgeApi {
     // 文件列表:每个文件带 gameVersions[](版本号与加载器名混在同一列表)
     final filesUri = Uri.parse(
       'https://api.curseforge.com/v1/mods/$modId/files',
-    ).replace(queryParameters: {
-      'pageSize': '50',
-      'sortOrder': 'desc',
-    });
+    ).replace(queryParameters: {'pageSize': '50', 'sortOrder': 'desc'});
     final filesBody = await _get(filesUri);
 
     final detail = _parseDetail(
@@ -156,10 +157,7 @@ class CurseforgeApi {
     if (cached != null) return cached;
 
     final uri = Uri.parse('https://api.curseforge.com/v1/categories').replace(
-      queryParameters: {
-        'gameId': '$_gameId',
-        'classId': '$_modClassId',
-      },
+      queryParameters: {'gameId': '$_gameId', 'classId': '$_modClassId'},
     );
     final body = await _get(uri);
     final cats = _parseCategories(body);
@@ -198,6 +196,43 @@ class CurseforgeApi {
     final result = _parseCategoryPage(body);
     _categoryModsCache[key] = result;
     return result;
+  }
+
+  /// 获取首页推荐模组,返回最多 [limit] 条。
+  ///
+  /// 复用 search 接口,[sort] 映射到 ModsSearchSortField 的 sortField:
+  /// - none → 1(Featured,站内“精选”)
+  /// - createTime → 11(ReleasedDate,发布日期,最接近“创建时间”)
+  /// - lastEditTime → 3(LastUpdated,最近更新)
+  /// search 的 pageSize 上限为 50,超出截断。
+  static Future<List<ModSummary>> getFeaturedMods({
+    FeatureSource sort = FeatureSource.none,
+    int limit = 20,
+  }) async {
+    final clamped = limit.clamp(0, 50);
+    if (clamped == 0) return const [];
+    final sortField = switch (sort) {
+      FeatureSource.none => '1',
+      FeatureSource.createTime => '11',
+      FeatureSource.lastEditTime => '3',
+    };
+    final key = '$sortField-$clamped';
+    final cached = _featuredCache[key];
+    if (cached != null) return cached;
+
+    final uri = Uri.parse('https://api.curseforge.com/v1/mods/search').replace(
+      queryParameters: {
+        'gameId': '$_gameId',
+        'classId': '$_modClassId',
+        'pageSize': '$clamped',
+        'sortField': sortField,
+        'sortOrder': 'desc',
+      },
+    );
+    final body = await _get(uri);
+    final results = _parseSearch(body);
+    _featuredCache[key] = results;
+    return results;
   }
 
   // ---------- 请求基础 ----------
@@ -278,7 +313,8 @@ class CurseforgeApi {
       if (summary != null) parsed.add(summary);
     }
     final pagination = data['pagination'] as Map<String, dynamic>?;
-    final totalHits = (pagination?['totalCount'] as num?)?.toInt() ?? parsed.length;
+    final totalHits =
+        (pagination?['totalCount'] as num?)?.toInt() ?? parsed.length;
     final totalPages = totalHits <= 0 ? 0 : (totalHits + 19) ~/ 20;
     return (mods: parsed, totalPages: totalPages);
   }
@@ -298,8 +334,7 @@ class CurseforgeApi {
     // 只有 summary 简介(纯文本,走 markdownToHtml 包装成段落)
     final title = (data['name'] as String?)?.trim() ?? '';
     final summary =
-        (data['summary'] as String?)?.trim() ??
-        (fallbackDescription ?? '');
+        (data['summary'] as String?)?.trim() ?? (fallbackDescription ?? '');
     final html = summary.isEmpty ? '' : _markdownToHtml(summary);
     final logo = data['logo'] as Map<String, dynamic>?;
 
@@ -328,8 +363,8 @@ class CurseforgeApi {
     final map = <String, List<String>>{};
 
     for (final file in files.cast<Map<String, dynamic>>()) {
-      final gameVersions =
-          (file['gameVersions'] as List<dynamic>? ?? const []).cast<String>();
+      final gameVersions = (file['gameVersions'] as List<dynamic>? ?? const [])
+          .cast<String>();
 
       // 加载器名(大小写敏感,CurseForge 的写法固定)
       final loaders = <String>[];
@@ -402,9 +437,15 @@ class CurseforgeApi {
     if (linksData != null) {
       add('官网', linksData['websiteUrl'] as String?);
       final source = linksData['sourceUrl'] as String?;
-      add(source != null && source.contains('github') ? 'GitHub' : '源代码', source);
+      add(
+        source != null && source.contains('github') ? 'GitHub' : '源代码',
+        source,
+      );
       final issues = linksData['issuesUrl'] as String?;
-      add(issues != null && issues.contains('github') ? 'GitHub Issues' : '问题反馈', issues);
+      add(
+        issues != null && issues.contains('github') ? 'GitHub Issues' : '问题反馈',
+        issues,
+      );
       add('Wiki', linksData['wikiUrl'] as String?);
     }
     return links;

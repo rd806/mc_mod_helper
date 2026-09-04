@@ -264,7 +264,7 @@ class _DetailPageState extends State<DetailPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
               child: const Divider(),
-            )
+            ),
           ],
         ),
         // 下方:左宽右窄两栏
@@ -294,9 +294,7 @@ class _DetailPageState extends State<DetailPage> {
                   padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
                   children: [
                     _buildEnvironment(mod, theme),
-                    if (mod.links.isNotEmpty) ...[
-                      _buildLinks(mod, theme)
-                    ],
+                    if (mod.links.isNotEmpty) ...[_buildLinks(mod, theme)],
                     if (mod.mcVersions.isNotEmpty) ...[
                       _buildModVersion(mod, theme),
                     ],
@@ -369,7 +367,8 @@ class _DetailPageState extends State<DetailPage> {
       chips.add(
         Chip(
           avatar: Icon(Icons.computer_rounded, size: 18),
-          label: Text('客户端：$client'),
+          visualDensity: VisualDensity.standard,
+          label: Text('客户端：$client', style: theme.textTheme.labelMedium),
         ),
       );
     }
@@ -377,7 +376,8 @@ class _DetailPageState extends State<DetailPage> {
       chips.add(
         Chip(
           avatar: Icon(Icons.storage_rounded, size: 18),
-          label: Text('服务端：$server'),
+          visualDensity: VisualDensity.standard,
+          label: Text('服务端：$server', style: theme.textTheme.labelMedium),
         ),
       );
     }
@@ -428,7 +428,7 @@ class _DetailPageState extends State<DetailPage> {
                 for (final link in mod.links)
                   ActionChip(
                     avatar: Icon(LinkIcons.getLinkIcon(link.name), size: 18),
-                    label: Text(link.name),
+                    label: Text(link.name, style: theme.textTheme.labelMedium),
                     onPressed: () => _openUrl(link.url),
                   ),
               ],
@@ -459,7 +459,13 @@ class _DetailPageState extends State<DetailPage> {
                 ),
                 const SizedBox(height: 12),
                 CollapsibleChips(
-                  chips: [for (final v in entry.value) Chip(label: Text(v))],
+                  chips: [
+                    for (final v in entry.value)
+                      Chip(
+                        visualDensity: VisualDensity.standard,
+                        label: Text(v, style: theme.textTheme.labelMedium),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 12),
               ],

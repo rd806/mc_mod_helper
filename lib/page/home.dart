@@ -35,7 +35,7 @@ class _HomePageState extends State<HomePage> {
   int? _lastFeaturedLimit;
 
   /// 上次发起推荐加载时使用的来源(最新收录/最新编辑)
-  String? _lastFeaturedSource;
+  FeatureSource? _lastFeaturedSource;
 
   /// 上次加载分类时使用的数据来源,用于判断设置变化是否需要重新拉取
   ModSource? _lastDataSource;
@@ -59,13 +59,15 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  /// 设置变化回调:数据来源变化重拉分类,推荐条数上限/来源变化重拉推荐。
+  /// 设置变化回调:数据来源变化重拉分类与推荐(推荐同样依赖来源),
+  /// 推荐条数上限/来源变化重拉推荐。
   /// 主题/字体/强调色变化也会触发本回调,但比较后直接返回
   void _onSettingsChanged() {
     if (SettingsService.instance.dataSource != _lastDataSource) {
       _loadCategories();
+      _loadFeatured();
     }
-    if (SettingsService.instance.featuredMax != _lastFeaturedLimit ||
+    if (SettingsService.instance.featuredNum != _lastFeaturedLimit ||
         SettingsService.instance.featuredSource != _lastFeaturedSource) {
       _loadFeatured();
     }
@@ -73,8 +75,9 @@ class _HomePageState extends State<HomePage> {
 
   /// 加载首页推荐列表。[silent] 为 true 时不显示加载动画(下拉刷新用)
   Future<void> _loadFeatured({bool silent = false}) async {
-    final limit = SettingsService.instance.featuredMax;
-    final source = SettingsService.instance.featuredSource;
+    final limit = SettingsService.instance.featuredNum;
+    final dataSource = SettingsService.instance.dataSource;
+    final featureSource = SettingsService.instance.featuredSource;
     final seq = ++_featuredSeq;
     if (!silent) {
       setState(() {
@@ -84,9 +87,14 @@ class _HomePageState extends State<HomePage> {
     }
     // 在发起时记录本次使用的上限与来源:加载期间再变化会再次触发重载
     _lastFeaturedLimit = limit;
-    _lastFeaturedSource = source;
+    _lastDataSource = dataSource;
+    _lastFeaturedSource = featureSource;
     try {
-      final mods = await McmodApi.getFeaturedMods(sort: source, limit: limit);
+      final mods = await SourceManager.getFeature(
+        dataSource,
+        featureSource,
+        limit,
+      );
       if (!mounted || seq != _featuredSeq) return;
       setState(() {
         _featured = mods;

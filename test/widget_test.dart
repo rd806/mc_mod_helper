@@ -77,7 +77,7 @@ void main() {
     await tester.pump();
     await tester.drag(find.byType(Slider).last, const Offset(400, 0));
     await tester.pump();
-    expect(SettingsService.instance.featuredMax, greaterThan(20));
+    expect(SettingsService.instance.featuredNum, greaterThan(20));
 
     // 条数变化触发主页(离屏但已挂载)重新拉取:先走节流计时器再发请求,
     // 测试环境请求返回 400;必须显式推进假时钟,不能用 pumpAndSettle
@@ -96,15 +96,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(SettingsService.instance.renderType, 'hyperViewer');
 
-    // 切换推荐来源(首页设置里的 String 下拉框,树中最后一个) → 服务值变化,
+    // 切换推荐来源(首页设置里的 FeatureSource 下拉框) → 服务值变化,
     // 主页再次重拉
-    await tester.ensureVisible(find.byType(DropdownButton<String>).last);
+    await tester.ensureVisible(find.byType(DropdownButton<FeatureSource>));
     await tester.pump();
-    await tester.tap(find.byType(DropdownButton<String>).last);
+    await tester.tap(find.byType(DropdownButton<FeatureSource>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('最新编辑').last);
     await tester.pumpAndSettle();
-    expect(SettingsService.instance.featuredSource, 'lastedittime');
+    expect(SettingsService.instance.featuredSource, FeatureSource.lastEditTime);
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     await tester.pump();
@@ -116,9 +116,13 @@ void main() {
     await tester.tap(find.byType(DropdownButton<ModSource>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Modrinth').last);
-    // dataSource 变化触发主页分类重拉(ModrinthApi 首次请求无节流 Timer),
-    // pumpAndSettle 收尾重拉与按钮动画,安全
-    await tester.pumpAndSettle();
+    // dataSource 变化触发主页分类与推荐重拉:分类请求无节流立即发出,
+    // 推荐请求挂在 ModrinthApi 1s 节流计时器上,显式推进假时钟
+    // (pumpAndSettle 会提前退出留下 pending Timer)
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    await tester.pump();
     expect(SettingsService.instance.dataSource, ModSource.modrinth);
   });
 

@@ -288,9 +288,8 @@ class HtmlContent extends StatelessWidget {
     final colCount = rows.fold<int>(0, (m, r) => r.length > m ? r.length : m);
     // 画廊判定:存在只含图片的单元格,或单图+图下说明的图注格
     final isGallery = rows.any(
-      (r) => r.any(
-        (c) => _imageOnlySrc(c) != null || _captionImageSrc(c) != null,
-      ),
+      (r) =>
+          r.any((c) => _imageOnlySrc(c) != null || _captionImageSrc(c) != null),
     );
     // 合并单元格(rowspan/colspan):Table 控件不支持,
     // 改用自定义网格模型渲染(见 _buildSpanGrid)
@@ -580,9 +579,7 @@ class HtmlContent extends StatelessWidget {
         }
         if (cell != null) {
           c += cell.colSpan;
-          children.add(
-            SizedBox(width: cellTotal(cell), child: cellBox(cell)),
-          );
+          children.add(SizedBox(width: cellTotal(cell), child: cellBox(cell)));
         } else {
           final anchor = anchorAt(r, c);
           final span = anchor?.colSpan ?? 1; // 兜底:畸形表格按 1 列
@@ -599,7 +596,9 @@ class HtmlContent extends StatelessWidget {
     }
 
     final grid = Container(
-      decoration: BoxDecoration(border: Border(top: side, left: side)),
+      decoration: BoxDecoration(
+        border: Border(top: side, left: side),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1194,16 +1193,11 @@ class _CappedIntrinsicColumnWidth extends TableColumnWidth {
   final double cap;
 
   @override
-  double minIntrinsicWidth(
-    Iterable<RenderBox> cells,
-    double containerWidth,
-  ) => 0;
+  double minIntrinsicWidth(Iterable<RenderBox> cells, double containerWidth) =>
+      0;
 
   @override
-  double maxIntrinsicWidth(
-    Iterable<RenderBox> cells,
-    double containerWidth,
-  ) {
+  double maxIntrinsicWidth(Iterable<RenderBox> cells, double containerWidth) {
     var maxWidth = 0.0;
     for (final cell in cells) {
       final w = cell.getMaxIntrinsicWidth(double.infinity);

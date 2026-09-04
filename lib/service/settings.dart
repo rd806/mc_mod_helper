@@ -14,7 +14,7 @@ class SettingsService extends ChangeNotifier {
   static const String _seedColorKey = 'seed_color';
   static const String _fontScaleKey = 'font_scale';
   static const String _featuredMaxKey = 'featured_max';
-  static const String _featuredSourceKey = 'featured_source';
+  static const String _featuredTypeKey = 'featured_source';
   static const String _dataSourceKey = 'data_source';
   static const String _renderTypeKey = 'render_type';
 
@@ -24,20 +24,20 @@ class SettingsService extends ChangeNotifier {
 
   /// 推荐列表条数上限的允许范围(与设置页滑条保持一致)
   static const int featuredMin = 5;
-  static const int featuredMaxLimit = 50;
+  static const int featuredMax = 50;
 
   /// 首页推荐来源的合法取值(与 mcmod.cn 列表页 sort 参数一致)
-  static const List<String> featuredSources = [
-    '',
-    'createtime',
-    'lastedittime',
+  static const List<FeatureSource> featuredTypes = [
+    FeatureSource.none,
+    FeatureSource.createTime,
+    FeatureSource.lastEditTime,
   ];
 
   /// 搜索/详情数据来源的合法取值
   static const List<ModSource> dataSources = [
     ModSource.mcmod,
     ModSource.modrinth,
-    ModSource.curseforge
+    ModSource.curseforge,
   ];
 
   /// 渲染方法
@@ -46,16 +46,16 @@ class SettingsService extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.blue;
   double _fontScale = 1.0;
-  int _featuredMax = 20;
-  String _featuredSource = "";
+  int _featuredNum = 20;
+  FeatureSource _featuredType = FeatureSource.none;
   ModSource _dataSource = ModSource.mcmod;
   String _renderType = 'default';
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
   double get fontScale => _fontScale;
-  int get featuredMax => _featuredMax;
-  String get featuredSource => _featuredSource;
+  int get featuredNum => _featuredNum;
+  FeatureSource get featuredSource => _featuredType;
   ModSource get dataSource => _dataSource;
   String get renderType => _renderType;
 
@@ -66,26 +66,29 @@ class SettingsService extends ChangeNotifier {
   Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // 主题模式
       _themeMode =
           ThemeMode.values.asNameMap()[prefs.getString(_themeModeKey)] ??
           ThemeMode.system;
       _seedColor = Color(prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32());
+      // 字体大小
       _fontScale = (prefs.getDouble(_fontScaleKey) ?? 1.0).clamp(
         fontMin,
         fontMax,
       );
-      _featuredMax = (prefs.getInt(_featuredMaxKey) ?? 20).clamp(
+      _featuredNum = (prefs.getInt(_featuredMaxKey) ?? 20).clamp(
         featuredMin,
-        featuredMaxLimit,
+        featuredMax,
       );
 
-      final source = prefs.getString(_featuredSourceKey);
-      _featuredSource = (source != null && featuredSources.contains(source))
-          ? source
-          : 'createtime';
+      final type = prefs.getString(_featuredTypeKey);
+      FeatureSource featureSource = SourceManager.featureToString(type);
+      _featuredType = (type != null && featuredTypes.contains(featureSource))
+          ? featureSource
+          : FeatureSource.none;
 
       final ds = prefs.getString(_dataSourceKey);
-      ModSource modSource = SourceManager.fromString(ds);
+      ModSource modSource = SourceManager.sourceToString(ds);
       _dataSource = (ds != null && dataSources.contains(modSource))
           ? modSource
           : ModSource.mcmod;
@@ -125,13 +128,15 @@ class SettingsService extends ChangeNotifier {
   }
 
   /// 设置首页推荐来源(最新收录/最新编辑),非法值忽略
-  void setFeaturedSource(String source) {
-    if (!featuredSources.contains(source) || source == _featuredSource) {
+  void setFeaturedSource(FeatureSource source) {
+    if (!featuredTypes.contains(source) || source == _featuredType) {
       return;
     }
-    _featuredSource = source;
+    _featuredType = source;
     notifyListeners();
-    _persist(_featuredSourceKey, source);
+    // 与 setDataSource 同理:存 name 字符串而非枚举对象,
+    // 否则 _persist 的 switch 没有对应分支,什么都不会写入
+    _persist(_featuredTypeKey, source.name);
   }
 
   /// 设置搜索/详情数据来源(MC百科/Modrinth),非法值忽略
@@ -146,9 +151,9 @@ class SettingsService extends ChangeNotifier {
 
   /// 设置首页推荐列表条数上限(自动截断到允许范围)
   void setFeaturedMax(int max) {
-    final clamped = max.clamp(featuredMin, featuredMaxLimit);
-    if (clamped == _featuredMax) return;
-    _featuredMax = clamped;
+    final clamped = max.clamp(featuredMin, featuredMax);
+    if (clamped == _featuredNum) return;
+    _featuredNum = clamped;
     notifyListeners();
     _persist(_featuredMaxKey, clamped);
   }

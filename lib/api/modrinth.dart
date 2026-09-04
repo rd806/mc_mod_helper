@@ -38,12 +38,16 @@ class ModrinthApi {
   static final Map<String, ({List<ModSummary> mods, int totalPages})>
   _categoryModsCache = {};
 
+  /// 推荐列表缓存:key='$index-$limit'(limit 影响 API 返回条数,一起作 key)
+  static final Map<String, List<ModSummary>> _featuredCache = {};
+
   @visibleForTesting
   static void clearCaches() {
     _searchCache.clear();
     _detailCache.clear();
     _categoryCache = null;
     _categoryModsCache.clear();
+    _featuredCache.clear();
     _lastAt = null;
     // 重置惰性缓存的客户端,让测试可以替换 clientFactory
     _clientInstance = null;
@@ -138,6 +142,41 @@ class ModrinthApi {
     final result = _parseCategoryPage(body);
     _categoryModsCache[key] = result;
     return result;
+  }
+
+  /// 获取首页推荐模组,返回最多 [limit] 条。
+  ///
+  /// 复用 search 接口,[sort] 映射到 index 排序参数:
+  /// - none → downloads(按下载量,站内“热门”语义)
+  /// - createTime → newest(最新发布)
+  /// - lastEditTime → updated(最近更新)
+  /// search 的 limit 上限为 100,超出截断。
+  static Future<List<ModSummary>> getFeaturedMods({
+    FeatureSource sort = FeatureSource.none,
+    int limit = 20,
+  }) async {
+    final clamped = limit.clamp(0, 100);
+    if (clamped == 0) return const [];
+    final index = switch (sort) {
+      FeatureSource.none => 'downloads',
+      FeatureSource.createTime => 'newest',
+      FeatureSource.lastEditTime => 'updated',
+    };
+    final key = '$index-$clamped';
+    final cached = _featuredCache[key];
+    if (cached != null) return cached;
+
+    final uri = Uri.parse('https://api.modrinth.com/v2/search').replace(
+      queryParameters: {
+        'limit': '$clamped',
+        'index': index,
+        'facets': '[["project_type:mod"]]',
+      },
+    );
+    final body = await _get(uri);
+    final results = _parseSearch(body);
+    _featuredCache[key] = results;
+    return results;
   }
 
   // ---------- 请求基础 ----------
@@ -273,7 +312,6 @@ class ModrinthApi {
     );
   }
 
-
   /// 获取统计信息
   /// - 下载：downloads
   /// - 关注：followers
@@ -292,7 +330,6 @@ class ModrinthApi {
 
     return statistic;
   }
-
 
   /// 版本列表 → 加载器 → 版本号 的分组映射。
   ///
