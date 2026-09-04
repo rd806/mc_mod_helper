@@ -6,6 +6,7 @@ import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/render/hyper.dart';
 import 'package:mc_mod_helper/service/settings.dart';
 import 'package:mc_mod_helper/widget/description/cover.dart';
+import 'package:mc_mod_helper/widget/description/label.dart';
 import 'package:mc_mod_helper/widget/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -14,7 +15,7 @@ import '../api/modrinth.dart';
 import '../model/mod_detail.dart';
 import '../render/html_content.dart';
 import '../widget/captcha_dialog.dart';
-import '../widget/description/collapsible_chips.dart';
+import '../widget/description/collapsible_widgets.dart';
 import '../widget/description/image_box.dart';
 
 /// 模组详情页
@@ -423,8 +424,8 @@ class _DetailPageState extends State<DetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionTitle('相关链接', theme, Icons.insert_link_rounded),
-            CollapsibleChips(
-              chips: [
+            CollapsibleWidgets(
+              widget: [
                 for (final link in mod.links)
                   ActionChip(
                     avatar: Icon(LinkIcons.getLinkIcon(link.name), size: 18),
@@ -458,14 +459,8 @@ class _DetailPageState extends State<DetailPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                CollapsibleChips(
-                  chips: [
-                    for (final v in entry.value)
-                      Chip(
-                        visualDensity: VisualDensity.standard,
-                        label: Text(v, style: theme.textTheme.labelMedium),
-                      ),
-                  ],
+                CollapsibleWidgets(
+                  widget: [for (final v in entry.value) Label(entry: v)],
                 ),
                 const SizedBox(height: 12),
               ],

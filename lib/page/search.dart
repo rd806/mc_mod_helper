@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/widget/link_icons.dart';
 
 import '../api/mcmod.dart';
 import '../model/mod_summary.dart';
@@ -19,11 +20,22 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _controller = TextEditingController();
 
-  // 搜索状态
+  /// 搜索状态
   bool _searching = false;
-  String? _searchError;
-  List<ModSummary> _results = const [];
   bool _hasSearched = false;
+  String? _searchError;
+
+  /// 聚合搜索覆盖的来源
+  final List<ModSource> _source = const [ModSource.mcmod, ModSource.modrinth];
+
+  /// 各来源搜索结果(仅成功来源,空列表也正常收录)
+  Map<ModSource, List<ModSummary>> _totalResults = const {};
+
+  /// 失败来源的错误信息
+  Map<ModSource, String> _sourceErrors = const {};
+
+  /// 当前展示的来源
+  ModSource _selectedSource = ModSource.mcmod;
 
   @override
   void dispose() {
@@ -45,14 +57,14 @@ class _SearchPageState extends State<SearchPage> {
       _searchError = null;
     });
     try {
-      // 按设置的数据来源选择搜索平台(提交时读取,切来源后重搜即生效)
-      final results = await SourceManager.getSearch(
-        SettingsService.instance.dataSource,
-        keyword,
-      );
+      // 聚合搜索:并发请求全部来源,单个来源失败不影响其它来源
+      final total = await SourceManager.getTotalSearch(_source, keyword);
+
       if (!mounted) return;
       setState(() {
-        _results = results;
+        _totalResults = total.results;
+        _sourceErrors = total.errors;
+        _selectedSource = _defaultSource();
         _searching = false;
       });
     } on McmodCaptchaException catch (e) {
@@ -139,16 +151,92 @@ class _SearchPageState extends State<SearchPage> {
         onRetry: () => _search(_controller.text),
       );
     }
-    if (_results.isEmpty) {
+    // 显示搜索结果:左栏来源切换,右栏当前来源的结果
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 左栏:来源切换(高亮当前来源,标注结果条数/失败)
+        Expanded(
+          flex: 1,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(8),
+            itemCount: _source.length,
+            itemBuilder: (context, index) => _buildSourceButton(index),
+          ),
+        ),
+        // 右栏:当前来源的搜索结果
+        Expanded(flex: 3, child: _showResults()),
+      ],
+    );
+  }
+
+  /// 搜索完成后默认展示的来源:优先设置的数据来源;
+  /// 其失败或无结果时,回落到列表顺序里第一个有结果的来源
+  ModSource _defaultSource() {
+    final preferred = SettingsService.instance.dataSource;
+    final preferredMods = _totalResults[preferred];
+    if (preferredMods != null && preferredMods.isNotEmpty) return preferred;
+    for (final source in _source) {
+      final mods = _totalResults[source];
+      if (mods != null && mods.isNotEmpty) return source;
+    }
+    // 都没有结果:优先展示设置来源的错误/空态
+    return _totalResults.containsKey(preferred) ? preferred : _source.first;
+  }
+
+  /// 左栏来源按钮
+  Widget _buildSourceButton(int index) {
+    final theme = Theme.of(context);
+    final source = _source[index];
+    final selected = source == _selectedSource;
+    final icon = LinkIcons.getIconForDataSource(source);
+    final label = _sourceErrors.containsKey(source)
+        ? '${SourceManager.getSourceString(source)} · 失败'
+        : '${SourceManager.getSourceString(source)} (${_totalResults[source]?.length ?? 0})';
+    return TextButton(
+      onPressed: () => _setDisplayResults(index),
+      style: TextButton.styleFrom(
+        foregroundColor: selected
+            ? theme.colorScheme.primary
+            : theme.colorScheme.onSurface,
+        textStyle: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(3, 16, 3, 16),
+        child: Chip(
+          avatar: Icon(icon),
+          label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      ),
+    );
+  }
+
+  /// 切换展示的来源(必须 setState,否则右栏不会重建)
+  void _setDisplayResults(int index) {
+    setState(() => _selectedSource = _source[index]);
+  }
+
+  /// 右栏:当前来源的搜索结果;来源失败时展示该来源的错误与重试
+  Widget _showResults() {
+    final error = _sourceErrors[_selectedSource];
+    if (error != null) {
+      return ErrorView(
+        message: error,
+        onRetry: () => _search(_controller.text),
+      );
+    }
+    final result = _totalResults[_selectedSource] ?? const [];
+    if (result.isEmpty) {
       return Center(
         child: Text('没有找到相关模组', style: Theme.of(context).textTheme.bodyLarge),
       );
     }
-    // 显示搜索结果，不使用分隔线
     return ListView.builder(
       padding: const EdgeInsets.all(8),
-      itemCount: _results.length,
-      itemBuilder: (context, index) => ModTile(mod: _results[index]),
+      itemCount: result.length,
+      itemBuilder: (context, index) => ModTile(mod: result[index]),
     );
   }
 }

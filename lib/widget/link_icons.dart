@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../api/source.dart';
+
 /// 链接图标(自定义图标字体)。
 ///
 /// 字体文件 assets/icon/link_icons.ttf 由 IcoMoon/FlutterIcon 等工具生成,
@@ -27,6 +29,7 @@ class LinkIcons {
   // 视频站类
   static const IconData bilibili = IconData(0xf000, fontFamily: linkFont);
   static const IconData youtube = IconData(0xe901, fontFamily: linkFont);
+  static const IconData qq = IconData(0xfd02, fontFamily: linkFont);
 
   /// 获取链接图标
   static IconData getLinkIcon(String name) {
@@ -44,7 +47,21 @@ class LinkIcons {
     if (n.contains('youtube')) return youtube;
     if (n.contains('b站')) return bilibili;
 
+    if (n.contains('qq')) return qq;
+    if (n.contains('网盘')) return Icons.cloud;
     if (n.contains('maven')) return Icons.code_rounded;
     return Icons.link;
+  }
+
+  // 获取图标
+  static IconData getIconForDataSource(ModSource source) {
+    switch (source) {
+      case ModSource.mcmod:
+        return LinkIcons.mc;
+      case ModSource.modrinth:
+        return LinkIcons.modrinth;
+      case ModSource.curseforge:
+        return LinkIcons.curseforge;
+    }
   }
 }

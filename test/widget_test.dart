@@ -1,7 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/service/settings.dart';
@@ -153,5 +158,62 @@ void main() {
     await tester.pump(); // 请求 400 → setState
     await tester.pump(); // 渲染错误态
     expect(find.textContaining('加载失败'), findsNWidgets(2));
+  });
+
+  testWidgets('聚合搜索:来源按钮切换展示,失败来源单独报错', (tester) async {
+    // 只给 ModrinthApi 注入假响应;mcmod 用真实客户端(测试环境固定 400),
+    // 验证"单个来源失败不影响其它来源"的聚合行为
+    ModrinthApi.clearCaches();
+    ModrinthApi.clientFactory = () => MockClient((request) async {
+      if (request.url.path == '/v2/search') {
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode({
+              'hits': [
+                {
+                  'slug': 'jei',
+                  'title': 'JEI',
+                  'description': 'Just Enough Items',
+                  'icon_url': null,
+                  'downloads': 100,
+                  'follows': 10,
+                },
+              ],
+              'total_hits': 1,
+            }),
+          ),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }
+      return http.Response('', 404);
+    });
+
+    await pumpApp(tester);
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'jei');
+    await tester.tap(find.byIcon(Icons.arrow_forward));
+    await tester.pump(); // 搜索发起
+    await tester.pump(); // mcmod 400 → 失败;modrinth 命中
+    await tester.pump(); // 渲染结果
+
+    // mcmod 失败,默认展示回落到有结果的 Modrinth(设置来源 mcmod 无结果)
+    expect(find.text('JEI'), findsOneWidget);
+    // 左栏:mcmod 标注失败,modrinth 标注条数
+    expect(find.text('MC百科 · 失败'), findsOneWidget);
+    expect(find.text('Modrinth (1)'), findsOneWidget);
+
+    // 切到 mcmod:右栏展示该来源的错误
+    await tester.tap(find.text('MC百科 · 失败'));
+    await tester.pump();
+    expect(find.textContaining('HTTP 400'), findsOneWidget);
+    expect(find.text('JEI'), findsNothing);
+
+    // 切回 modrinth:恢复结果列表
+    await tester.tap(find.text('Modrinth (1)'));
+    await tester.pump();
+    expect(find.text('JEI'), findsOneWidget);
   });
 }

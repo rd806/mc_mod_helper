@@ -74,6 +74,7 @@ class SourceManager {
     }
   }
 
+  /// 单一搜索
   static Future<List<ModSummary>> getSearch(
     ModSource source,
     String keyword,
@@ -86,6 +87,44 @@ class SourceManager {
       case ModSource.curseforge:
         return await CurseforgeApi.search(keyword);
     }
+  }
+
+  /// 聚合搜索:并发请求各来源,单个来源失败不影响其它来源。
+  ///
+  /// 返回值:
+  /// - [results]: 成功来源的搜索结果(空列表也正常收录)
+  /// - [errors]: 失败来源的错误信息(页面按来源展示)
+  ///
+  /// 验证码异常([McmodCaptchaException])不在这里吞掉:直接上抛给页面
+  /// 弹窗让用户手动解决,解决后整组重试(成功来源的结果有会话缓存,
+  /// 重试无额外请求开销)。
+  static Future<
+    ({Map<ModSource, List<ModSummary>> results, Map<ModSource, String> errors})
+  >
+  getTotalSearch(List<ModSource> modSource, String keyword) async {
+    final results = <ModSource, List<ModSummary>>{};
+    final errors = <ModSource, String>{};
+    // 并发发起,每个来源独立收集结果或错误
+    final entries = await Future.wait(
+      modSource.map((source) async {
+        try {
+          final mods = await getSearch(source, keyword);
+          return (source: source, mods: mods, error: null);
+        } on McmodCaptchaException {
+          rethrow; // 验证码必须用户手动解决,上抛给页面
+        } catch (e) {
+          return (source: source, mods: null, error: e.toString());
+        }
+      }),
+    );
+    for (final (source: s, mods: m, error: e) in entries) {
+      if (m != null) {
+        results[s] = m;
+      } else {
+        errors[s] = e!;
+      }
+    }
+    return (results: results, errors: errors);
   }
 
   /// 根据来源获取地址

@@ -6,16 +6,16 @@ import 'package:flutter/material.dart';
 /// 首帧渲染不可见的测量层（与显示层同宽完整布局、不占高度）,
 /// post-frame 实测整块与单个 chip 高度判断是否超过两行，下一帧
 /// 才展示折叠后的内容——呈现给用户的第一帧就是折叠态，无展开闪烁。
-class CollapsibleChips extends StatefulWidget {
-  const CollapsibleChips({super.key, required this.chips});
+class CollapsibleWidgets extends StatefulWidget {
+  const CollapsibleWidgets({super.key, required this.widget});
 
-  final List<Widget> chips;
+  final List<Widget> widget;
 
   @override
-  State<CollapsibleChips> createState() => _CollapsibleChipsState();
+  State<CollapsibleWidgets> createState() => _CollapsibleWidgetsState();
 }
 
-class _CollapsibleChipsState extends State<CollapsibleChips> {
+class _CollapsibleWidgetsState extends State<CollapsibleWidgets> {
   final GlobalKey _wrapKey = GlobalKey();
   final GlobalKey _chipKey = GlobalKey();
 
@@ -59,10 +59,10 @@ class _CollapsibleChipsState extends State<CollapsibleChips> {
       spacing: 6,
       runSpacing: 6,
       children: [
-        for (var i = 0; i < widget.chips.length; i++)
+        for (var i = 0; i < widget.widget.length; i++)
           KeyedSubtree(
             key: tagFirst && i == 0 ? _chipKey : null,
-            child: widget.chips[i],
+            child: widget.widget[i],
           ),
       ],
     );

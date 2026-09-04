@@ -268,7 +268,7 @@ class _ConfigPageState extends State<ConfigPage> {
         value: value,
         child: Row(
           children: [
-            Icon(_getIconForDataSource(value)),
+            Icon(LinkIcons.getIconForDataSource(value)),
             const SizedBox(width: 10),
             Text(label),
           ],
@@ -308,18 +308,6 @@ class _ConfigPageState extends State<ConfigPage> {
         ],
       ),
     );
-  }
-
-  // 获取图标
-  IconData _getIconForDataSource(ModSource source) {
-    switch (source) {
-      case ModSource.mcmod:
-        return LinkIcons.mc;
-      case ModSource.modrinth:
-        return LinkIcons.modrinth;
-      case ModSource.curseforge:
-        return LinkIcons.curseforge;
-    }
   }
 
   /// 推荐列表来源(最新收录/最新编辑),修改后持久化,主页监听变化自动重拉
