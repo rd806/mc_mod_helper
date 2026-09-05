@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../model/mod_summary.dart';
 import '../../page/more/detail.dart';
+import 'favorite_toggle.dart';
 
 /// 分类页模组卡片的公共基类:
 /// 卡片外壳(涟漪+跳转详情页)、标题拆分、标题与统计构建等公共逻辑放这里,
@@ -62,10 +63,10 @@ abstract class ModCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         buildTitle(theme, name),
-        if (mod.statsText != null) ...[
-          const SizedBox(height: 4),
-          buildStatistic(theme),
-        ],
+        const SizedBox(height: 4),
+        buildDescription(theme),
+        const SizedBox(height: 4),
+        buildStatistic(theme),
       ],
     );
   }
@@ -100,10 +101,23 @@ abstract class ModCard extends StatelessWidget {
     );
   }
 
+  Widget buildDescription(ThemeData theme) {
+    return Text(
+      mod.description,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
+  }
+
   // 构建统计
   Widget buildStatistic(ThemeData theme) {
+    final text = mod.statsText;
+    if (text == null) return const SizedBox.shrink();
     return Text(
-      mod.statsText!,
+      text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: theme.textTheme.bodySmall?.copyWith(
@@ -130,7 +144,8 @@ class ModCardRow extends ModCard {
             buildCover(theme),
             const SizedBox(width: 12),
             Expanded(child: buildInfoContent(theme)),
-            const SizedBox(width: 4),
+            // 收藏心形:与 ModTile 行为一致,点击收藏/取消收藏
+            FavoriteToggle(mod: mod),
             const Icon(Icons.chevron_right),
           ],
         ),
@@ -146,8 +161,8 @@ class ModCardRow extends ModCard {
           ? _buildThumbPlaceholder(theme)
           : Image.network(
               mod.iconUrl!,
-              width: 72,
-              height: 54,
+              width: 100,
+              height: 80,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>
                   _buildThumbPlaceholder(theme),
@@ -174,14 +189,29 @@ class ModCardColumn extends ModCard {
     final theme = Theme.of(context);
     return buildShell(
       context,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          // Expanded 吸收剩余高度,任何文本长度下都不会溢出
-          buildCover(theme),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: buildInfoContent(theme),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Expanded 吸收剩余高度,任何文本长度下都不会溢出
+              buildCover(theme),
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: buildInfoContent(theme),
+              ),
+            ],
+          ),
+          // 收藏心形悬浮在封面右上角,半透明底保证在图片上可见
+          Positioned(
+            top: 4,
+            right: 4,
+            child: CircleAvatar(
+              backgroundColor: theme.colorScheme.surface.withValues(
+                alpha: 0.85,
+              ),
+              child: FavoriteToggle(mod: mod),
+            ),
           ),
         ],
       ),

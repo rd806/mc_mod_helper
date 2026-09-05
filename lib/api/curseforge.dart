@@ -8,7 +8,7 @@ import '../model/mod_category.dart';
 import '../model/mod_detail.dart';
 import '../model/mod_link.dart';
 import '../model/mod_summary.dart';
-import 'source.dart';
+import '../value/source.dart';
 
 /// CurseForge(curseforge.com)数据获取服务。
 ///
@@ -342,7 +342,7 @@ class CurseforgeApi {
       id: sourceId,
       title: title,
       subName: null,
-      description: html.isEmpty ? null : html,
+      body: html.isEmpty ? null : html,
       coverUrl: logo?['url'] as String?,
       links: _buildLinks(data),
       mcVersions: _parseVersionsFromFiles(filesBody),

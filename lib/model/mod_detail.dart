@@ -1,4 +1,4 @@
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/source.dart';
 
 import 'mod_link.dart';
 
@@ -10,6 +10,7 @@ class ModDetail {
     required this.source,
     this.subName,
     this.description,
+    this.body,
     this.statistics,
     this.coverUrl,
     this.links = const [],
@@ -29,10 +30,13 @@ class ModDetail {
   /// 次要名称
   final String? subName;
 
+  /// 简要介绍
+  final String? description;
+
   /// 模组介绍(清洗后的 HTML,两种来源统一):
   /// - mcmod：来自正文面板的富文本 HTML,无面板时回退 wiki 简介
   /// - modrinth：API 的 body Markdown 经 markdownToHtml 转换,原生 HTML 透传
-  final String? description;
+  final String? body;
 
   /// 统计数据
   final List<(String, String)>? statistics;

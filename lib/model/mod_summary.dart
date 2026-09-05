@@ -1,4 +1,4 @@
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/source.dart';
 
 import 'mod_detail.dart';
 
@@ -8,10 +8,10 @@ class ModSummary {
     required this.id,
     required this.title,
     required this.description,
+    required this.source,
     this.subName,
     this.iconUrl,
     this.statsText,
-    this.source = ModSource.mcmod,
   });
 
   /// 从详情构造摘要(收藏按钮用:详情页拿到的通常是 ModDetail)。
@@ -21,7 +21,7 @@ class ModSummary {
     return ModSummary(
       id: d.id,
       title: d.title,
-      description: d.subName ?? '',
+      description: d.description ?? '',
       iconUrl: d.coverUrl,
       source: d.source,
     );
@@ -36,6 +36,9 @@ class ModSummary {
   /// 简介(来自搜索页结果摘要)
   final String description;
 
+  /// 数据来源:'mcmod' 或 'modrinth'
+  final ModSource source;
+
   /// 副标题，可能为空
   final String? subName;
 
@@ -44,9 +47,6 @@ class ModSummary {
 
   /// 浏览/推荐/收藏统计文本(分类列表页有,如 '浏览 5575 · 推荐 80 · 收藏 0')
   final String? statsText;
-
-  /// 数据来源:'mcmod' 或 'modrinth'
-  final ModSource source;
 
   /// 模组详情页地址(按数据来源返回)
   String get pageUrl => SourceManager.getUrl(source, id);

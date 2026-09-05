@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/display.dart';
+import 'package:mc_mod_helper/value/source.dart';
 
 import '../../model/mod_category.dart';
 import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
 import '../../model/mod_summary.dart';
+import '../../service/settings.dart';
 import '../../widget/common/error_view.dart';
-import '../../widget/mod/mod_card.dart';
 
 /// 分类模组列表页：网格卡片展示，滚动到底自动加载下一页
 class CategoryPage extends StatefulWidget {
@@ -161,47 +162,22 @@ class _CategoryPageState extends State<CategoryPage> {
     if (_mods.isEmpty) {
       return const Center(child: Text('该分类暂无模组'));
     }
-    // 模组列表
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final narrow = constraints.maxWidth < 480;
-        return CustomScrollView(
-          controller: _controller,
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.all(8),
-              sliver: narrow ? _buildModList() : _buildModGrid(constraints),
+    // 模组列表(按设置的展示方式:卡片/列表/自适应);
+    // 监听设置,修改展示方式后无需重进页面即时切换
+    return ListenableBuilder(
+      listenable: SettingsService.instance,
+      builder: (context, _) => CustomScrollView(
+        controller: _controller,
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(8),
+            sliver: DisplayManager.buildSliver(
+              SettingsService.instance.displayStyle,
+              _mods,
             ),
-            SliverToBoxAdapter(child: _buildFooter()),
-          ],
-        );
-      },
-    );
-  }
-
-  // 窄屏列表
-  // 模组单行排列（左侧封面，右侧标题与统计）
-  Widget _buildModList() {
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, i) => ModCardRow(mod: _mods[i]),
-        childCount: _mods.length,
-      ),
-    );
-  }
-
-  // 宽屏Grid
-  Widget _buildModGrid(BoxConstraints constraints) {
-    return SliverGrid(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: (constraints.maxWidth / 225).floor(),
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 0.8,
-      ),
-      delegate: SliverChildBuilderDelegate(
-        (context, i) => ModCardColumn(mod: _mods[i]),
-        childCount: _mods.length,
+          ),
+          SliverToBoxAdapter(child: _buildFooter()),
+        ],
       ),
     );
   }

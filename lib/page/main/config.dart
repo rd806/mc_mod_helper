@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/display.dart';
+import 'package:mc_mod_helper/value/source.dart';
 import 'package:mc_mod_helper/widget/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -49,6 +50,12 @@ class _ConfigPageState extends State<ConfigPage> {
     ('最新编辑', FeatureSource.lastEditTime),
   ];
 
+  static const List<(String, DisplayStyle)> _displayStyle = [
+    ('网格', DisplayStyle.card),
+    ('列表', DisplayStyle.table),
+    ('自适应', DisplayStyle.auto),
+  ];
+
   static const List<(String, String)> _renderType = [
     ('默认', 'default'),
     ('Hyper', 'hyperViewer'),
@@ -82,6 +89,7 @@ class _ConfigPageState extends State<ConfigPage> {
               _buildDataSourceSection(context, s),
               _buildListSource(context, s),
               _buildListMaxSection(context, s),
+              _buildDisplayStyle(context, s),
               _sectionTitle(context, '关于项目'),
               _buildLink(),
             ],
@@ -387,6 +395,53 @@ class _ConfigPageState extends State<ConfigPage> {
             onChanged: (FeatureSource? newValue) {
               if (newValue != null) {
                 SettingsService.instance.setFeaturedSource(newValue);
+              }
+            },
+            // 样式定制（可选）
+            style: theme.textTheme.bodyMedium,
+            // 设置为透明下划线
+            underline: Container(height: 0, color: Colors.transparent),
+            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
+            // 如果希望下拉框宽度自适应内容
+            isDense: false,
+            // 禁用焦点和悬停效果
+            focusColor: Colors.transparent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 模组信息展示方式(网格/列表/自适应),修改后持久化,
+  /// 首页推荐/分类/收藏页监听变化即时切换布局
+  Widget _buildDisplayStyle(BuildContext context, SettingsService s) {
+    final theme = Theme.of(context);
+
+    // 转换为 DropdownMenuItem 列表
+    final dropdownItems = _displayStyle.map<DropdownMenuItem<DisplayStyle>>((
+      item,
+    ) {
+      final (label, value) = item;
+      return DropdownMenuItem<DisplayStyle>(value: value, child: Text(label));
+    }).toList();
+
+    final selectedValue = SettingsService.displayStyles.contains(s.displayStyle)
+        ? s.displayStyle
+        : DisplayStyle.table;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+      child: Row(
+        children: [
+          Text('展示方式', style: theme.textTheme.bodyMedium),
+          Spacer(),
+          // 使用下拉框
+          DropdownButton<DisplayStyle>(
+            value: selectedValue,
+            items: dropdownItems,
+            onChanged: (DisplayStyle? newValue) {
+              if (newValue != null) {
+                SettingsService.instance.setDisplayStyle(newValue);
               }
             },
             // 样式定制（可选）

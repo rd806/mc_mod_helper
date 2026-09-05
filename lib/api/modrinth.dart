@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/source.dart';
 
 import '../model/mod_category.dart';
 import '../model/mod_detail.dart';
@@ -288,6 +288,7 @@ class ModrinthApi {
   }) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final title = (data['title'] as String?)?.trim() ?? '';
+    final description = (data['description'] as String?)?.trim() ?? '';
     // 正文 Markdown 转成 HTML 后再交给详情页统一渲染:
     // hyper_render 的 MarkdownAdapter 不处理原生 HTML 块(md 包的
     // 'raw' 元素落入未知标签分支,HTML 会显示成字面文本),
@@ -301,7 +302,8 @@ class ModrinthApi {
       id: sourceId,
       title: title,
       subName: null,
-      description: html.isEmpty ? null : html,
+      description: description,
+      body: html.isEmpty ? null : html,
       statistics: _getStatistic(data),
       coverUrl: data['icon_url'] as String?,
       links: _buildLinks(data),

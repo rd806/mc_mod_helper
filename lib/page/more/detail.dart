@@ -2,7 +2,7 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:hyper_render/hyper_render.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/source.dart';
 import 'package:mc_mod_helper/render/hyper.dart';
 import 'package:mc_mod_helper/service/settings.dart';
 import 'package:mc_mod_helper/widget/description/cover.dart';
@@ -298,8 +298,7 @@ class _DetailPageState extends State<DetailPage> {
                   controller: _leftController,
                   padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
                   children: [
-                    if (mod.description != null &&
-                        mod.description!.isNotEmpty) ...[
+                    if (mod.body != null && mod.body!.isNotEmpty) ...[
                       _buildDescription(mod, theme),
                     ],
                   ],
@@ -338,7 +337,7 @@ class _DetailPageState extends State<DetailPage> {
         _buildEnvironment(mod, theme),
         if (mod.links.isNotEmpty) ...[_buildLinks(mod, theme)],
         if (mod.mcVersions.isNotEmpty) ...[_buildModVersion(mod, theme)],
-        if (mod.description != null && mod.description!.isNotEmpty) ...[
+        if (mod.body != null && mod.body!.isNotEmpty) ...[
           _buildDescription(mod, theme),
         ],
       ],
@@ -518,14 +517,14 @@ class _DetailPageState extends State<DetailPage> {
   Widget _buildHTML(ModDetail mod, ThemeData theme) {
     if (SettingsService.instance.renderType == 'default') {
       return HtmlContent(
-        html: mod.description!,
+        html: mod.body!,
         textStyle: theme.textTheme.bodyMedium,
         onLinkTap: _handleContentLink,
       );
     }
     return _mouseDraggable(
       HyperViewer(
-        html: mod.description!,
+        html: mod.body!,
         mode: HyperRenderMode.sync,
         shrinkWrap: true,
         selectable: false,

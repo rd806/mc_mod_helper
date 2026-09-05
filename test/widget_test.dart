@@ -9,10 +9,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
-import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/service/savings.dart';
 import 'package:mc_mod_helper/service/settings.dart';
+import 'package:mc_mod_helper/value/display.dart';
+import 'package:mc_mod_helper/value/source.dart';
 
 /// 启动应用并推进到两个页签(推荐/分类)都完成失败渲染。
 ///
@@ -164,6 +165,15 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(SettingsService.instance.dataSource, ModSource.modrinth);
+
+    // 展示方式下拉框(网格/列表/自适应) → 服务值变化;
+    // 只换布局不重新拉取,无新计时器
+    expect(find.text('展示方式'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButton<DisplayStyle>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('网格').last);
+    await tester.pumpAndSettle();
+    expect(SettingsService.instance.displayStyle, DisplayStyle.card);
   });
 
   testWidgets('点击刷新按钮重新加载推荐', (tester) async {

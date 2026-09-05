@@ -6,7 +6,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/curseforge.dart';
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/source.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
 http.Response _json(Object data) => http.Response.bytes(
@@ -110,7 +110,7 @@ void main() {
     expect(d.id, '238222');
     expect(d.title, 'Sodium');
     expect(d.source, ModSource.curseforge);
-    expect(d.description, contains('高性能渲染引擎'));
+    expect(d.body, contains('高性能渲染引擎'));
     expect(d.coverUrl, 'https://media.forgecdn.net/avatars/sodium.png');
     // 版本按加载器分组(加载器名与版本号混在 gameVersions 里)
     expect(d.mcVersions, {

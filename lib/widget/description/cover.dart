@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/source.dart';
 
 import '../../model/mod_detail.dart';
 import 'image_box.dart';
@@ -77,16 +77,17 @@ abstract class ModCover extends StatelessWidget {
         ],
         // 来源(始终有值,显示友好名称)
         const SizedBox(height: 10),
-        _buildSource(context, mod),
+        _buildSource(mod, theme),
+        const SizedBox(height: 10),
+        _buildDescription(mod, theme),
         const SizedBox(height: 16),
-        _buildStatistic(context, mod),
+        _buildStatistic(mod, theme),
       ],
     );
   }
 
   // 显示来源
-  Widget _buildSource(BuildContext context, ModDetail mod) {
-    final theme = Theme.of(context);
+  Widget _buildSource(ModDetail mod, ThemeData theme) {
     String source = SourceManager.getSourceString(mod.source);
     return Text(
       source,
@@ -94,8 +95,21 @@ abstract class ModCover extends StatelessWidget {
     );
   }
 
+  // 显示描述
+  Widget _buildDescription(ModDetail mod, ThemeData theme) {
+    final description = mod.description;
+    if (description == null) return const SizedBox.shrink();
+
+    return Text(
+      description,
+      style: theme.textTheme.titleMedium?.copyWith(
+        color: theme.colorScheme.primary,
+      ),
+    );
+  }
+
   // 统计信息
-  Widget _buildStatistic(BuildContext context, ModDetail mod) {
+  Widget _buildStatistic(ModDetail mod, ThemeData theme) {
     final statistic = mod.statistics;
     if (statistic == null || statistic.isEmpty) return const SizedBox.shrink();
 

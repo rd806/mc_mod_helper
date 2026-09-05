@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../model/mod_summary.dart';
 import '../../page/more/detail.dart';
-import 'favorite_toggle.dart';
 
 /// 单条模组
 /// 搜索结果 / 首页推荐通用
@@ -41,10 +40,7 @@ class ModTile extends StatelessWidget {
               ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            FavoriteToggle(mod: mod),
-            const Icon(Icons.chevron_right),
-          ],
+          children: [const Icon(Icons.chevron_right)],
         ),
         onTap: () {
           Navigator.of(context).push(

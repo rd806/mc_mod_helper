@@ -2,12 +2,13 @@ import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/model/mod_category.dart';
 import 'package:mc_mod_helper/model/mod_summary.dart';
 
-import 'mcmod.dart';
-import 'modrinth.dart';
+import '../api/mcmod.dart';
+import '../api/modrinth.dart';
 
 /// 模组信息来源
 enum ModSource { mcmod, modrinth, curseforge }
 
+/// 搜索信息来源
 enum FeatureSource { none, createTime, lastEditTime }
 
 /// 管理信息来源

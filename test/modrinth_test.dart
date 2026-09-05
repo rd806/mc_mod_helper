@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/page/more/detail.dart';
 import 'package:mc_mod_helper/service/savings.dart';
@@ -148,9 +148,9 @@ void main() {
       expect(d.source, ModSource.modrinth);
       // Markdown 转成 HTML:标题/表格是 HTML 标签,
       // 原生 HTML 块(<div style=...>)原样透传
-      expect(d.description, contains('<h2'));
-      expect(d.description, contains('<table>'));
-      expect(d.description, contains('<div style="color:red">原始HTML</div>'));
+      expect(d.body, contains('<h2'));
+      expect(d.body, contains('<table>'));
+      expect(d.body, contains('<div style="color:red">原始HTML</div>'));
       expect(d.platform, 'Fabric');
       // 环境为 [客户端, 服务端] 枚举值列表(client_side=required,
       // server_side=unsupported → 仅客户端)

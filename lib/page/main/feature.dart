@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/display.dart';
+import 'package:mc_mod_helper/value/source.dart';
 
 import '../../api/mcmod.dart';
 import '../../model/mod_summary.dart';
 import '../../service/settings.dart';
 import '../../widget/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
-import '../../widget/mod/mod_tile.dart';
 
 /// 应用主页:展示 mcmod.cn 首页的模组分类与首页推荐模组列表
 class FeaturePage extends StatefulWidget {
@@ -31,6 +31,9 @@ class _FeaturePageState extends State<FeaturePage> {
   /// 上次发起推荐加载时使用的来源(最新收录/最新编辑)
   FeatureSource? _lastFeaturedSource;
 
+  /// 上次构建时使用的展示方式,变化时仅重建(不重新拉取)
+  DisplayStyle? _lastDisplayStyle;
+
   /// 推荐请求序号:丢弃过期响应,防止快速切换排序/条数时旧结果覆盖新结果
   int _featuredSeq = 0;
 
@@ -53,6 +56,10 @@ class _FeaturePageState extends State<FeaturePage> {
   /// 推荐条数上限/来源变化重拉推荐。
   /// 主题/字体/强调色变化也会触发本回调,但比较后直接返回
   void _onSettingsChanged() {
+    // 展示方式变化:只换布局,不重新拉取
+    if (SettingsService.instance.displayStyle != _lastDisplayStyle) {
+      setState(() => _lastDisplayStyle = SettingsService.instance.displayStyle);
+    }
     if (SettingsService.instance.featuredNum != _lastFeaturedLimit ||
         SettingsService.instance.featuredSource != _lastFeaturedSource ||
         SettingsService.instance.dataSource != _lastDataSource) {
@@ -172,6 +179,20 @@ class _FeaturePageState extends State<FeaturePage> {
         child: ErrorView(message: _featuredError!, onRetry: _loadFeatured),
       );
     }
-    return Column(children: [for (final mod in _featured) ModTile(mod: mod)]);
+    // 按设置展示方式渲染(卡片/列表/自适应);嵌套在页面 ListView 里,
+    // shrinkWrap + 禁滚,滚动由外层接管
+    return CustomScrollView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.only(bottom: 8),
+          sliver: DisplayManager.buildSliver(
+            SettingsService.instance.displayStyle,
+            _featured,
+          ),
+        ),
+      ],
+    );
   }
 }

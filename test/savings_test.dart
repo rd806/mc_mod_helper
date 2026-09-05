@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/source.dart';
 import 'package:mc_mod_helper/model/mod_summary.dart';
 import 'package:mc_mod_helper/service/savings.dart';
 
@@ -61,7 +61,12 @@ void main() {
   });
 
   test('add 同「来源+id」去重,remove/isFavorite 按复合键匹配', () async {
-    final mod = ModSummary(id: '1', title: 'A', description: '');
+    final mod = ModSummary(
+      id: '1',
+      title: 'A',
+      description: '',
+      source: ModSource.mcmod,
+    );
     await FavoritesService.instance.add(
       Likes(id: '1', title: 'A', description: '', date: 1.0),
     );
@@ -87,7 +92,12 @@ void main() {
   });
 
   test('toggle 收藏开关:加入/移除', () async {
-    final mod = ModSummary(id: '459', title: 'JEI', description: '');
+    final mod = ModSummary(
+      id: '459',
+      title: 'JEI',
+      description: '',
+      source: ModSource.mcmod,
+    );
     await FavoritesService.instance.toggle(mod);
     expect(FavoritesService.instance.isFavorite(mod), isTrue);
 

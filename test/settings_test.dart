@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/display.dart';
+import 'package:mc_mod_helper/value/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/service/settings.dart';
@@ -25,6 +26,7 @@ void main() {
     expect(SettingsService.instance.featuredSource, FeatureSource.none);
     expect(SettingsService.instance.dataSource, ModSource.mcmod);
     expect(SettingsService.instance.renderType, 'default');
+    expect(SettingsService.instance.displayStyle, DisplayStyle.table);
   });
 
   test('setter 写入持久化存储', () async {
@@ -36,6 +38,7 @@ void main() {
       ..setFeaturedMax(35)
       ..setFeaturedSource(FeatureSource.lastEditTime)
       ..setDataSource(ModSource.modrinth)
+      ..setDisplayStyle(DisplayStyle.card)
       ..setRenderType('hyperViewer');
 
     final prefs = await SharedPreferences.getInstance();
@@ -46,6 +49,7 @@ void main() {
     // 存枚举的 name 字符串(与 data_source 一致)
     expect(prefs.getString('featured_source'), 'lastEditTime');
     expect(prefs.getString('data_source'), 'modrinth');
+    expect(prefs.getString('display_style'), 'card');
     expect(prefs.getString('render_type'), 'hyperViewer');
   });
 
@@ -57,6 +61,7 @@ void main() {
       'featured_max': 45,
       'featured_source': 'lastEditTime',
       'data_source': 'modrinth',
+      'display_style': 'auto',
       'render_type': 'hyperViewer',
     });
     await SettingsService.instance.load();
@@ -69,6 +74,7 @@ void main() {
     expect(SettingsService.instance.featuredNum, 45);
     expect(SettingsService.instance.featuredSource, FeatureSource.lastEditTime);
     expect(SettingsService.instance.dataSource, ModSource.modrinth);
+    expect(SettingsService.instance.displayStyle, DisplayStyle.auto);
     expect(SettingsService.instance.renderType, 'hyperViewer');
   });
 
@@ -99,6 +105,21 @@ void main() {
     SharedPreferences.setMockInitialValues({'featured_source': 'bogus'});
     await SettingsService.instance.load();
     expect(SettingsService.instance.featuredSource, FeatureSource.none);
+  });
+
+  test('displayStyle setter 生效', () async {
+    await SettingsService.instance.load();
+    SettingsService.instance.setDisplayStyle(DisplayStyle.card);
+    expect(SettingsService.instance.displayStyle, DisplayStyle.card);
+    // 同值短路,不写盘不通知
+    SettingsService.instance.setDisplayStyle(DisplayStyle.card);
+    expect(SettingsService.instance.displayStyle, DisplayStyle.card);
+  });
+
+  test('displayStyle 非法存储值回落到默认的列表式', () async {
+    SharedPreferences.setMockInitialValues({'display_style': 'bogus'});
+    await SettingsService.instance.load();
+    expect(SettingsService.instance.displayStyle, DisplayStyle.table);
   });
 
   test('featuredMax 超出范围时被截断', () async {

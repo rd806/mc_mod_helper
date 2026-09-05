@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/source.dart';
 
 import '../model/mod_category.dart';
 import '../model/mod_detail.dart';
@@ -435,6 +435,7 @@ class McmodApi {
           id: idMatch.group(1)!,
           title: title,
           description: _cleanText(item.querySelector('.body')?.text ?? ''),
+          source: ModSource.mcmod,
         ),
       );
     }
@@ -468,6 +469,7 @@ class McmodApi {
           id: idMatch.group(1)!,
           title: title,
           description: intro,
+          source: ModSource.mcmod,
           subName: ename.isEmpty ? null : ename,
           iconUrl: icon.isEmpty ? null : icon,
         ),
@@ -542,6 +544,7 @@ class McmodApi {
           id: idMatch.group(1)!,
           title: title,
           description: '',
+          source: ModSource.mcmod,
           iconUrl: icon.isEmpty ? null : icon,
           statsText: stats.isEmpty ? null : stats.join(' · '),
         ),
@@ -711,7 +714,7 @@ class McmodApi {
       title: title,
       source: ModSource.mcmod,
       subName: subName,
-      description: description.isEmpty ? null : description,
+      body: description.isEmpty ? null : description,
       coverUrl: coverUrl,
       links: links,
       mcVersions: mcVersions,

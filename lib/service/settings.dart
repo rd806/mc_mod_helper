@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/api/source.dart';
+import 'package:mc_mod_helper/value/display.dart';
+import 'package:mc_mod_helper/value/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 应用设置(主题模式/强调色/字体缩放/推荐列表条数上限):
@@ -16,6 +17,7 @@ class SettingsService extends ChangeNotifier {
   static const String _featuredMaxKey = 'featured_max';
   static const String _featuredTypeKey = 'featured_source';
   static const String _dataSourceKey = 'data_source';
+  static const String _displayStyleKey = 'display_style';
   static const String _renderTypeKey = 'render_type';
 
   /// 字体大小
@@ -40,8 +42,15 @@ class SettingsService extends ChangeNotifier {
     ModSource.curseforge,
   ];
 
-  /// 渲染方法
+  /// 正文渲染方法
   static const List<String> renderTypes = ['default', 'hyperViewer'];
+
+  /// 模组展示方法
+  static const List<DisplayStyle> displayStyles = [
+    DisplayStyle.card,
+    DisplayStyle.table,
+    DisplayStyle.auto,
+  ];
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.blue;
@@ -49,6 +58,7 @@ class SettingsService extends ChangeNotifier {
   int _featuredNum = 20;
   FeatureSource _featuredType = FeatureSource.none;
   ModSource _dataSource = ModSource.mcmod;
+  DisplayStyle _displayStyle = DisplayStyle.table;
   String _renderType = 'default';
 
   ThemeMode get themeMode => _themeMode;
@@ -57,6 +67,7 @@ class SettingsService extends ChangeNotifier {
   int get featuredNum => _featuredNum;
   FeatureSource get featuredSource => _featuredType;
   ModSource get dataSource => _dataSource;
+  DisplayStyle get displayStyle => _displayStyle;
   String get renderType => _renderType;
 
   /// 启动时读取已保存的设置(在 runApp 前调用,避免启动后主题/字体跳变)。
@@ -92,6 +103,11 @@ class SettingsService extends ChangeNotifier {
       _dataSource = (ds != null && dataSources.contains(modSource))
           ? modSource
           : ModSource.mcmod;
+
+      // 展示方式(未知存储值回落到默认的列表式)
+      _displayStyle = DisplayManager.displayToString(
+        prefs.getString(_displayStyleKey),
+      );
 
       final rt = prefs.getString(_renderTypeKey);
       _renderType = (rt != null && renderTypes.contains(rt)) ? rt : 'default';
@@ -164,6 +180,14 @@ class SettingsService extends ChangeNotifier {
     _renderType = type;
     notifyListeners();
     _persist(_renderTypeKey, type);
+  }
+
+  /// 设置模组信息展示方式(卡片式/列表式/自适应式),非法值忽略
+  void setDisplayStyle(DisplayStyle style) {
+    if (!displayStyles.contains(style) || style == _displayStyle) return;
+    _displayStyle = style;
+    notifyListeners();
+    _persist(_displayStyleKey, style.name);
   }
 
   /// 异步写盘;失败不影响本次切换,仅下次启动回到上次成功保存的值
