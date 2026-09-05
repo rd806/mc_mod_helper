@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/value/source.dart';
+import 'package:mc_mod_helper/widget/link_icons.dart';
 
 import '../../model/mod_detail.dart';
 import 'image_box.dart';
@@ -88,22 +89,26 @@ abstract class ModCover extends StatelessWidget {
 
   // 显示来源
   Widget _buildSource(ModDetail mod, ThemeData theme) {
-    String source = SourceManager.getSourceString(mod.source);
-    return Text(
-      source,
-      style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
+    return Chip(
+      avatar: LinkIcons.getIconForDataSource(mod.source),
+      backgroundColor: Colors.transparent,
+      label: Text(
+        SourceManager.getSourceString(mod.source),
+        style: theme.textTheme.labelSmall,
+      ),
     );
   }
 
   // 显示描述
   Widget _buildDescription(ModDetail mod, ThemeData theme) {
     final description = mod.description;
-    if (description == null) return const SizedBox.shrink();
+    if (description == null || description.isEmpty)
+      return const SizedBox.shrink();
 
     return Text(
       description,
-      style: theme.textTheme.titleMedium?.copyWith(
-        color: theme.colorScheme.primary,
+      style: theme.textTheme.labelLarge?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
       ),
     );
   }
@@ -119,44 +124,7 @@ abstract class ModCover extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: statistic.length,
         itemBuilder: (context, index) =>
-            Align(child: _buildStatisticCard(statistic[index])),
-      ),
-    );
-  }
-
-  // 根据字符串选择合适 Chips
-  Widget _buildStatisticCard((String, String) entry) {
-    IconData icon = Icons.info_outline;
-    String label = '${entry.$1}：${entry.$2}';
-    switch (entry.$1) {
-      case 'downloads':
-        icon = Icons.download;
-        label = '下载：${entry.$2}';
-        break;
-      case 'followers':
-        icon = Icons.favorite_rounded;
-        label = '关注：${entry.$2}';
-        break;
-      case 'views':
-        icon = Icons.visibility;
-        label = '总浏览：${entry.$2}';
-        break;
-      case 'index':
-        icon = Icons.trending_up;
-        label = '昨日指数：${entry.$2}';
-        break;
-      case 'fillRate':
-        icon = Icons.percent;
-        label = '资料填充率：${entry.$2}';
-        break;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 0, 12, 0),
-      child: Chip(
-        avatar: Icon(icon),
-        visualDensity: VisualDensity.standard,
-        label: Text(label),
+            Align(child: LinkIcons.buildStatisticLabel(statistic[index])),
       ),
     );
   }

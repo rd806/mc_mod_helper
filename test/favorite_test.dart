@@ -43,6 +43,8 @@ Future<http.Response> _handler(http.Request request) async {
       'title': 'JEI',
       'body': 'Just Enough Items',
       'icon_url': null,
+      'downloads': 1000000,
+      'followers': 5000,
       'game_versions': ['1.21.1'],
       'loaders': ['fabric'],
       'client_side': 'required',
@@ -98,24 +100,26 @@ void main() {
     await FavoritesService.instance.clear();
   });
 
-  testWidgets('收藏页展示已收藏条目,心形取消收藏', (tester) async {
+  testWidgets('收藏页展示已收藏条目(含次要名称),心形取消收藏', (tester) async {
     // 直接种一条收藏(搜索列表的 ModTile 不带心形,
     // 收藏入口在卡片/详情页,由其它用例覆盖)
     await FavoritesService.instance.add(
       Likes(
         id: 'jei',
-        title: 'JEI',
-        description: 'Just Enough Items',
-        source: ModSource.modrinth,
+        title: '[JEI] JEI物品管理器',
+        description: '查看物品的合成与用途',
+        subName: 'Just Enough Items',
+        source: ModSource.mcmod,
         date: 1.0,
       ),
     );
     await _pumpApp(tester);
 
-    // 切到收藏页签:条目出现
+    // 切到收藏页签:条目出现,次要名称作为副标题显示
     await tester.tap(find.text('收藏'));
     await tester.pump();
-    expect(find.text('JEI'), findsOneWidget);
+    expect(find.text('JEI物品管理器'), findsOneWidget);
+    expect(find.text('Just Enough Items'), findsOneWidget);
     expect(find.textContaining('还没有收藏'), findsNothing);
     // 心形已点亮
     expect(

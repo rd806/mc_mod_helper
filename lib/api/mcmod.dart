@@ -499,6 +499,7 @@ class McmodApi {
         ModCategory(
           id: id,
           name: name,
+          source: ModSource.mcmod,
           slogan: slogan.isEmpty ? null : slogan,
           description: desc.isEmpty ? null : desc,
         ),
@@ -530,14 +531,14 @@ class McmodApi {
       // none.jpg 是站点无封面时的占位图,不展示
       if (icon.contains('/none.jpg')) icon = '';
 
-      // 统计:浏览/推荐/收藏,逐项判空拼接
+      // 统计:浏览/推荐/收藏,逐项判空
       final views = _cleanText(block.querySelector('.num')?.text ?? '');
       final push = _cleanText(block.querySelector('.push')?.text ?? '');
       final like = _cleanText(block.querySelector('.like')?.text ?? '');
-      final stats = <String>[
-        if (views.isNotEmpty) '浏览 $views',
-        if (push.isNotEmpty) '推荐 $push',
-        if (like.isNotEmpty) '收藏 $like',
+      final stats = <(String, String)>[
+        if (views.isNotEmpty) ('views', views),
+        if (push.isNotEmpty) ('recommend', push),
+        if (like.isNotEmpty) ('favorite', like),
       ];
       mods.add(
         ModSummary(
@@ -546,7 +547,7 @@ class McmodApi {
           description: '',
           source: ModSource.mcmod,
           iconUrl: icon.isEmpty ? null : icon,
-          statsText: stats.isEmpty ? null : stats.join(' · '),
+          statistics: stats.isEmpty ? null : stats,
         ),
       );
     }

@@ -445,7 +445,8 @@ class _DetailPageState extends State<DetailPage> {
               widget: [
                 for (final link in mod.links)
                   ActionChip(
-                    avatar: Icon(LinkIcons.getLinkIcon(link.name), size: 18),
+                    avatar: LinkIcons.getLinkIcon(link.name),
+                    backgroundColor: Colors.transparent,
                     label: Text(link.name, style: theme.textTheme.labelMedium),
                     onPressed: () => _openUrl(link.url),
                   ),

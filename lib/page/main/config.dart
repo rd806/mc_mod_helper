@@ -323,7 +323,7 @@ class _ConfigPageState extends State<ConfigPage> {
         value: value,
         child: Row(
           children: [
-            Icon(LinkIcons.getIconForDataSource(value)),
+            LinkIcons.getIconForDataSource(value),
             const SizedBox(width: 10),
             Text(label),
           ],

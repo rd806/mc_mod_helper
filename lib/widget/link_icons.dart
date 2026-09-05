@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/widget/common/label.dart';
 
 import '../value/source.dart';
 
@@ -32,36 +33,71 @@ class LinkIcons {
   static const IconData qq = IconData(0xfd02, fontFamily: linkFont);
 
   /// 获取链接图标
-  static IconData getLinkIcon(String name) {
+  static Widget getLinkIcon(String name) {
     final n = name.toLowerCase();
-    if (n.contains('github')) return github;
-    if (n.contains('curse') || n.contains('forge')) return curseforge;
-    if (n.contains('modrinth')) return modrinth;
+    if (n.contains('github')) return Icon(github, color: Colors.black);
+    if (n.contains('curse') || n.contains('forge')) {
+      return Icon(curseforge, color: Colors.black);
+    }
+    if (n.contains('modrinth')) return Icon(modrinth, color: Colors.green);
 
-    if (n.contains('wiki')) return wiki;
-    if (n.contains('discord')) return discord;
-    if (n.contains('patreon')) return patreon;
-    if (n.contains('mc') || n.contains('minecraft')) return mc;
-    if (n.contains('crowdin')) return crowdin;
+    if (n.contains('wiki')) return Icon(wiki);
+    if (n.contains('discord')) return Icon(discord);
+    if (n.contains('patreon')) return Icon(patreon);
+    if (n.contains('mc') || n.contains('minecraft')) return Icon(mc);
+    if (n.contains('crowdin')) return Icon(crowdin, color: Colors.green);
 
-    if (n.contains('youtube')) return youtube;
-    if (n.contains('b站')) return bilibili;
+    if (n.contains('youtube')) return Icon(youtube);
+    if (n.contains('b站')) return Icon(bilibili, color: Colors.pink);
 
-    if (n.contains('qq')) return qq;
-    if (n.contains('网盘')) return Icons.cloud;
-    if (n.contains('maven')) return Icons.code_rounded;
-    return Icons.link;
+    if (n.contains('qq')) return Icon(qq);
+    if (n.contains('网盘') || n.contains('云')) return Icon(Icons.cloud);
+    if (n.contains('maven')) return Icon(Icons.code_rounded);
+    return Icon(Icons.link);
   }
 
   // 获取图标
-  static IconData getIconForDataSource(ModSource source) {
+  static Widget getIconForDataSource(ModSource source) {
     switch (source) {
       case ModSource.mcmod:
-        return LinkIcons.mc;
+        return Icon(LinkIcons.mc);
       case ModSource.modrinth:
-        return LinkIcons.modrinth;
+        return Icon(LinkIcons.modrinth, color: Colors.green);
       case ModSource.curseforge:
-        return LinkIcons.curseforge;
+        return Icon(LinkIcons.curseforge, color: Colors.grey);
     }
+  }
+
+  // 根据统计信息选择合适 Chips
+  static Widget buildStatisticLabel((String, String) entry) {
+    IconData icon = Icons.info_outline;
+    String label = '${entry.$1}：${entry.$2}';
+    switch (entry.$1) {
+      case 'downloads':
+        icon = Icons.download;
+        label = '下载：${entry.$2}';
+        break;
+      case 'followers':
+        icon = Icons.favorite_rounded;
+        label = '关注：${entry.$2}';
+        break;
+      case 'views':
+        icon = Icons.visibility;
+        label = '总浏览：${entry.$2}';
+        break;
+      case 'index':
+        icon = Icons.trending_up;
+        label = '昨日指数：${entry.$2}';
+        break;
+      case 'fillRate':
+        icon = Icons.percent;
+        label = '资料填充率：${entry.$2}';
+        break;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 0, 12, 0),
+      child: Label(icon: Icon(icon, size: 16), entry: label),
+    );
   }
 }

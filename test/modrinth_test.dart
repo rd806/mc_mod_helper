@@ -137,7 +137,8 @@ void main() {
       expect(m.id, 'sodium');
       expect(m.title, 'Sodium');
       expect(m.source, ModSource.modrinth);
-      expect(m.statsText, '下载 863万 · 关注 3200');
+      expect(m.statistics, [('downloads', '863万'), ('followers', '3200')]);
+      expect(m.statisticsText, '下载 863万 · 关注 3200');
       expect(m.pageUrl, 'https://modrinth.com/mod/sodium');
     });
 

@@ -102,7 +102,8 @@ void main() {
     expect(m.id, '238222');
     expect(m.title, 'Sodium');
     expect(m.source, ModSource.curseforge);
-    expect(m.statsText, '下载 863万 · 关注 3200');
+    expect(m.statistics, [('downloads', '863万'), ('followers', '3200')]);
+    expect(m.statisticsText, '下载 863万 · 关注 3200');
   });
 
   test('getDetail:name 作标题、logo 作封面、文件列表分组版本与加载器', () async {

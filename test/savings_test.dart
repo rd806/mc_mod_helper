@@ -25,8 +25,8 @@ void main() {
         id: '459',
         title: '[JEI] JEI物品管理器',
         description: '查看物品的合成与用途',
+        subName: 'Just Enough Items',
         iconUrl: 'https://i.mcmod.cn/jei.png',
-        statsText: '浏览 5575 · 推荐 80',
         source: ModSource.mcmod,
         date: 1725500000000.0,
       ),
@@ -35,10 +35,12 @@ void main() {
     final read = FavoritesService.instance.list().single;
     expect(read.id, '459');
     expect(read.title, contains('JEI'));
+    expect(read.subName, 'Just Enough Items');
     expect(read.iconUrl, 'https://i.mcmod.cn/jei.png');
     expect(read.source, ModSource.mcmod);
     expect(read.time.millisecondsSinceEpoch, 1725500000000);
-    // 摘要还原:页面地址按来源正确
+    // 摘要还原:次要名称与页面地址
+    expect(read.toSummary().subName, 'Just Enough Items');
     expect(read.toSummary().pageUrl, 'https://www.mcmod.cn/class/459.html');
   });
 

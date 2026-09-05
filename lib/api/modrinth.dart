@@ -217,7 +217,7 @@ class ModrinthApi {
       title: title,
       description: (hit['description'] as String?) ?? '',
       iconUrl: hit['icon_url'] as String?,
-      statsText: _buildStats(
+      statistics: _buildStats(
         (hit['downloads'] as num?)?.toInt(),
         (hit['follows'] as num?)?.toInt(),
       ),
@@ -434,13 +434,14 @@ class ModrinthApi {
     return [client, server];
   }
 
-  /// 统计文本:如 '下载 7385.6万 · 关注 1.1万'
-  static String? _buildStats(int? downloads, int? follows) {
-    final parts = <String>[
-      if (downloads != null && downloads > 0) '下载 ${_formatCount(downloads)}',
-      if (follows != null && follows > 0) '关注 ${_formatCount(follows)}',
+  /// 统计列表:如 [('downloads', '7385.6万'), ('followers', '1.1万')]
+  static List<(String, String)>? _buildStats(int? downloads, int? follows) {
+    final parts = <(String, String)>[
+      if (downloads != null && downloads > 0)
+        ('downloads', _formatCount(downloads)),
+      if (follows != null && follows > 0) ('followers', _formatCount(follows)),
     ];
-    return parts.isEmpty ? null : parts.join(' · ');
+    return parts.isEmpty ? null : parts;
   }
 
   /// 数字格式化为 万/亿(保留 1 位小数,整数时去掉 .0)

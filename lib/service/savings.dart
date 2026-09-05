@@ -20,8 +20,8 @@ class Likes {
     required this.id,
     required this.title,
     required this.description,
+    this.subName,
     this.iconUrl,
-    this.statsText,
     ModSource source = ModSource.mcmod,
     required this.date,
   }) : sourceName = source.name;
@@ -29,8 +29,10 @@ class Likes {
   final String id;
   final String title;
   final String description;
+
+  /// 次要名称(如英文名),收藏页卡片副标题用
+  final String? subName;
   final String? iconUrl;
-  final String? statsText;
 
   /// 数据来源的枚举名(如 'modrinth')。
   ///
@@ -46,8 +48,8 @@ class Likes {
       id: mod.id,
       title: mod.title,
       description: mod.description,
+      subName: mod.subName,
       iconUrl: mod.iconUrl,
-      statsText: mod.statsText,
       source: mod.source,
       date: time.millisecondsSinceEpoch.toDouble(),
     );
@@ -64,8 +66,8 @@ class Likes {
     id: id,
     title: title,
     description: description,
+    subName: subName,
     iconUrl: iconUrl,
-    statsText: statsText,
     source: source,
   );
 }
@@ -88,8 +90,8 @@ class FavoritesService extends ChangeNotifier {
       id TEXT NOT NULL,
       title TEXT NOT NULL,
       description TEXT NOT NULL,
+      sub_name TEXT,
       icon_url TEXT,
-      stats_text TEXT,
       source TEXT NOT NULL,
       date REAL NOT NULL,
       PRIMARY KEY(source, id)
@@ -115,8 +117,14 @@ class FavoritesService extends ChangeNotifier {
     _db = await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
         onCreate: (db, version) => db.execute(_createSql),
+        onUpgrade: (db, oldVersion, newVersion) async {
+          // v1 → v2:新增次要名称列
+          if (oldVersion < 2) {
+            await db.execute('ALTER TABLE likes ADD COLUMN sub_name TEXT');
+          }
+        },
       ),
     );
     final rows = await _db!.query('likes', orderBy: 'date DESC');
@@ -148,8 +156,8 @@ class FavoritesService extends ChangeNotifier {
         'id': likes.id,
         'title': likes.title,
         'description': likes.description,
+        'sub_name': likes.subName,
         'icon_url': likes.iconUrl,
-        'stats_text': likes.statsText,
         'source': likes.sourceName,
         'date': likes.date,
       });
@@ -218,8 +226,8 @@ class FavoritesService extends ChangeNotifier {
     id: row['id']! as String,
     title: row['title']! as String,
     description: row['description']! as String,
+    subName: row['sub_name'] as String?,
     iconUrl: row['icon_url'] as String?,
-    statsText: row['stats_text'] as String?,
     source: SourceManager.sourceToString(row['source'] as String?),
     date: (row['date']! as num).toDouble(),
   );

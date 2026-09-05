@@ -249,7 +249,7 @@ class _SearchPageState extends State<SearchPage> {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(3, 16, 3, 16),
         child: Chip(
-          avatar: Icon(icon),
+          avatar: icon,
           label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
       ),

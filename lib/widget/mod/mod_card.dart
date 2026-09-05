@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/value/source.dart';
 
 import '../../model/mod_summary.dart';
 import '../../page/more/detail.dart';
+import '../link_icons.dart';
 import 'favorite_toggle.dart';
 
 /// 分类页模组卡片的公共基类:
-/// 卡片外壳(涟漪+跳转详情页)、标题拆分、标题与统计构建等公共逻辑放这里,
+/// 卡片外壳(涟漪+跳转详情页)、标题拆分、标题/描述/来源构建等公共逻辑放这里,
 /// 行/列两种卡片只覆写封面([buildCover])与整体布局([build])。
 abstract class ModCard extends StatelessWidget {
   const ModCard({super.key, required this.mod});
@@ -56,52 +58,59 @@ abstract class ModCard extends StatelessWidget {
   /// 封面区:子类实现(行卡片=缩略图,列卡片=大图)
   Widget buildCover(ThemeData theme);
 
-  /// 信息区内容:标题 + 可选统计(两种卡片共用)
+  /// 信息区内容:标题、描述与来源(两种卡片共用)
   Widget buildInfoContent(ThemeData theme) {
     final name = extractAB(mod.displayName);
+    // 次要名称优先用解析得到的 subName(mcmod 列表页单独提供,
+    // 标题里没有括号),否则从标题括号里拆;两者都没有时只显示主标题
+    final sub = mod.subName ?? (name[0] != name[1] ? name[1] : null);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        buildTitle(theme, name),
-        const SizedBox(height: 4),
+        buildTitle(theme, name[0], sub),
         buildDescription(theme),
-        const SizedBox(height: 4),
-        buildStatistic(theme),
+        const SizedBox(height: 6),
+        buildSource(theme),
       ],
     );
   }
 
   // 构建标题(主标题+可选副标题)
-  Widget buildTitle(ThemeData theme, List<String> name) {
+  Widget buildTitle(ThemeData theme, String main, String? sub) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 主标题
         Text(
-          name[0],
+          main,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
+        const SizedBox(height: 6),
         // 副标题
-        if (name[0] != name[1]) ...[
+        if (sub != null) ...[
           Text(
-            name[1],
+            sub,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.labelMedium?.copyWith(
               fontStyle: FontStyle.italic,
               color: Colors.grey,
             ),
           ),
+          const SizedBox(height: 6),
         ],
       ],
     );
   }
 
   Widget buildDescription(ThemeData theme) {
+    final description = mod.description;
+    if (description.isEmpty) return const SizedBox.shrink();
+
     return Text(
       mod.description,
       maxLines: 2,
@@ -112,22 +121,19 @@ abstract class ModCard extends StatelessWidget {
     );
   }
 
-  // 构建统计
-  Widget buildStatistic(ThemeData theme) {
-    final text = mod.statsText;
-    if (text == null) return const SizedBox.shrink();
-    return Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: theme.textTheme.bodySmall?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
+  Widget buildSource(ThemeData theme) {
+    return Chip(
+      avatar: LinkIcons.getIconForDataSource(mod.source),
+      backgroundColor: Colors.transparent,
+      label: Text(
+        SourceManager.getSourceString(mod.source),
+        style: theme.textTheme.labelSmall,
       ),
     );
   }
 }
 
-/// 分类页的模组行卡片（窄屏）:左侧封面缩略图,右侧标题与统计
+/// 分类页的模组行卡片（窄屏）:左侧封面缩略图,右侧标题、描述与来源
 class ModCardRow extends ModCard {
   const ModCardRow({super.key, required super.mod});
 
@@ -180,7 +186,7 @@ class ModCardRow extends ModCard {
   }
 }
 
-/// 分类页的模组列卡片（宽屏网格）:上方大封面,下方标题与统计
+/// 分类页的模组列卡片（宽屏网格）:上方大封面,下方标题、描述与来源
 class ModCardColumn extends ModCard {
   const ModCardColumn({super.key, required super.mod});
 

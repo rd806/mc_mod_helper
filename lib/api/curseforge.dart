@@ -275,7 +275,7 @@ class CurseforgeApi {
       title: name,
       description: (mod['summary'] as String?) ?? '',
       iconUrl: logo?['url'] as String?,
-      statsText: _buildStats(
+      statistics: _buildStats(
         (mod['downloadCount'] as num?)?.toInt() ?? 0,
         (mod['followerCount'] as num?)?.toInt() ?? 0,
       ),
@@ -471,13 +471,13 @@ class CurseforgeApi {
     return html;
   }
 
-  /// 统计文本:如 '下载 7385.6万 · 关注 1.1万'
-  static String? _buildStats(int downloads, int followers) {
-    final parts = <String>[
-      if (downloads > 0) '下载 ${_formatCount(downloads)}',
-      if (followers > 0) '关注 ${_formatCount(followers)}',
+  /// 统计列表:如 [('downloads', '7385.6万'), ('followers', '1.1万')]
+  static List<(String, String)>? _buildStats(int downloads, int followers) {
+    final parts = <(String, String)>[
+      if (downloads > 0) ('downloads', _formatCount(downloads)),
+      if (followers > 0) ('followers', _formatCount(followers)),
     ];
-    return parts.isEmpty ? null : parts.join(' · ');
+    return parts.isEmpty ? null : parts;
   }
 
   /// 数字格式化为 万/亿(保留 1 位小数,整数时去掉 .0)

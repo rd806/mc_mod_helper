@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class Label extends StatelessWidget {
   const Label({super.key, required this.entry, this.icon});
 
-  final IconData? icon;
+  final Widget? icon;
 
   final String entry;
 
@@ -15,14 +15,13 @@ class Label extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.onPrimary, width: 0.5),
+        border: Border.all(color: theme.colorScheme.onSecondary, width: 0.5),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) Icon(icon!),
-          const SizedBox(width: 2),
-          Text(entry, style: theme.textTheme.labelMedium),
+          ?icon,
+          const SizedBox(width: 5),
+          Text(entry, style: theme.textTheme.labelSmall),
         ],
       ),
     );
