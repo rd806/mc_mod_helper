@@ -2,11 +2,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/page/home.dart';
 
+import 'service/savings.dart';
 import 'service/settings.dart';
 
 /// 应用程序入口
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 初始化收藏数据库(SQLite;桌面端自动切换 FFI 实现)
+  await FavoritesService.instance.init();
   // 先加载保存的设置再启动应用，避免启动后主题/字体跳变
   await SettingsService.instance.load();
   runApp(const McModHelper());

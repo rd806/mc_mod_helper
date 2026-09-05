@@ -41,6 +41,14 @@ dependencies:
   hyper_render: ^1.7.1
   markdown: ^7.3.0
 
+  # 收藏持久化:SQLite 实现。
+  # sqflite 为 Android/iOS 提供平台通道插件(移动端默认工厂);
+  # sqflite_common_ffi 提供桌面端(Windows/Linux)与测试环境的
+  # FFI 实现(无需平台通道,由 FavoritesService 在桌面平台切换)
+  sqflite: ^2.4.3
+  sqflite_common_ffi: ^2.3.6
+  path: ^1.9.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

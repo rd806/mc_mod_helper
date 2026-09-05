@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +11,7 @@ import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/main.dart';
+import 'package:mc_mod_helper/service/savings.dart';
 import 'package:mc_mod_helper/service/settings.dart';
 
 /// 启动应用并推进到两个页签(推荐/分类)都完成失败渲染。
@@ -27,6 +29,15 @@ Future<void> pumpApp(WidgetTester tester) async {
 }
 
 void main() {
+  setUpAll(() async {
+    // 收藏页挂在 IndexedStack 里随应用一起构建,ModTile 也带收藏按钮,
+    // 因此整套应用级用例都要先初始化收藏数据库(生产环境由 main() 完成)
+    final dir = await Directory.systemTemp.createTemp(
+      'mcmodhelper_sqlite_test',
+    );
+    await FavoritesService.instance.init(dbPath: '${dir.path}/favorites.db');
+  });
+
   setUp(() async {
     // 单例跨用例共享:重置 mock 存储并 load,
     // load 对缺失键显式赋默认值,单例随之复位
@@ -134,10 +145,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('最新编辑').last);
     await tester.pumpAndSettle();
-    expect(
-      SettingsService.instance.featuredSource,
-      FeatureSource.lastEditTime,
-    );
+    expect(SettingsService.instance.featuredSource, FeatureSource.lastEditTime);
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     await tester.pump();

@@ -7,6 +7,7 @@ class ModDetail {
   const ModDetail({
     required this.id,
     required this.title,
+    required this.source,
     this.subName,
     this.description,
     this.statistics,
@@ -15,7 +16,6 @@ class ModDetail {
     this.mcVersions = const {},
     this.platform,
     this.environment,
-    this.source = ModSource.mcmod,
   });
 
   /// 统一模组标识(字符串):

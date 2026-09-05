@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
+import 'package:mc_mod_helper/api/source.dart';
 
 import '../model/mod_category.dart';
 import '../model/mod_detail.dart';
@@ -708,6 +709,7 @@ class McmodApi {
     return ModDetail(
       id: id,
       title: title,
+      source: ModSource.mcmod,
       subName: subName,
       description: description.isEmpty ? null : description,
       coverUrl: coverUrl,

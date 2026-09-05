@@ -131,16 +131,9 @@ class HtmlContent extends StatelessWidget {
           ),
         );
       case 'pre':
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(el.text, style: _monoStyle(theme, base)),
-        );
+      case 'code':
+        // 代码块(pre/markdown 的 <pre><code> 都会走到这里)
+        return _buildCodeBlock(context, theme, base, el);
       case 'hr':
         return const Padding(
           padding: EdgeInsets.symmetric(vertical: 8),
@@ -216,6 +209,75 @@ class HtmlContent extends StatelessWidget {
       top: style.marginTop,
       bottom: 8 + style.marginBottom,
     );
+  }
+
+  /// 代码块(pre / 块级 code):按行渲染、不自动换行。
+  ///
+  /// 换行识别：`<br>` 与文本里的 `\n` 都算换行(mcmod 的代码块用 `<br>`
+  /// 分行、`&nbsp;` 缩进；markdown 转出的 `<pre><code>` 用 `\n` 分行)。
+  ///
+  /// 整块包横向滚动容器：长行超出容器时左右滚动查看(桌面端支持鼠标拖拽),
+  /// 而不是被折行压乱格式。
+  Widget _buildCodeBlock(
+    BuildContext context,
+    ThemeData theme,
+    TextStyle base,
+    dom.Element el,
+  ) {
+    final style = _monoStyle(theme, base);
+    final lines = _codeLines(el);
+    final block = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final line in lines) Text(line, style: style, softWrap: false),
+      ],
+    );
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      // 横向滚动容器:内容自然宽,超出容器宽度时左右滚动
+      child: _wrapTableScroll(context, block),
+    );
+  }
+
+  /// 提取代码块的行：递归收集文本,`<br>` 与 `\n` 都算换行;
+  /// `&nbsp;`(`U+00A0`)转成普通空格,等宽字体下缩进才能对齐
+  static List<String> _codeLines(dom.Element el) {
+    final lines = <String>[];
+    var current = StringBuffer();
+    void flush() {
+      lines.add(current.toString().replaceAll(' ', ' '));
+      current = StringBuffer();
+    }
+
+    void walk(List<dom.Node> nodes) {
+      for (final n in nodes) {
+        if (n is dom.Text) {
+          final parts = n.text.split('\n');
+          current.write(parts.first);
+          for (final part in parts.skip(1)) {
+            flush();
+            current.write(part);
+          }
+        } else if (n is dom.Element) {
+          if (n.localName == 'br') {
+            flush();
+          } else {
+            // 嵌套元素(如 markdown 的 <pre><code>):递归取文本
+            walk(n.nodes);
+          }
+        }
+      }
+    }
+
+    walk(el.nodes);
+    flush();
+    return lines;
   }
 
   /// 列表:每个条目一行,无序用圆点、有序用序号;嵌套列表按层级缩进

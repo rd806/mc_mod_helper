@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/page/main/config.dart';
+import 'package:mc_mod_helper/page/main/favorite.dart';
 import 'package:mc_mod_helper/page/main/feature.dart';
 import 'package:mc_mod_helper/page/main/search.dart';
 import 'package:mc_mod_helper/page/main/sort.dart';
@@ -22,6 +23,7 @@ class _HomePageState extends State<HomePage> {
     FeaturePage(),
     SortPage(),
     SearchPage(),
+    FavoritePage(),
     ConfigPage(),
   ];
 
@@ -29,6 +31,7 @@ class _HomePageState extends State<HomePage> {
     NavigationItem(icon: Icons.home, label: '首页'),
     NavigationItem(icon: Icons.category, label: '分类'),
     NavigationItem(icon: Icons.search, label: '搜索'),
+    NavigationItem(icon: Icons.favorite, label: '收藏'),
     NavigationItem(icon: Icons.settings, label: '设置'),
   ];
 

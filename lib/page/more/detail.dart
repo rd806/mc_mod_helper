@@ -13,19 +13,21 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
 import '../../model/mod_detail.dart';
+import '../../model/mod_summary.dart';
 import '../../render/html_content.dart';
 import '../../widget/captcha_dialog.dart';
 import '../../widget/common/collapsible_widgets.dart';
 import '../../widget/description/image_box.dart';
+import '../../widget/mod/favorite_toggle.dart';
 
 /// 模组详情页
 class DetailPage extends StatefulWidget {
   const DetailPage({
     super.key,
     required this.id,
+    required this.source,
     this.initialTitle,
     this.initialDescription,
-    this.source = ModSource.mcmod,
   });
 
   /// 统一模组标识(字符串):MC百科为数字字符串(如 '123'),Modrinth 为 slug(如 'jei')
@@ -189,6 +191,22 @@ class _DetailPageState extends State<DetailPage> {
         // 标题可能还在加载，不使用模组名
         title: Text(widget.initialTitle ?? '模组详情'),
         actions: [
+          // 收藏:详情未加载完时用初始信息构造摘要
+          // (id+来源已足够匹配收藏,加载完再补全标题/图标)
+          FutureBuilder<ModDetail>(
+            future: _future,
+            builder: (context, snapshot) {
+              final mod = snapshot.hasData
+                  ? ModSummary.fromDetail(snapshot.data!)
+                  : ModSummary(
+                      id: widget.id,
+                      title: widget.initialTitle ?? widget.id,
+                      description: widget.initialDescription ?? '',
+                      source: widget.source,
+                    );
+              return FavoriteToggle(mod: mod);
+            },
+          ),
           IconButton(
             tooltip: '刷新',
             icon: const Icon(Icons.refresh),

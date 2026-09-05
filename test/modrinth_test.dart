@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/api/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/page/more/detail.dart';
+import 'package:mc_mod_helper/service/savings.dart';
 import 'package:mc_mod_helper/service/settings.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
@@ -112,6 +114,15 @@ Future<http.Response> _handler(http.Request request) async {
 }
 
 void main() {
+  setUpAll(() async {
+    // 端到端用例渲染 ModTile(带收藏按钮)与收藏页,
+    // 需要先初始化收藏数据库(生产环境由 main() 完成)
+    final dir = await Directory.systemTemp.createTemp(
+      'mcmodhelper_sqlite_test',
+    );
+    await FavoritesService.instance.init(dbPath: '${dir.path}/favorites.db');
+  });
+
   setUp(() {
     ModrinthApi.clearCaches();
     ModrinthApi.clientFactory = () => MockClient(_handler);

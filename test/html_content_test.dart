@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
@@ -430,5 +431,65 @@ void main() {
     expect(find.byType(Table), findsOneWidget);
     expect(find.text('•', findRichText: true), findsNWidgets(2));
     expect(_inContent(find.byType(MouseRegion)), findsNothing);
+  });
+
+  testWidgets('代码块:br 与 \\n 都按换行识别,&nbsp; 缩进保留', (tester) async {
+    // mcmod 真实结构(class/29906.html 的 JSON 配置示例):
+    // <br /> 分行、&nbsp; 缩进、&quot; 转义引号
+    await tester.pumpWidget(
+      _wrap(
+        '<pre class="brush:none;">{<br />&nbsp;&nbsp;&quot;memos&quot;:&nbsp;[<br />'
+        '&nbsp;&nbsp;&nbsp;&nbsp;{&quot;name&quot;:&nbsp;&quot;test1&quot;}<br />'
+        '&nbsp;&nbsp;]<br />}</pre>',
+      ),
+    );
+
+    expect(find.text('{'), findsOneWidget);
+    expect(find.text('  "memos": ['), findsOneWidget);
+    expect(find.text('    {"name": "test1"}'), findsOneWidget);
+    expect(find.text('  ]'), findsOneWidget);
+    expect(find.text('}'), findsOneWidget);
+
+    // markdown 转出结构:<pre><code> 内用 \n 分行(嵌套元素递归取文本)
+    await tester.pumpWidget(
+      _wrap('<pre><code class="language-json">a\nb\nc</code></pre>'),
+    );
+    expect(find.text('a'), findsOneWidget);
+    expect(find.text('b'), findsOneWidget);
+    expect(find.text('c'), findsOneWidget);
+  });
+
+  testWidgets('代码块:不自动换行,横向滚动容器(支持鼠标拖拽)', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        '<pre>{&nbsp;&nbsp;&quot;veryLongKey&quot;:&nbsp;'
+        '[&quot;很长的值内容超出容器宽度&quot;]}</pre>',
+      ),
+    );
+
+    // 每行 softWrap 关闭:长行靠横向滚动查看,不折行
+    final line = tester.widget<Text>(find.textContaining('veryLongKey'));
+    expect(line.softWrap, isFalse);
+    // 代码块内部有横向滚动容器
+    final scroll = tester.widget<SingleChildScrollView>(
+      find.descendant(
+        of: find.byType(HtmlContent),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is SingleChildScrollView &&
+              w.scrollDirection == Axis.horizontal,
+        ),
+      ),
+    );
+    expect(scroll.scrollDirection, Axis.horizontal);
+    // 桌面端 ScrollBehavior 默认不认鼠标拖拽,滚动容器补上了鼠标
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is ScrollConfiguration &&
+            w.behavior.dragDevices.contains(PointerDeviceKind.mouse),
+      ),
+      findsWidgets,
+    );
   });
 }
