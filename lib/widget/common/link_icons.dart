@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/widget/common/label.dart';
 
-import '../value/source.dart';
+import '../../value/source.dart';
 
 /// 链接图标(自定义图标字体)。
 ///

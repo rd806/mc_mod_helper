@@ -5,7 +5,7 @@ import 'package:mc_mod_helper/value/source.dart';
 import '../../api/mcmod.dart';
 import '../../model/mod_summary.dart';
 import '../../service/settings.dart';
-import '../../widget/captcha_dialog.dart';
+import '../../widget/common/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 
 /// 应用主页:展示 mcmod.cn 首页的模组分类与首页推荐模组列表

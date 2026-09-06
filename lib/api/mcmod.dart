@@ -87,13 +87,9 @@ class McmodApi {
       'Cookie': _cookies.entries.map((e) => '${e.key}=${e.value}').join('; '),
   };
 
-  /// 搜索请求的最小间隔(站点限流阈值约为 3 秒)
-  static const Duration _searchMinInterval = Duration(seconds: 3);
-
-  /// www.mcmod.cn 普通页面请求的最小间隔(详情/列表/首页/分类页共用)
+  /// www.mcmod.cn 普通页面请求的最小间隔(详情/列表/搜索/首页/分类页共用)
   static const Duration _detailMinInterval = Duration(seconds: 1);
 
-  static DateTime? _lastSearchAt;
   static DateTime? _lastWwwAt;
 
   /// 会话缓存,避免重复请求触发限流
@@ -116,25 +112,24 @@ class McmodApi {
     _categoryModsCache.clear();
     _featuredPageCache.clear();
     _cookies.clear();
-    _lastSearchAt = null;
     _lastWwwAt = null;
     // 重置惰性缓存的客户端,让测试可以替换 clientFactory
     _clientInstance = null;
   }
 
-  /// 按关键词搜索模组,返回摘要列表
+  /// 按关键词搜索模组,返回摘要列表。
+  ///
+  /// 与推荐/分类共用 modlist 接口:
+  /// https://www.mcmod.cn/modlist.html?key={keyword}
   static Future<List<ModSummary>> search(String keyword) async {
     final cached = _searchCache[keyword];
     if (cached != null) return cached;
 
-    // filter=0 搜全部类型(站点默认)。注意:filter=1(仅模组)的排序
-    // 相关性很差,本体模组会被附属模组淹没;filter=0 的排序是正确的。
-    // 解析时只保留模组条目(class/数字.html),所以类型混杂不影响结果。
-    final uri = Uri.parse('https://search.mcmod.cn/s')
-        .replace(queryParameters: {'key': keyword, 'filter': '0', 'mold': '0'});
-    final body = await _fetchWithRetry(uri, _searchMinInterval, _lastSearchAt);
-    final results = _parseSearch(body);
-    // 站点原始排序相关性较差(附属模组往往排在本体前面),
+    final uri = Uri.parse('https://www.mcmod.cn/modlist.html')
+        .replace(queryParameters: {'key': keyword});
+    final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
+    final results = _parseModlist(body);
+    // 站点原始排序相关性可能较差(附属模组排在本体前面),
     // 这里按与关键词的匹配程度从高到低重新排序
     final sorted = _sortByRelevance(results, keyword);
     _searchCache[keyword] = sorted;
@@ -273,7 +268,10 @@ class McmodApi {
     return cats;
   }
 
-  /// 获取分类列表页第 [page] 页的模组(每页约 20 个)与总页数
+  /// 获取分类列表第 [page] 页的模组(每页约 20 个)与总页数。
+  ///
+  /// 与推荐列表共用 modlist 接口,按 category 过滤:
+  /// https://www.mcmod.cn/modlist.html?category={id}(&page={n})
   static Future<({List<ModSummary> mods, int totalPages})> getCategoryMods(
     String categoryId, {
     int page = 1,
@@ -282,11 +280,11 @@ class McmodApi {
     final cached = _categoryModsCache[key];
     if (cached != null) return cached;
 
-    final uri = Uri.parse(
-      'https://www.mcmod.cn/class/category/$categoryId-$page.html',
+    final uri = Uri.parse('https://www.mcmod.cn/modlist.html').replace(
+      queryParameters: {'category': categoryId, if (page > 1) 'page': '$page'},
     );
     final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
-    final result = _parseCategoryPage(body);
+    final result = _parseModlistPage(body);
     _categoryModsCache[key] = result;
     return result;
   }
@@ -399,48 +397,11 @@ class McmodApi {
   }
 
   static void _record(Uri uri) {
-    if (uri.host == 'search.mcmod.cn') {
-      _lastSearchAt = DateTime.now();
-    } else {
-      _lastWwwAt = DateTime.now();
-    }
+    _lastWwwAt = DateTime.now();
   }
 
   /// 站点限流页面的特征文本
   static bool _isThrottled(String html) => html.contains('太频繁');
-
-  // ---------- 搜索页解析 ----------
-
-  static List<ModSummary> _parseSearch(String html) {
-    final doc = html_parser.parse(html);
-    final results = <ModSummary>[];
-    for (final item in doc.querySelectorAll('.result-item')) {
-      // .head 里第一个 a 可能是分类链接(class/category/...),
-      // 需要遍历找出指向模组页(class/数字.html)的那个
-      Element? anchor;
-      for (final a in item.querySelectorAll('.head a')) {
-        if (RegExp(r'class/\d+\.html').hasMatch(a.attributes['href'] ?? '')) {
-          anchor = a;
-          break;
-        }
-      }
-      if (anchor == null) continue;
-      final href = anchor.attributes['href'] ?? '';
-      final idMatch = RegExp(r'class/(\d+)\.html').firstMatch(href);
-      if (idMatch == null) continue;
-      final title = _cleanText(anchor.text);
-      if (title.isEmpty) continue;
-      results.add(
-        ModSummary(
-          id: idMatch.group(1)!,
-          title: title,
-          description: _cleanText(item.querySelector('.body')?.text ?? ''),
-          source: ModSource.mcmod,
-        ),
-      );
-    }
-    return results;
-  }
 
   // ---------- 模组列表页(modlist)解析 ----------
 
@@ -510,59 +471,18 @@ class McmodApi {
 
   // ---------- 分类列表页解析 ----------
 
-  /// 解析分类列表页:每个模组是 .frame > .block 卡片(封面 + 标题 + 统计),
-  /// 总页数取自分页块(.pages_system)里的最大页码
-  static ({List<ModSummary> mods, int totalPages}) _parseCategoryPage(
+  /// 解析 modlist 列表页(推荐与分类共用):条目走 [_parseModlist],
+  /// 总页数取自分页链接的 data-page 属性最大值;
+  /// 没有分页块(单页)时兜底为 1 页
+  static ({List<ModSummary> mods, int totalPages}) _parseModlistPage(
     String html,
   ) {
-    final doc = html_parser.parse(html);
-    final mods = <ModSummary>[];
-    // 子代组合选择器锚定 .frame > .block,避免误匹配侧栏/页脚里的 .block
-    for (final block in doc.querySelectorAll('div.frame > div.block')) {
-      final nameA = block.querySelector('.name.t a');
-      final href = nameA?.attributes['href'] ?? '';
-      final idMatch = RegExp(r'class/(\d+)\.html').firstMatch(href);
-      if (idMatch == null) continue;
-      final title = _cleanText(nameA?.text ?? '');
-      if (title.isEmpty) continue;
-
-      var icon = block.querySelector('img.img')?.attributes['src'] ?? '';
-      if (icon.startsWith('//')) icon = 'https:$icon';
-      // none.jpg 是站点无封面时的占位图,不展示
-      if (icon.contains('/none.jpg')) icon = '';
-
-      // 统计:浏览/推荐/收藏,逐项判空
-      final views = _cleanText(block.querySelector('.num')?.text ?? '');
-      final push = _cleanText(block.querySelector('.push')?.text ?? '');
-      final like = _cleanText(block.querySelector('.like')?.text ?? '');
-      final stats = <(String, String)>[
-        if (views.isNotEmpty) ('views', views),
-        if (push.isNotEmpty) ('recommend', push),
-        if (like.isNotEmpty) ('favorite', like),
-      ];
-      mods.add(
-        ModSummary(
-          id: idMatch.group(1)!,
-          title: title,
-          description: '',
-          source: ModSource.mcmod,
-          iconUrl: icon.isEmpty ? null : icon,
-          statistics: stats.isEmpty ? null : stats,
-        ),
-      );
-    }
-    // 没有分页块(单页分类)时兜底为 1 页
+    final mods = _parseModlist(html);
     var totalPages = 1;
-    final page = doc.querySelector('.pages_system');
-    if (page != null) {
-      for (final a in page.querySelectorAll('a[href]')) {
-        final m = RegExp(r'category/\d+-(\d+)\.html')
-            .firstMatch(a.attributes['href'] ?? '');
-        if (m != null) {
-          final n = int.tryParse(m.group(1)!);
-          if (n != null && n > totalPages) totalPages = n;
-        }
-      }
+    final doc = html_parser.parse(html);
+    for (final a in doc.querySelectorAll('a[data-page]')) {
+      final n = int.tryParse(a.attributes['data-page'] ?? '');
+      if (n != null && n > totalPages) totalPages = n;
     }
     return (mods: mods, totalPages: totalPages);
   }

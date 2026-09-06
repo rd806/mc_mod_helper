@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// 可折叠 chips 块（版本/相关链接共用）:
-/// 超过两行时折叠显示，点击「展开全部」展开、再点收起。
+/// 可折叠组件块：超过两行时折叠显示，点击「展开全部」展开、再点收起。
 ///
 /// 首帧渲染不可见的测量层（与显示层同宽完整布局、不占高度）,
-/// post-frame 实测整块与单个 chip 高度判断是否超过两行，下一帧
+/// post-frame 实测整块与单个 widget 高度判断是否超过两行，下一帧
 /// 才展示折叠后的内容——呈现给用户的第一帧就是折叠态，无展开闪烁。
 class CollapsibleWidgets extends StatefulWidget {
   const CollapsibleWidgets({super.key, required this.widget});

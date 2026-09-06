@@ -7,9 +7,9 @@ import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/value/source.dart';
 import 'package:mc_mod_helper/render/hyper.dart';
 import 'package:mc_mod_helper/service/settings.dart';
-import 'package:mc_mod_helper/widget/description/cover.dart';
+import 'package:mc_mod_helper/widget/detail/cover.dart';
 import 'package:mc_mod_helper/widget/common/label.dart';
-import 'package:mc_mod_helper/widget/link_icons.dart';
+import 'package:mc_mod_helper/widget/common/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/mcmod.dart';
@@ -17,9 +17,9 @@ import '../../api/modrinth.dart';
 import '../../model/mod_detail.dart';
 import '../../model/mod_summary.dart';
 import '../../render/html_content.dart';
-import '../../widget/captcha_dialog.dart';
+import '../../widget/common/captcha_dialog.dart';
 import '../../widget/common/collapsible_widgets.dart';
-import '../../widget/description/image_box.dart';
+import '../../widget/detail//image_box.dart';
 import '../../widget/mod/favorite_toggle.dart';
 
 /// 模组详情页
@@ -279,14 +279,14 @@ class _DetailPageState extends State<DetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 顶部:封面与标题（通栏）
-        Column(
-          children: [
-            ModCoverWide(mod: mod),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-              child: const Divider(),
-            ),
-          ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+          child: Column(
+            children: [
+              ModCoverWide(mod: mod),
+              const Divider(),
+            ],
+          ),
         ),
         // 下方:左宽右窄两栏
         Expanded(

@@ -241,6 +241,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'jei');
     await tester.tap(find.byIcon(Icons.arrow_forward));
     await tester.pump(); // 搜索发起
+    await tester.pump(const Duration(seconds: 1)); // mcmod www 节流计时器 → 请求(400)
     await tester.pump(); // mcmod 400 → 失败;modrinth 命中
     await tester.pump(); // 渲染结果
 

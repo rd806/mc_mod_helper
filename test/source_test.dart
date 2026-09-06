@@ -16,12 +16,16 @@ http.Response _json(Object data) => http.Response.bytes(
   headers: {'content-type': 'application/json; charset=utf-8'},
 );
 
-/// mcmod 搜索页 HTML(单个结果条目,结构与 _parseSearch 一致)
+/// mcmod 搜索页 HTML(单个结果条目,结构与 modlist 页的 _parseModlist 一致)
 String _mcmodHtml() => '''
 <html><body>
-  <div class="result-item">
-    <div class="head"><a href="https://www.mcmod.cn/class/459.html">JEI 物品管理器</a></div>
-    <div class="body">查看物品合成与用途</div>
+  <div class="modlist-block">
+    <div class="title">
+      <p class="name"><a href="/class/459.html">[JEI] JEI物品管理器</a></p>
+      <p class="ename"><a href="/class/459.html">Just Enough Items</a></p>
+    </div>
+    <div class="cover"><img src="//i.mcmod.cn/jei.png"></div>
+    <div class="intro-content"><span>查看物品的合成与用途</span></div>
   </div>
 </body></html>''';
 
@@ -49,7 +53,8 @@ void main() {
     ], 'jei');
     expect(total.results.keys, [ModSource.mcmod]);
     expect(total.results[ModSource.mcmod]!.single.id, '459');
-    expect(total.results[ModSource.mcmod]!.single.title, 'JEI 物品管理器');
+    expect(total.results[ModSource.mcmod]!.single.title, '[JEI] JEI物品管理器');
+    expect(total.results[ModSource.mcmod]!.single.subName, 'Just Enough Items');
     // 失败的来源:错误按来源记录,不吞掉整个搜索
     expect(total.errors.keys, [ModSource.modrinth]);
     expect(total.errors[ModSource.modrinth], contains('HTTP 500'));

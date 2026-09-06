@@ -4,8 +4,8 @@ import 'package:mc_mod_helper/value/source.dart';
 import '../../api/mcmod.dart';
 import '../../model/mod_category.dart';
 import '../../service/settings.dart';
-import '../../widget/captcha_dialog.dart';
-import '../../widget/category/category.dart';
+import '../../widget/common/captcha_dialog.dart';
+import '../../widget/mod/category_card.dart';
 import '../../widget/common/error_view.dart';
 
 /// 应用主页:展示 mcmod.cn 首页的模组分类与首页推荐模组列表

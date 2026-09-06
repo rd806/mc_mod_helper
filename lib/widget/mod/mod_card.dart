@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../model/mod_summary.dart';
-import '../../page/more/detail.dart';
-import '../link_icons.dart';
+import '../../page/more/description.dart';
 import 'favorite_toggle.dart';
 
 /// 分类页模组卡片的公共基类:
@@ -12,19 +11,6 @@ abstract class ModCard extends StatelessWidget {
   const ModCard({super.key, required this.mod});
 
   final ModSummary mod;
-
-  /// 提取主/副标题:displayName 里括号内的英文名作为副标题;
-  /// 无括号时两者相同(只显示主标题)
-  List<String> extractAB(String text) {
-    var a = text;
-    var b = text;
-    final m = RegExp(r'(.+?)\((.+?)\)').firstMatch(text);
-    if (m != null) {
-      a = m.group(1)!.trim();
-      b = m.group(2)!.trim();
-    }
-    return [a, b];
-  }
 
   /// 卡片外壳:Card + InkWell 点击跳转详情页。
   /// StatelessWidget 没有 context 属性，由子类的 build 传入
@@ -58,14 +44,18 @@ abstract class ModCard extends StatelessWidget {
   Widget buildCover(ThemeData theme);
 
   /// 信息区内容:标题、描述与来源(两种卡片共用)
-  Widget buildInfoContent(ThemeData theme) {
-    final name = extractAB(mod.displayName);
+  Widget buildInfo(ThemeData theme) {
+    final name = mod.title;
     // 次要名称优先用解析得到的 subName(mcmod 列表页单独提供,
     // 标题里没有括号),否则从标题括号里拆;两者都没有时只显示主标题
-    final sub = mod.subName ?? (name[0] != name[1] ? name[1] : null);
+    final sub = mod.subName;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [buildTitle(theme, name[0], sub), buildDescription(theme)],
+      children: [
+        buildTitle(theme, name, sub),
+        buildDescription(theme),
+        buildStatistic(theme),
+      ],
     );
   }
 
@@ -101,40 +91,42 @@ abstract class ModCard extends StatelessWidget {
     );
   }
 
+  /// 描述
   Widget buildDescription(ThemeData theme) {
     final description = mod.description;
     if (description.isEmpty) return const SizedBox.shrink();
 
-    return Text(
-      mod.description,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: theme.textTheme.bodySmall?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
-      ),
+    return Column(
+      children: [
+        Text(
+          mod.description,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 6),
+      ],
     );
   }
 
   /// 统计信息
   Widget buildStatistic(ThemeData theme) {
-    final statistic = mod.statistics;
+    final statistic = mod.statisticsText;
+    if (statistic == null) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 35,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          LinkIcons.getIconForDataSource(mod.source),
-          if (statistic != null && statistic.isNotEmpty)
-            for (final entry in statistic)
-              LinkIcons.buildStatisticLabel(entry, theme),
-        ],
+    return Text(
+      mod.statisticsText!,
+      style: theme.textTheme.labelMedium?.copyWith(
+        color: theme.colorScheme.onPrimaryContainer,
       ),
     );
   }
 }
 
-/// 分类页的模组行卡片（窄屏）:左侧封面缩略图,右侧标题、描述与来源
+/// 分类页的模组行卡片（窄屏）：
+/// 左侧封面缩略图,右侧标题、描述与来源
 class ModCardRow extends ModCard {
   const ModCardRow({super.key, required super.mod});
 
@@ -152,7 +144,7 @@ class ModCardRow extends ModCard {
               children: [
                 buildCover(theme),
                 const SizedBox(width: 12),
-                Expanded(child: buildInfoContent(theme)),
+                Expanded(child: buildInfo(theme)),
                 // 收藏心形:与 ModTile 行为一致,点击收藏/取消收藏
                 FavoriteToggle(mod: mod),
               ],
@@ -180,17 +172,19 @@ class ModCardRow extends ModCard {
     );
   }
 
+  /// 替换图片
   Widget _buildThumbPlaceholder(ThemeData theme) {
     return Container(
-      width: 120,
-      height: 90,
+      width: 100,
+      height: 80,
       color: theme.colorScheme.surfaceContainerHighest,
       child: const Icon(Icons.image_outlined, size: 24),
     );
   }
 }
 
-/// 分类页的模组列卡片（宽屏网格）:上方大封面,下方标题、描述与来源
+/// 分类页的模组列卡片（宽屏网格）：
+/// 上方大封面,下方标题、描述与来源
 class ModCardColumn extends ModCard {
   const ModCardColumn({super.key, required super.mod});
 
@@ -208,7 +202,7 @@ class ModCardColumn extends ModCard {
               buildCover(theme),
               Padding(
                 padding: const EdgeInsets.all(8),
-                child: buildInfoContent(theme),
+                child: buildInfo(theme),
               ),
             ],
           ),
@@ -243,6 +237,7 @@ class ModCardColumn extends ModCard {
     );
   }
 
+  /// 替换图片
   Widget _buildCoverPlaceholder(ThemeData theme) {
     return Container(
       width: double.infinity,

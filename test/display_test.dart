@@ -79,8 +79,8 @@ void main() {
     expect(find.byType(ModCardRow), findsNothing);
   });
 
-  testWidgets('卡片显示次要名称:subName 优先,括号拆分兜底', (tester) async {
-    // mcmod 列表页:标题无括号,次要名称在 subName 字段
+  testWidgets('卡片显示次要名称(subName)', (tester) async {
+    // mcmod 列表页:主标题为原始 title,次要名称在 subName 字段
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -96,17 +96,17 @@ void main() {
         ),
       ),
     );
-    expect(find.text('JEI物品管理器'), findsOneWidget);
+    expect(find.text('[JEI] JEI物品管理器'), findsOneWidget);
     expect(find.text('Just Enough Items'), findsOneWidget);
 
-    // 无 subName 时回退到标题括号拆分
+    // 无 subName 时只显示主标题
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: ModCardRow(
             mod: ModSummary(
               id: '2',
-              title: '模组名称 (English Name)',
+              title: '模组名称',
               description: '',
               source: ModSource.mcmod,
             ),
@@ -115,6 +115,6 @@ void main() {
       ),
     );
     expect(find.text('模组名称'), findsOneWidget);
-    expect(find.text('English Name'), findsOneWidget);
+    expect(find.textContaining('English'), findsNothing);
   });
 }

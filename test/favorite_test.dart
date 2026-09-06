@@ -71,13 +71,15 @@ Future<void> _pumpApp(WidgetTester tester) async {
   await tester.pump(); // 渲染错误态
 }
 
-/// 搜索页签里搜索 jei 并等结果渲染(Modrinth 假响应,mcmod 真实 400)
+/// 搜索页签里搜索 jei 并等结果渲染(Modrinth 假响应,mcmod 真实 400;
+/// mcmod 搜索走 www 节流,请求要等 1s 计时器)
 Future<void> _searchJei(WidgetTester tester) async {
   await tester.tap(find.text('搜索'));
   await tester.pump();
   await tester.enterText(find.byType(TextField), 'jei');
   await tester.tap(find.byIcon(Icons.arrow_forward));
   await tester.pump(); // 搜索发起
+  await tester.pump(const Duration(seconds: 1)); // mcmod www 节流计时器 → 请求(400)
   await tester.pump(); // mcmod 400 → 失败;modrinth 命中
   await tester.pump(); // 渲染结果
 }
@@ -118,7 +120,7 @@ void main() {
     // 切到收藏页签:条目出现,次要名称作为副标题显示
     await tester.tap(find.text('收藏'));
     await tester.pump();
-    expect(find.text('JEI物品管理器'), findsOneWidget);
+    expect(find.text('[JEI] JEI物品管理器'), findsOneWidget);
     expect(find.text('Just Enough Items'), findsOneWidget);
     expect(find.textContaining('还没有收藏'), findsNothing);
     // 心形已点亮

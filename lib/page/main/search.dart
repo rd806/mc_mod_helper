@@ -2,12 +2,12 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/value/source.dart';
-import 'package:mc_mod_helper/widget/link_icons.dart';
+import 'package:mc_mod_helper/widget/common/link_icons.dart';
 
 import '../../api/mcmod.dart';
 import '../../model/mod_summary.dart';
 import '../../service/settings.dart';
-import '../../widget/captcha_dialog.dart';
+import '../../widget/common/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 import '../../widget/mod/mod_tile.dart';
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/value/display.dart';
 import 'package:mc_mod_helper/value/source.dart';
-import 'package:mc_mod_helper/widget/link_icons.dart';
+import 'package:mc_mod_helper/widget/common/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../service/settings.dart';
