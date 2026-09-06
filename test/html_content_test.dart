@@ -202,6 +202,19 @@ void main() {
     expect(find.byType(Table), findsOneWidget);
     expect(find.textContaining('XeKr', findRichText: true), findsOneWidget);
     expect(find.byType(Image), findsNWidgets(4));
+    // 含图片的表格统一固定缩略图列宽 + 横向滚动
+    expect(tester.getSize(find.byType(Table)).width, 640);
+    expect(
+      find.descendant(
+        of: find.byType(HtmlContent),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is SingleChildScrollView &&
+              w.scrollDirection == Axis.horizontal,
+        ),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('图注格:图片+图下说明,图片可点灯箱', (tester) async {
@@ -221,8 +234,9 @@ void main() {
     );
     await tester.pump(); // 图片网络失败 → errorBuilder 占位
 
-    // 画廊判定:含图注格的表格等宽列(框线与文字表格一致)
+    // 宽画廊:含图注格的表格同样按固定缩略图宽度渲染
     expect(tester.widget<Table>(find.byType(Table)).border, isNotNull);
+    expect(tester.getSize(find.byType(Table)).width, 640);
     // 图注图片固定 180 高(占位),说明文字渲染在下方
     expect(
       find.byWidgetPredicate((w) => w is SizedBox && w.height == 180),
@@ -255,14 +269,59 @@ void main() {
     );
     await tester.pump(); // 图片网络失败 → errorBuilder 占位
 
-    // 画廊判定:等宽列(框线与文字表格一致)
+    // 宽画廊:图注格(更多展示)同样固定缩略图宽度 + 横向滚动容器
     expect(tester.widget<Table>(find.byType(Table)).border, isNotNull);
+    expect(tester.getSize(find.byType(Table)).width, 640);
+    expect(
+      find.descendant(
+        of: find.byType(HtmlContent),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is SingleChildScrollView &&
+              w.scrollDirection == Axis.horizontal,
+        ),
+      ),
+      findsOneWidget,
+    );
     // 图注文字渲染
     expect(find.text('脉冲延长器'), findsOneWidget);
     expect(find.text('流水线压板'), findsOneWidget);
     // 点击图注图片 → 灯箱分流回调收到图片地址
     await tester.tap(find.byType(Image).first);
     expect(tapped, 'https://x/1.png');
+  });
+
+  testWidgets('含纯文本格的图注表格(JEI 物品表)同样固定列宽 + 横向滚动', (tester) async {
+    // JEI 物品表真实结构:每行是图注格(图标+物品名)与说明文字列混排。
+    // 含图片的表格统一按固定缩略图宽度渲染,文字列按 320 列宽换行
+    await tester.pumpWidget(
+      _wrap(
+        '<table><tr>'
+        '<td><span class="figure">'
+        '<a href="https://x/1.png"><img src="https://x/1.png"></a>'
+        '<span class="figcaption">物品甲</span></span></td>'
+        '<td>物品甲的说明文字</td>'
+        '</tr></table>',
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(Table), findsOneWidget);
+    expect(find.text('物品甲'), findsOneWidget);
+    expect(find.textContaining('物品甲的说明文字', findRichText: true), findsOneWidget);
+    // 与其它画廊一致:固定缩略图列宽 + 横向滚动容器
+    expect(tester.getSize(find.byType(Table)).width, 640);
+    expect(
+      find.descendant(
+        of: find.byType(HtmlContent),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is SingleChildScrollView &&
+              w.scrollDirection == Axis.horizontal,
+        ),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('JEI 同行混排格:图标+物品名保持行内渲染,不误判为图注', (tester) async {
@@ -287,11 +346,23 @@ void main() {
       find.byWidgetPredicate((w) => w is SizedBox && w.height == 180),
       findsNothing,
     );
-    // 文字表格:有框线
+    // 含图片的表格统一固定缩略图列宽 + 横向滚动
+    expect(tester.getSize(find.byType(Table)).width, 640);
+    expect(
+      find.descendant(
+        of: find.byType(HtmlContent),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is SingleChildScrollView &&
+              w.scrollDirection == Axis.horizontal,
+        ),
+      ),
+      findsOneWidget,
+    );
     expect(tester.widget<Table>(find.byType(Table)).border, isNotNull);
   });
 
-  testWidgets('画廊表格:图片固定高度 180、单线框线', (tester) async {
+  testWidgets('宽画廊:纯图表格按固定缩略图宽度渲染、单线框线', (tester) async {
     await tester.pumpWidget(
       _wrap(
         '<table><tr>'
@@ -305,12 +376,105 @@ void main() {
     expect(find.byType(Table), findsOneWidget);
     // 画廊与文字表格统一框线
     expect(tester.widget<Table>(find.byType(Table)).border, isNotNull);
+    // 宽画廊:每列固定为缩略图宽度(320),总宽 = 列数 × 320,
+    // 不被等分列压窄到视口内
+    expect(tester.getSize(find.byType(Table)).width, 640);
+    // 包横向滚动容器(总宽超出容器时左右滚动)
+    expect(
+      find.descendant(
+        of: find.byType(HtmlContent),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is SingleChildScrollView &&
+              w.scrollDirection == Axis.horizontal,
+        ),
+      ),
+      findsOneWidget,
+    );
     // 图片加载失败也保持固定高度占位(测试环境网络 400,走 errorBuilder)
     expect(
       find.byWidgetPredicate((w) => w is SizedBox && w.height == 180),
-      findsWidgets,
+      findsNWidgets(2),
     );
     expect(find.byIcon(Icons.broken_image_outlined), findsNWidgets(2));
+  });
+
+  testWidgets('宽画廊:多图整表超宽时横向滚动(截图欣赏结构)', (tester) async {
+    // mcmod「截图欣赏」清洗后的结构:一行 5 张纯图,无任何宽度属性。
+    // 每图 320 宽缩略图,整表总宽 1600,超出 800 视口 → 横向滚动查看
+    await tester.pumpWidget(
+      _wrap(
+        '<table><tr>'
+        '<td><a href="https://x/1.png"><img src="https://x/1.png"></a></td>'
+        '<td><a href="https://x/2.png"><img src="https://x/2.png"></a></td>'
+        '<td><a href="https://x/3.png"><img src="https://x/3.png"></a></td>'
+        '<td><a href="https://x/4.png"><img src="https://x/4.png"></a></td>'
+        '<td><a href="https://x/5.png"><img src="https://x/5.png"></a></td>'
+        '</tr></table>',
+      ),
+    );
+    await tester.pump(); // 图片网络失败 → errorBuilder 占位
+
+    expect(find.byType(Table), findsOneWidget);
+    // 关键回归:整表宽度 = 图片数量 × 320,不再被等分列压窄到视口内
+    expect(tester.getSize(find.byType(Table)).width, 1600);
+    // 横向滚动容器(桌面端支持鼠标拖拽)
+    final scroll = tester.widget<SingleChildScrollView>(
+      find.descendant(
+        of: find.byType(HtmlContent),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is SingleChildScrollView &&
+              w.scrollDirection == Axis.horizontal,
+        ),
+      ),
+    );
+    expect(scroll.scrollDirection, Axis.horizontal);
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is ScrollConfiguration &&
+            w.behavior.dragDevices.contains(PointerDeviceKind.mouse),
+      ),
+      findsWidgets,
+    );
+    // 每图固定 180 高占位(加载失败也保持)
+    expect(
+      find.byWidgetPredicate((w) => w is SizedBox && w.height == 180),
+      findsNWidgets(5),
+    );
+    expect(find.byIcon(Icons.broken_image_outlined), findsNWidgets(5));
+  });
+
+  testWidgets('宽画廊含合并单元格:网格路径同样固定列宽 + 横向滚动', (tester) async {
+    // 纯图格 + rowspan:不走 Table 控件,网格模型的列宽同样固定 320
+    await tester.pumpWidget(
+      _wrap(
+        '<table><tr>'
+        '<td rowspan="2"><a href="https://x/1.png"><img src="https://x/1.png"></a></td>'
+        '<td><a href="https://x/2.png"><img src="https://x/2.png"></a></td>'
+        '</tr><tr>'
+        '<td><a href="https://x/3.png"><img src="https://x/3.png"></a></td>'
+        '</tr></table>',
+      ),
+    );
+    await tester.pump(); // 图片网络失败 → errorBuilder 占位
+
+    expect(find.byType(Table), findsNothing); // 合并表格走网格模型
+    // 整表宽 = 2 列 × 320,包横向滚动容器
+    final scroll = tester.widget<SingleChildScrollView>(
+      find.descendant(
+        of: find.byType(HtmlContent),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is SingleChildScrollView &&
+              w.scrollDirection == Axis.horizontal,
+        ),
+      ),
+    );
+    // 2 列 × 320 + 网格外框左边线 1px
+    expect(tester.getSize(find.byWidget(scroll.child!)).width, closeTo(640, 1));
+    expect(find.byIcon(Icons.broken_image_outlined), findsNWidgets(3));
   });
 
   testWidgets('正文链接/图片/表格均不产生 MouseRegion(fwfh 断言根源回归)', (tester) async {

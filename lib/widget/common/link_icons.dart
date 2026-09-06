@@ -19,6 +19,8 @@ class LinkIcons {
   /// 拿到生成的字体文件后，按工具输出的 codePoint 修正以下值
   // 发布站类
   static const IconData github = IconData(0xe906, fontFamily: linkFont);
+  static const IconData gitee = IconData(0xf908, fontFamily: linkFont);
+  static const IconData gitlab = IconData(0xf4c1, fontFamily: linkFont);
   static const IconData curseforge = IconData(0xf09d, fontFamily: linkFont);
   static const IconData modrinth = IconData(0xf1a8, fontFamily: linkFont);
   // 论坛类
@@ -36,6 +38,9 @@ class LinkIcons {
   static Widget getLinkIcon(String name) {
     final n = name.toLowerCase();
     if (n.contains('github')) return Icon(github, color: Colors.black);
+    if (n.contains('gitlab')) return Icon(gitlab, color: Colors.red);
+    if (n.contains('gitee') || n.contains('码云')) return Icon(gitee, color: Colors.red);
+
     if (n.contains('curse') || n.contains('forge')) {
       return Icon(curseforge, color: Colors.black);
     }
@@ -51,7 +56,7 @@ class LinkIcons {
     if (n.contains('b站')) return Icon(bilibili, color: Colors.pink);
 
     if (n.contains('qq')) return Icon(qq);
-    if (n.contains('网盘') || n.contains('云')) return Icon(Icons.cloud);
+    if (n.contains('网盘') || n.contains('云盘')) return Icon(Icons.cloud);
     if (n.contains('maven')) return Icon(Icons.code_rounded);
     return Icon(Icons.link);
   }

@@ -31,7 +31,7 @@ Future<void> pumpApp(WidgetTester tester) async {
 
 void main() {
   setUpAll(() async {
-    // 收藏页挂在 IndexedStack 里随应用一起构建,ModTile 也带收藏按钮,
+    // 收藏页挂在 IndexedStack 里随应用一起构建,卡片带收藏按钮,
     // 因此整套应用级用例都要先初始化收藏数据库(生产环境由 main() 完成)
     final dir = await Directory.systemTemp.createTemp(
       'mcmodhelper_sqlite_test',

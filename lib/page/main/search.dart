@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/value/display.dart';
 import 'package:mc_mod_helper/value/source.dart';
 import 'package:mc_mod_helper/widget/common/link_icons.dart';
 
@@ -9,7 +10,6 @@ import '../../model/mod_summary.dart';
 import '../../service/settings.dart';
 import '../../widget/common/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
-import '../../widget/mod/mod_tile.dart';
 
 /// 搜索页：按关键词搜索模组，点击结果进入详情页
 class SearchPage extends StatefulWidget {
@@ -261,7 +261,10 @@ class _SearchPageState extends State<SearchPage> {
     setState(() => _selectedSource = _source[index]);
   }
 
-  /// 当前来源的搜索结果;来源失败时展示该来源的错误与重试
+  /// 当前来源的搜索结果;来源失败时展示该来源的错误与重试。
+  ///
+  /// 与首页推荐/分类/收藏一致:按设置的展示方式渲染
+  /// (卡片/列表/自适应),设置变化即时换布局
   Widget _showResults() {
     final error = _sourceErrors[_selectedSource];
     if (error != null) {
@@ -276,10 +279,19 @@ class _SearchPageState extends State<SearchPage> {
         child: Text('没有找到相关模组', style: Theme.of(context).textTheme.bodyLarge),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: result.length,
-      itemBuilder: (context, index) => ModTile(mod: result[index]),
+    return ListenableBuilder(
+      listenable: SettingsService.instance,
+      builder: (context, _) => CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(8),
+            sliver: DisplayManager.buildSliver(
+              SettingsService.instance.displayStyle,
+              result,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

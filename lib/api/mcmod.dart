@@ -191,8 +191,19 @@ class McmodApi {
     String id, {
     String? fallbackDescription,
   }) async {
+    final intro = fallbackDescription?.trim();
     final cached = _detailCache[id];
-    if (cached != null) return cached;
+    if (cached != null) {
+      // 缓存只按 id 记录:缓存里的简要介绍可能来自无简介的入口
+      // (如旧版分类页 description 为空),本次带上了列表页简介时
+      // 补上并写回缓存,避免简介一直被旧缓存压成空
+      if (cached.description == null && intro != null && intro.isNotEmpty) {
+        final merged = cached.copyWith(description: intro);
+        _detailCache[id] = merged;
+        return merged;
+      }
+      return cached;
+    }
 
     final numId = int.parse(id);
     final uri = Uri.parse('https://www.mcmod.cn/class/$numId.html');
@@ -629,12 +640,16 @@ class McmodApi {
     final description =
         _extractFullContentHtml(doc) ??
         _bbcodeToHtml(fallbackDescription ?? '');
+    // 简要介绍:mcmod 详情页没有独立的简介字段,
+    // 用列表页/搜索页带过来的简介作为 cover 的简要介绍
+    final intro = fallbackDescription?.trim();
 
     return ModDetail(
       id: id,
       title: title,
       source: ModSource.mcmod,
       subName: subName,
+      description: (intro == null || intro.isEmpty) ? null : intro,
       body: description.isEmpty ? null : description,
       coverUrl: coverUrl,
       links: links,

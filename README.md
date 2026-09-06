@@ -71,4 +71,5 @@ flutter test
 ## 说明
 
 * `mc_mod_helper.json` 是来自 [Ico moon](https://icomoon.io/new-app/) 的图标文件集合。
+* `UPDATE.md` 存放更新描述。
 

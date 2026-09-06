@@ -68,6 +68,7 @@ class _ConfigPageState extends State<ConfigPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
       // 页面级监听:一个 ListenableBuilder 覆盖三个区块,
@@ -79,18 +80,18 @@ class _ConfigPageState extends State<ConfigPage> {
           return ListView(
             padding: const EdgeInsets.symmetric(vertical: 8),
             children: [
-              _sectionTitle(context, '主题设置'),
-              _buildThemeModeSection(context, s),
-              _buildSeedColorSection(context, s),
-              _buildRenderType(context, s),
-              _sectionTitle(context, '字体设置'),
+              _sectionTitle(theme, '主题设置'),
+              _buildThemeModeSection(theme, s),
+              _buildSeedColorSection(theme, s),
+              _buildRenderType(theme, s),
+              _sectionTitle(theme, '字体设置'),
               _buildFontScaleSection(context, s),
-              _sectionTitle(context, '数据设置'),
-              _buildDataSourceSection(context, s),
-              _buildListSource(context, s),
-              _buildListMaxSection(context, s),
-              _buildDisplayStyle(context, s),
-              _sectionTitle(context, '关于项目'),
+              _sectionTitle(theme, '数据设置'),
+              _buildDataSourceSection(theme, s),
+              _buildListSource(theme, s),
+              _buildListMaxSection(theme, s),
+              _buildDisplayStyle(theme, s),
+              _sectionTitle(theme, '关于项目'),
               _buildLink(),
             ],
           );
@@ -100,7 +101,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 配置项标题
-  Widget _sectionTitle(BuildContext context, String title) {
+  Widget _sectionTitle(ThemeData theme, String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Text(title, style: Theme.of(context).textTheme.titleLarge),
@@ -108,9 +109,8 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 主题模式；跟随系统 / 亮色 / 暗色。
-  Widget _buildThemeModeSection(BuildContext context, SettingsService s) {
+  Widget _buildThemeModeSection(ThemeData theme, SettingsService s) {
     final themeMode = s.themeMode;
-    final theme = Theme.of(context);
     // 将 _themeMode 转换为 DropdownMenuItem 列表
     final dropdownItems = _themeMode.map<DropdownMenuItem<ThemeMode>>((item) {
       final (label, value) = item;
@@ -173,8 +173,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 强调色:一行色块,选中项画外圈 + 对勾
-  Widget _buildSeedColorSection(BuildContext context, SettingsService s) {
-    final theme = Theme.of(context);
+  Widget _buildSeedColorSection(ThemeData theme, SettingsService s) {
     final selectedArgb = s.seedColor.toARGB32();
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
@@ -235,9 +234,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 渲染方法
-  Widget _buildRenderType(BuildContext context, SettingsService s) {
-    final theme = Theme.of(context);
-
+  Widget _buildRenderType(ThemeData theme, SettingsService s) {
     // 转换为 DropdownMenuItem 列表
     final dropdownItems = _renderType.map<DropdownMenuItem<String>>((item) {
       final (label, value) = item;
@@ -313,9 +310,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 搜索/详情数据来源(MC百科/Modrinth),修改后持久化
-  Widget _buildDataSourceSection(BuildContext context, SettingsService s) {
-    final theme = Theme.of(context);
-
+  Widget _buildDataSourceSection(ThemeData theme, SettingsService s) {
     // 转换为 DropdownMenuItem 列表
     final dropdownItems = _modSource.map<DropdownMenuItem<ModSource>>((item) {
       final (label, value) = item;
@@ -366,9 +361,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 推荐列表来源(最新收录/最新编辑),修改后持久化,主页监听变化自动重拉
-  Widget _buildListSource(BuildContext context, SettingsService s) {
-    final theme = Theme.of(context);
-
+  Widget _buildListSource(ThemeData theme, SettingsService s) {
     // 转换为 DropdownMenuItem 列表
     final dropdownItems = _sortMethod.map<DropdownMenuItem<FeatureSource>>((
       item,
@@ -414,15 +407,22 @@ class _ConfigPageState extends State<ConfigPage> {
 
   /// 模组信息展示方式(网格/列表/自适应),修改后持久化,
   /// 首页推荐/分类/收藏页监听变化即时切换布局
-  Widget _buildDisplayStyle(BuildContext context, SettingsService s) {
-    final theme = Theme.of(context);
-
+  Widget _buildDisplayStyle(ThemeData theme, SettingsService s) {
     // 转换为 DropdownMenuItem 列表
     final dropdownItems = _displayStyle.map<DropdownMenuItem<DisplayStyle>>((
       item,
     ) {
       final (label, value) = item;
-      return DropdownMenuItem<DisplayStyle>(value: value, child: Text(label));
+      return DropdownMenuItem<DisplayStyle>(
+        value: value,
+        child: Row(
+          children: [
+            Icon(_getIconForDisplayStyle(value)),
+            const SizedBox(width: 10),
+            Text(label),
+          ],
+        ),
+      );
     }).toList();
 
     final selectedValue = SettingsService.displayStyles.contains(s.displayStyle)
@@ -459,10 +459,21 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
+  /// 获取图标
+  IconData _getIconForDisplayStyle(DisplayStyle style) {
+    switch (style) {
+      case DisplayStyle.card:
+        return Icons.view_module_rounded;
+      case DisplayStyle.table:
+        return Icons.table_rows_rounded;
+      case DisplayStyle.auto:
+        return Icons.hdr_auto_rounded;
+    }
+  }
+
   /// 推荐列表条数上限:滑条 5–50,步进 5(divisions=9)。
   /// 拖动中只更新草稿并即时显示数值,松手才提交到服务
-  Widget _buildListMaxSection(BuildContext context, SettingsService s) {
-    final theme = Theme.of(context);
+  Widget _buildListMaxSection(ThemeData theme, SettingsService s) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
       child: Column(

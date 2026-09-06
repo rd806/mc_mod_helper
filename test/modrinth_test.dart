@@ -115,7 +115,7 @@ Future<http.Response> _handler(http.Request request) async {
 
 void main() {
   setUpAll(() async {
-    // 端到端用例渲染 ModTile(带收藏按钮)与收藏页,
+    // 端到端用例渲染卡片(带收藏按钮)与收藏页,
     // 需要先初始化收藏数据库(生产环境由 main() 完成)
     final dir = await Directory.systemTemp.createTemp(
       'mcmodhelper_sqlite_test',

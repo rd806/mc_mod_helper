@@ -103,8 +103,8 @@ void main() {
   });
 
   testWidgets('收藏页展示已收藏条目(含次要名称),心形取消收藏', (tester) async {
-    // 直接种一条收藏(搜索列表的 ModTile 不带心形,
-    // 收藏入口在卡片/详情页,由其它用例覆盖)
+    // 直接种一条收藏,验证收藏页渲染与取消收藏
+    // (列表卡片/详情页的收藏入口由其它用例覆盖)
     await FavoritesService.instance.add(
       Likes(
         id: 'jei',

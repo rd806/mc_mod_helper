@@ -163,7 +163,7 @@ class ModCoverWide extends ModCover {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildIcon(context, width: 288, height: 180),
+          _buildIcon(context, width: 280, height: 210),
           const SizedBox(width: 16),
           Expanded(child: _buildName(context)),
         ],

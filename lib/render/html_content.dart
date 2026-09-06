@@ -15,7 +15,9 @@ import 'package:html/parser.dart' as html_parser;
 /// details/hr/center;行内 b/strong/i/em/u/del/code/a/img/br/span
 /// (样式取 color、background-color、font-weight、font-style、
 /// text-decoration、font-size)。表格支持 colspan/rowspan 合并单元格
-/// (含合并单元格的表格走自定义网格模型渲染)。
+/// (含合并单元格的表格走自定义网格模型渲染)。含图片的表格(画廊,
+/// 如 mcmod 的「截图欣赏」「更多展示」、JEI 物品表)统一按固定
+/// 缩略图宽度渲染整表,超出容器时横向滚动。
 class HtmlContent extends StatelessWidget {
   const HtmlContent({
     super.key,
@@ -328,8 +330,10 @@ class HtmlContent extends StatelessWidget {
   /// 表格:原生 Table 渲染。
   ///
   /// - 纯文字表格:TableBorder.all 单线框线,表头加粗居中;
-  /// - 画廊(存在只含图片的单元格):等宽列、无框线、图片固定高度,
-  ///   加载完成前就占据固定行高,不引起纵向布局移动。
+  /// - 画廊(含图片的表格):每图按固定缩略图宽度(320×180)渲染,
+  ///   图片固定高度,加载完成前就占据固定行高,不引起纵向布局移动;
+  ///   整表随列数自然变宽,超出容器时横向滚动,图片不被压窄;
+  /// - 横向滚动容器(文字表格/画廊)桌面端支持鼠标拖拽。
   /// colspan/rowspan 不支持(与 fwfh 行为一致,单元格按顺序渲染)。
   Widget _buildTable(
     BuildContext context,
@@ -348,10 +352,12 @@ class HtmlContent extends StatelessWidget {
     ];
     if (rows.isEmpty) return const SizedBox.shrink();
     final colCount = rows.fold<int>(0, (m, r) => r.length > m ? r.length : m);
-    // 画廊判定:存在只含图片的单元格,或单图+图下说明的图注格
+    // 画廊判定:表格含任意图片。
+    // 「截图欣赏」(纯图)、「更多展示」(图注)、JEI 物品表(混排/文字列)
+    // 统一按固定缩略图宽度渲染,整表随列数自然变宽,
+    // 超出容器时横向滚动,图片不被等分列压窄
     final isGallery = rows.any(
-      (r) =>
-          r.any((c) => _imageOnlySrc(c) != null || _captionImageSrc(c) != null),
+      (r) => r.any((c) => c.querySelector('img') != null),
     );
     // 合并单元格(rowspan/colspan):Table 控件不支持,
     // 改用自定义网格模型渲染(见 _buildSpanGrid)
@@ -367,10 +373,13 @@ class HtmlContent extends StatelessWidget {
     }
     final table = Table(
       columnWidths: isGallery
-          // 画廊:等宽列,图片随容器缩放
-          ? {for (var i = 0; i < colCount; i++) i: const FlexColumnWidth(1)}
+          // 画廊:每列固定为缩略图宽度,总宽 = 列数 × 320
+          ? {
+              for (var i = 0; i < colCount; i++)
+                i: const FixedColumnWidth(_galleryImageWidth),
+            }
           // 文字表格:每列按内容自然宽度(上限 240px,过长才在列内换行)。
-          // 多列表格(如 JEI 的物品表)列宽不再被等分压窄
+          // 多列表格列宽不再被等分压窄
           : {
               for (var i = 0; i < colCount; i++)
                 i: const _CappedIntrinsicColumnWidth(240),
@@ -393,14 +402,12 @@ class HtmlContent extends StatelessWidget {
     );
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: isGallery
-          ? table
-          // 文字表格:总宽超过容器时横向滚动(桌面端支持鼠标拖拽)
-          : _wrapTableScroll(context, table),
+      // 所有表格:总宽超过容器时横向滚动(桌面端支持鼠标拖拽)
+      child: _wrapTableScroll(context, table),
     );
   }
 
-  /// 文字表格的横向滚动容器:表格总宽超过容器时左右滚动,
+  /// 表格的横向滚动容器:表格总宽超过容器时左右滚动,
   /// 桌面端 ScrollBehavior 默认不认鼠标拖拽,补上鼠标/触控板
   Widget _wrapTableScroll(BuildContext context, Widget table) {
     return ScrollConfiguration(
@@ -499,7 +506,8 @@ class HtmlContent extends StatelessWidget {
   ///
   /// - 列宽:每列按内容自然宽(文本用 TextPainter 实测、图片取属性宽,
   ///   横向合并格的内容宽按列数均摊),单列上限 240px——与文字表格
-  ///   路径一致,多列表格列宽不被压窄;
+  ///   路径一致,多列表格列宽不被压窄;画廊(含图片的表格)则每列
+  ///   固定为缩略图宽度,与 Table 路径一致;
   /// - 横向合并:单元格宽 = 所跨列宽之和,天然对齐;
   /// - 纵向合并:锚定格画内容,下方各行用带边线的占位格延续单元格轮廓
   ///   (只画左右边线、最后一行补底边线),视觉上就是一个合并单元格;
@@ -567,17 +575,20 @@ class HtmlContent extends StatelessWidget {
       return w;
     }
 
-    final colWidth = List.generate(colCount, (c) {
-      var w = 0.0;
-      for (final cell in placed) {
-        if (cell.col <= c && c < cell.col + cell.colSpan) {
-          // 横向合并格的内容宽按列数均摊到各列
-          final share = cellWidth(cell.el) / cell.colSpan;
-          if (share > w) w = share;
-        }
-      }
-      return (w + 12).clamp(24.0, 240.0); // + 单元格左右内边距 6*2
-    });
+    // 画廊:每列固定为缩略图宽度(与 Table 路径一致,不做内容测量)
+    final colWidth = isGallery
+        ? List<double>.filled(colCount, _galleryImageWidth)
+        : List.generate(colCount, (c) {
+            var w = 0.0;
+            for (final cell in placed) {
+              if (cell.col <= c && c < cell.col + cell.colSpan) {
+                // 横向合并格的内容宽按列数均摊到各列
+                final share = cellWidth(cell.el) / cell.colSpan;
+                if (share > w) w = share;
+              }
+            }
+            return (w + 12).clamp(24.0, 240.0); // + 单元格左右内边距 6*2
+          });
     double cellTotal(_GridCell cell) => colWidth
         .sublist(cell.col, cell.col + cell.colSpan)
         .fold(0.0, (a, b) => a + b);
@@ -827,6 +838,9 @@ class HtmlContent extends StatelessWidget {
 
   // ---------- 图片 ----------
 
+  /// 画廊(含图片表格)的缩略图宽度:配 180 高为 16:9,
+  /// 整表总宽 = 列数 × 此宽度,超出容器时横向滚动
+  static const double _galleryImageWidth = 320;
   static const double _galleryImageHeight = 180;
   static const double _contentImageHeight = 280;
 

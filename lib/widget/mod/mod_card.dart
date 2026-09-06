@@ -163,7 +163,7 @@ class ModCardRow extends ModCard {
           ? _buildThumbPlaceholder(theme)
           : Image.network(
               mod.iconUrl!,
-              width: 100,
+              width: 80,
               height: 80,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>
@@ -175,7 +175,7 @@ class ModCardRow extends ModCard {
   /// 替换图片
   Widget _buildThumbPlaceholder(ThemeData theme) {
     return Container(
-      width: 100,
+      width: 80,
       height: 80,
       color: theme.colorScheme.surfaceContainerHighest,
       child: const Icon(Icons.image_outlined, size: 24),

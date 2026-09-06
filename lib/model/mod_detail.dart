@@ -64,4 +64,20 @@ class ModDetail {
 
   /// 模组详情页地址(按数据来源返回)
   String get pageUrl => SourceManager.getUrl(source, id);
+
+  /// 复制详情并替换简要介绍(会话缓存补简介用,其余字段原样保留)
+  ModDetail copyWith({String? description}) => ModDetail(
+    id: id,
+    title: title,
+    source: source,
+    subName: subName,
+    description: description ?? this.description,
+    body: body,
+    statistics: statistics,
+    coverUrl: coverUrl,
+    links: links,
+    mcVersions: mcVersions,
+    platform: platform,
+    environment: environment,
+  );
 }
