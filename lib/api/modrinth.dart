@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
-import 'package:mc_mod_helper/value/source.dart';
+import 'package:mc_mod_helper/service/value/source.dart';
 
 import '../model/mod_category.dart';
 import '../model/mod_detail.dart';

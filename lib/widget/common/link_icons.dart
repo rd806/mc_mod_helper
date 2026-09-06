@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/widget/common/label.dart';
 
-import '../../value/source.dart';
+import '../../service/value/source.dart';
 
 /// 链接图标(自定义图标字体)。
 ///
@@ -39,7 +39,9 @@ class LinkIcons {
     final n = name.toLowerCase();
     if (n.contains('github')) return Icon(github, color: Colors.black);
     if (n.contains('gitlab')) return Icon(gitlab, color: Colors.red);
-    if (n.contains('gitee') || n.contains('码云')) return Icon(gitee, color: Colors.red);
+    if (n.contains('gitee') || n.contains('码云')) {
+      return Icon(gitee, color: Colors.red);
+    }
 
     if (n.contains('curse') || n.contains('forge')) {
       return Icon(curseforge, color: Colors.black);
@@ -56,7 +58,9 @@ class LinkIcons {
     if (n.contains('b站')) return Icon(bilibili, color: Colors.pink);
 
     if (n.contains('qq')) return Icon(qq);
-    if (n.contains('网盘') || n.contains('云盘')) return Icon(Icons.cloud);
+    if (n.contains('网盘') || n.contains('云盘') || n.contains('蓝奏云')) {
+      return Icon(Icons.cloud);
+    }
     if (n.contains('maven')) return Icon(Icons.code_rounded);
     return Icon(Icons.link);
   }

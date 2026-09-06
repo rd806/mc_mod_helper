@@ -7,11 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:hyper_render/hyper_render.dart';
+import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
-import 'package:mc_mod_helper/value/source.dart';
+import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/page/more/description.dart';
 import 'package:mc_mod_helper/service/savings.dart';
@@ -247,7 +248,7 @@ void main() {
     await SettingsService.instance.load();
     // 本用例验证 hyper_render 渲染路径,显式指定渲染方法
     // (默认 'default' 是 HtmlContent,详情页不会出现 HyperViewer)
-    SettingsService.instance.setRenderType('hyperViewer');
+    SettingsService.instance.setRenderType(RenderType.hyper);
     // 重置 mcmod 节流时间戳:保证启动时的推荐请求立即发出
     McmodApi.clearCaches();
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/value/display.dart';
-import 'package:mc_mod_helper/value/source.dart';
+import 'package:mc_mod_helper/service/value/render.dart';
+import 'package:mc_mod_helper/service/value/display.dart';
+import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 应用设置(主题模式/强调色/字体缩放/推荐列表条数上限):
@@ -43,7 +44,10 @@ class SettingsService extends ChangeNotifier {
   ];
 
   /// 正文渲染方法
-  static const List<String> renderTypes = ['default', 'hyperViewer'];
+  static const List<RenderType> renderTypes = [
+    RenderType.auto,
+    RenderType.hyper,
+  ];
 
   /// 模组展示方法
   static const List<DisplayStyle> displayStyles = [
@@ -59,7 +63,7 @@ class SettingsService extends ChangeNotifier {
   FeatureSource _featuredType = FeatureSource.none;
   ModSource _dataSource = ModSource.mcmod;
   DisplayStyle _displayStyle = DisplayStyle.table;
-  String _renderType = 'default';
+  RenderType _renderType = RenderType.auto;
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
@@ -68,7 +72,7 @@ class SettingsService extends ChangeNotifier {
   FeatureSource get featuredSource => _featuredType;
   ModSource get dataSource => _dataSource;
   DisplayStyle get displayStyle => _displayStyle;
-  String get renderType => _renderType;
+  RenderType get renderType => _renderType;
 
   /// 启动时读取已保存的设置(在 runApp 前调用,避免启动后主题/字体跳变)。
   ///
@@ -110,7 +114,10 @@ class SettingsService extends ChangeNotifier {
       );
 
       final rt = prefs.getString(_renderTypeKey);
-      _renderType = (rt != null && renderTypes.contains(rt)) ? rt : 'default';
+      RenderType renderType = RenderManager.displayToString(rt);
+      _renderType = (rt != null && renderTypes.contains(renderType))
+          ? renderType
+          : RenderType.auto;
 
       notifyListeners();
     } catch (_) {
@@ -175,11 +182,11 @@ class SettingsService extends ChangeNotifier {
   }
 
   /// 设置正文渲染方法(与 setDataSource 一致:非法值忽略,同值短路)
-  void setRenderType(String type) {
+  void setRenderType(RenderType type) {
     if (!renderTypes.contains(type) || type == _renderType) return;
     _renderType = type;
     notifyListeners();
-    _persist(_renderTypeKey, type);
+    _persist(_renderTypeKey, type.name);
   }
 
   /// 设置模组信息展示方式(卡片式/列表式/自适应式),非法值忽略

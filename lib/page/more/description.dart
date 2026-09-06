@@ -4,8 +4,9 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:hyper_render/hyper_render.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
-import 'package:mc_mod_helper/value/source.dart';
-import 'package:mc_mod_helper/render/hyper.dart';
+import 'package:mc_mod_helper/service/value/render.dart';
+import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/render/hyper_render/hyper.dart';
 import 'package:mc_mod_helper/service/settings.dart';
 import 'package:mc_mod_helper/widget/detail/cover.dart';
 import 'package:mc_mod_helper/widget/common/label.dart';
@@ -16,10 +17,10 @@ import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
 import '../../model/mod_detail.dart';
 import '../../model/mod_summary.dart';
-import '../../render/html_content.dart';
+import '../../render/default_render/html_content.dart';
 import '../../widget/common/captcha_dialog.dart';
 import '../../widget/common/collapsible_widgets.dart';
-import '../../widget/detail//image_box.dart';
+import '../../widget/detail/image_box.dart';
 import '../../widget/mod/favorite_toggle.dart';
 
 /// 模组详情页
@@ -314,10 +315,8 @@ class _DetailPageState extends State<DetailPage> {
                   padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
                   children: [
                     _buildEnvironment(mod, theme),
-                    if (mod.links.isNotEmpty) ...[_buildLinks(mod, theme)],
-                    if (mod.mcVersions.isNotEmpty) ...[
-                      _buildModVersion(mod, theme),
-                    ],
+                    _buildLinks(mod, theme),
+                    _buildModVersion(mod, theme),
                   ],
                 ),
               ),
@@ -436,6 +435,9 @@ class _DetailPageState extends State<DetailPage> {
 
   /// 相关链接
   Widget _buildLinks(ModDetail mod, ThemeData theme) {
+    final links = mod.links;
+    if (links.isEmpty) return const SizedBox.shrink();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 0, 16),
@@ -448,7 +450,7 @@ class _DetailPageState extends State<DetailPage> {
                 for (final link in mod.links)
                   ActionChip(
                     avatar: LinkIcons.getLinkIcon(link.name),
-                    backgroundColor: Colors.transparent,
+                    backgroundColor: theme.colorScheme.onPrimary.withAlpha(100),
                     label: Text(link.name, style: theme.textTheme.labelMedium),
                     onPressed: () => _openUrl(link.url),
                   ),
@@ -462,6 +464,9 @@ class _DetailPageState extends State<DetailPage> {
 
   /// 支持版本：按加载器分组展示,每组一个加载器标签 + 折叠 chips
   Widget _buildModVersion(ModDetail mod, ThemeData theme) {
+    final versions = mod.mcVersions;
+    if (versions.isEmpty) return const SizedBox.shrink();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 0, 16),
@@ -521,23 +526,26 @@ class _DetailPageState extends State<DetailPage> {
   /// - default:自写 HtmlContent(逐标签映射控件,正文零 MouseRegion)
   /// - hyperViewer:hyper_render(单 RenderObject 布局引擎,性能更优)
   Widget _buildHTML(ModDetail mod, ThemeData theme) {
-    if (SettingsService.instance.renderType == 'default') {
-      return HtmlContent(
-        html: mod.body!,
-        textStyle: theme.textTheme.bodyMedium,
-        onLinkTap: _handleContentLink,
-      );
+    RenderType type = SettingsService.instance.renderType;
+    switch (type) {
+      case RenderType.auto:
+        return HtmlContent(
+          html: mod.body!,
+          textStyle: theme.textTheme.bodyMedium,
+          onLinkTap: _handleContentLink,
+        );
+      case RenderType.hyper:
+        return _mouseDraggable(
+          HyperViewer(
+            html: mod.body!,
+            mode: HyperRenderMode.sync,
+            shrinkWrap: true,
+            selectable: false,
+            customCss: HyperRender.hyperCss(theme),
+            onLinkTap: _handleContentLink,
+          ),
+        );
     }
-    return _mouseDraggable(
-      HyperViewer(
-        html: mod.body!,
-        mode: HyperRenderMode.sync,
-        shrinkWrap: true,
-        selectable: false,
-        customCss: HyperRender.hyperCss(theme),
-        onLinkTap: _handleContentLink,
-      ),
-    );
   }
 
   /// 桌面端 ScrollBehavior 默认只认触摸/手写笔拖拽,鼠标拖不动

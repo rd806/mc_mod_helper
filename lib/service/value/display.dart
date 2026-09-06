@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/model/mod_summary.dart';
 
-import '../widget/mod/mod_card.dart';
+import '../../widget/mod/mod_card.dart';
 
 /// 模组信息展示方式
 /// - 卡片式:网格,每个模组一张大卡片

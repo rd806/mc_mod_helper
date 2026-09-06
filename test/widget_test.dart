@@ -12,8 +12,9 @@ import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/service/savings.dart';
 import 'package:mc_mod_helper/service/settings.dart';
-import 'package:mc_mod_helper/value/display.dart';
-import 'package:mc_mod_helper/value/source.dart';
+import 'package:mc_mod_helper/service/value/display.dart';
+import 'package:mc_mod_helper/service/value/render.dart';
+import 'package:mc_mod_helper/service/value/source.dart';
 
 /// 启动应用并推进到两个页签(推荐/分类)都完成失败渲染。
 ///
@@ -128,15 +129,15 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // 切换渲染方法(主题设置里的 String 下拉框) → 服务值变化;
+    // 切换渲染方法(主题设置里的 RenderType 下拉框) → 服务值变化;
     // 渲染方法不触发主页重拉,无新计时器
-    await tester.ensureVisible(find.byType(DropdownButton<String>));
+    await tester.ensureVisible(find.byType(DropdownButton<RenderType>));
     await tester.pump();
-    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.tap(find.byType(DropdownButton<RenderType>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Hyper').last);
     await tester.pumpAndSettle();
-    expect(SettingsService.instance.renderType, 'hyperViewer');
+    expect(SettingsService.instance.renderType, RenderType.hyper);
 
     // 切换推荐来源(数据设置里的 FeatureSource 下拉框) → 服务值变化,
     // 推荐页再次重拉

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/value/display.dart';
-import 'package:mc_mod_helper/value/source.dart';
+import 'package:mc_mod_helper/service/value/render.dart';
+import 'package:mc_mod_helper/service/value/display.dart';
+import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/widget/common/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -56,9 +57,9 @@ class _ConfigPageState extends State<ConfigPage> {
     ('自适应', DisplayStyle.auto),
   ];
 
-  static const List<(String, String)> _renderType = [
-    ('默认', 'default'),
-    ('Hyper', 'hyperViewer'),
+  static const List<(String, RenderType)> _renderType = [
+    ('默认', RenderType.auto),
+    ('Hyper', RenderType.hyper),
   ];
 
   static const List<(String, ModSource)> _modSource = [
@@ -236,14 +237,14 @@ class _ConfigPageState extends State<ConfigPage> {
   /// 渲染方法
   Widget _buildRenderType(ThemeData theme, SettingsService s) {
     // 转换为 DropdownMenuItem 列表
-    final dropdownItems = _renderType.map<DropdownMenuItem<String>>((item) {
+    final dropdownItems = _renderType.map<DropdownMenuItem<RenderType>>((item) {
       final (label, value) = item;
-      return DropdownMenuItem<String>(value: value, child: Text(label));
+      return DropdownMenuItem<RenderType>(value: value, child: Text(label));
     }).toList();
 
     final selectedValue = SettingsService.renderTypes.contains(s.renderType)
         ? s.renderType
-        : 'default';
+        : RenderType.auto;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
@@ -252,10 +253,10 @@ class _ConfigPageState extends State<ConfigPage> {
           Text('渲染方法', style: theme.textTheme.bodyMedium),
           Spacer(),
           // 使用下拉框
-          DropdownButton<String>(
+          DropdownButton<RenderType>(
             value: selectedValue,
             items: dropdownItems,
-            onChanged: (String? newValue) {
+            onChanged: (RenderType? newValue) {
               if (newValue != null) {
                 SettingsService.instance.setRenderType(newValue);
               }

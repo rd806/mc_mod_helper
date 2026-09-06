@@ -8,7 +8,7 @@ import '../model/mod_category.dart';
 import '../model/mod_detail.dart';
 import '../model/mod_link.dart';
 import '../model/mod_summary.dart';
-import '../value/source.dart';
+import '../service/value/source.dart';
 
 /// CurseForge(curseforge.com)数据获取服务。
 ///

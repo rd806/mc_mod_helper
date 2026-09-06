@@ -20,6 +20,9 @@ class HyperRender {
         : 'font-family: $family; ';
     return 'document { color: #$hex; '
         'font-size: ${textStyle?.fontSize ?? 14}px; '
-        '$familyCss}';
+        '$familyCss}'
+        'td li, th li { background-color: transparent !important; }'
+        'li { background-color: transparent !important; }'
+        'ul, ol { background-color: transparent !important; }';
   }
 }

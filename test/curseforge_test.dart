@@ -6,7 +6,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/curseforge.dart';
-import 'package:mc_mod_helper/value/source.dart';
+import 'package:mc_mod_helper/service/value/source.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
 http.Response _json(Object data) => http.Response.bytes(

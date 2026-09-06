@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mc_mod_helper/value/display.dart';
-import 'package:mc_mod_helper/value/source.dart';
+import 'package:mc_mod_helper/service/value/render.dart';
+import 'package:mc_mod_helper/service/value/display.dart';
+import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/service/settings.dart';
@@ -25,7 +26,7 @@ void main() {
     expect(SettingsService.instance.featuredNum, 20);
     expect(SettingsService.instance.featuredSource, FeatureSource.none);
     expect(SettingsService.instance.dataSource, ModSource.mcmod);
-    expect(SettingsService.instance.renderType, 'default');
+    expect(SettingsService.instance.renderType, RenderType.auto);
     expect(SettingsService.instance.displayStyle, DisplayStyle.table);
   });
 
@@ -39,7 +40,7 @@ void main() {
       ..setFeaturedSource(FeatureSource.lastEditTime)
       ..setDataSource(ModSource.modrinth)
       ..setDisplayStyle(DisplayStyle.card)
-      ..setRenderType('hyperViewer');
+      ..setRenderType(RenderType.hyper);
 
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('theme_mode'), 'dark');
@@ -50,7 +51,7 @@ void main() {
     expect(prefs.getString('featured_source'), 'lastEditTime');
     expect(prefs.getString('data_source'), 'modrinth');
     expect(prefs.getString('display_style'), 'card');
-    expect(prefs.getString('render_type'), 'hyperViewer');
+    expect(prefs.getString('render_type'), 'hyper');
   });
 
   test('load 能恢复已保存的设置(模拟重启)', () async {
@@ -62,7 +63,7 @@ void main() {
       'featured_source': 'lastEditTime',
       'data_source': 'modrinth',
       'display_style': 'auto',
-      'render_type': 'hyperViewer',
+      'render_type': 'hyper',
     });
     await SettingsService.instance.load();
     expect(SettingsService.instance.themeMode, ThemeMode.dark);
@@ -75,7 +76,7 @@ void main() {
     expect(SettingsService.instance.featuredSource, FeatureSource.lastEditTime);
     expect(SettingsService.instance.dataSource, ModSource.modrinth);
     expect(SettingsService.instance.displayStyle, DisplayStyle.auto);
-    expect(SettingsService.instance.renderType, 'hyperViewer');
+    expect(SettingsService.instance.renderType, RenderType.hyper);
   });
 
   test('dataSource setter 生效', () async {
@@ -84,12 +85,10 @@ void main() {
     expect(SettingsService.instance.dataSource, ModSource.modrinth);
   });
 
-  test('renderType 非法值被忽略', () async {
+  test('renderType 非法存储值回落到默认', () async {
+    SharedPreferences.setMockInitialValues({'render_type': 'bogus'});
     await SettingsService.instance.load();
-    SettingsService.instance.setRenderType('bogus');
-    expect(SettingsService.instance.renderType, 'default');
-    SettingsService.instance.setRenderType('hyperViewer');
-    expect(SettingsService.instance.renderType, 'hyperViewer');
+    expect(SettingsService.instance.renderType, RenderType.auto);
   });
 
   test('featuredSource setter 生效', () async {
