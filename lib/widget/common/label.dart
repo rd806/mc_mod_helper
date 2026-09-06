@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 /// 简单的文字标签
 class Label extends StatelessWidget {
-  const Label({super.key, required this.entry, this.icon});
+  const Label({super.key, required this.text, this.icon});
 
   final Widget? icon;
 
-  final String entry;
+  final Widget text;
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +18,11 @@ class Label extends StatelessWidget {
         border: Border.all(color: theme.colorScheme.onSecondary, width: 0.5),
       ),
       child: Row(
+        // 收缩到子组件的大小
+        mainAxisSize: MainAxisSize.min,
         children: [
-          ?icon,
-          const SizedBox(width: 5),
-          Text(entry, style: theme.textTheme.labelSmall),
+          if (icon != null) ...[icon!, const SizedBox(width: 5)],
+          text,
         ],
       ),
     );

@@ -69,7 +69,7 @@ class LinkIcons {
   }
 
   // 根据统计信息选择合适 Chips
-  static Widget buildStatisticLabel((String, String) entry) {
+  static Widget buildStatisticLabel((String, String) entry, ThemeData theme) {
     IconData icon = Icons.info_outline;
     String label = '${entry.$1}：${entry.$2}';
     switch (entry.$1) {
@@ -77,9 +77,14 @@ class LinkIcons {
         icon = Icons.download;
         label = '下载：${entry.$2}';
         break;
+      case 'favorite':
       case 'followers':
         icon = Icons.favorite_rounded;
         label = '关注：${entry.$2}';
+        break;
+      case 'recommend':
+        icon = Icons.thumb_up_rounded;
+        label = '推荐：${entry.$2}';
         break;
       case 'views':
         icon = Icons.visibility;
@@ -97,7 +102,10 @@ class LinkIcons {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 0, 12, 0),
-      child: Label(icon: Icon(icon, size: 16), entry: label),
+      child: Label(
+        icon: Icon(icon, size: 16),
+        text: Text(label, style: theme.textTheme.labelMedium),
+      ),
     );
   }
 }

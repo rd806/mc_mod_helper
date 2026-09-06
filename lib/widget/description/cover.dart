@@ -102,8 +102,9 @@ abstract class ModCover extends StatelessWidget {
   // 显示描述
   Widget _buildDescription(ModDetail mod, ThemeData theme) {
     final description = mod.description;
-    if (description == null || description.isEmpty)
+    if (description == null || description.isEmpty) {
       return const SizedBox.shrink();
+    }
 
     return Text(
       description,
@@ -123,8 +124,9 @@ abstract class ModCover extends StatelessWidget {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: statistic.length,
-        itemBuilder: (context, index) =>
-            Align(child: LinkIcons.buildStatisticLabel(statistic[index])),
+        itemBuilder: (context, index) => Align(
+          child: LinkIcons.buildStatisticLabel(statistic[index], theme),
+        ),
       ),
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:hyper_render/hyper_render.dart';
@@ -264,7 +266,7 @@ class _DetailPageState extends State<DetailPage> {
   Widget _buildSuccess(ModDetail mod) {
     // 按宽度选择布局:窄屏单列滚动,宽屏左右双列独立滚动
     return LayoutBuilder(
-      builder: (context, constraints) => constraints.maxWidth < 480
+      builder: (context, constraints) => constraints.maxWidth < 800
           ? _buildNarrowPage(mod)
           : _buildWidePage(mod),
     );
@@ -305,8 +307,8 @@ class _DetailPageState extends State<DetailPage> {
                 ),
               ),
               // 右栏(窄):相关链接 + 支持版本
-              Expanded(
-                flex: 1,
+              SizedBox(
+                width: min(400, MediaQuery.of(context).size.width * 0.5),
                 child: ListView(
                   controller: _rightController,
                   padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
@@ -478,7 +480,10 @@ class _DetailPageState extends State<DetailPage> {
                 ),
                 const SizedBox(height: 12),
                 CollapsibleWidgets(
-                  widget: [for (final v in entry.value) Label(entry: v)],
+                  widget: [
+                    for (final v in entry.value)
+                      Label(text: Text(v, style: theme.textTheme.labelSmall)),
+                  ],
                 ),
                 const SizedBox(height: 12),
               ],

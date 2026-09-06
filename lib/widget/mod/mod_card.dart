@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/value/source.dart';
 
 import '../../model/mod_summary.dart';
 import '../../page/more/detail.dart';
@@ -66,12 +65,7 @@ abstract class ModCard extends StatelessWidget {
     final sub = mod.subName ?? (name[0] != name[1] ? name[1] : null);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        buildTitle(theme, name[0], sub),
-        buildDescription(theme),
-        const SizedBox(height: 6),
-        buildSource(theme),
-      ],
+      children: [buildTitle(theme, name[0], sub), buildDescription(theme)],
     );
   }
 
@@ -89,7 +83,7 @@ abstract class ModCard extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 3),
         // 副标题
         if (sub != null) ...[
           Text(
@@ -101,7 +95,7 @@ abstract class ModCard extends StatelessWidget {
               color: Colors.grey,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
         ],
       ],
     );
@@ -121,13 +115,20 @@ abstract class ModCard extends StatelessWidget {
     );
   }
 
-  Widget buildSource(ThemeData theme) {
-    return Chip(
-      avatar: LinkIcons.getIconForDataSource(mod.source),
-      backgroundColor: Colors.transparent,
-      label: Text(
-        SourceManager.getSourceString(mod.source),
-        style: theme.textTheme.labelSmall,
+  /// 统计信息
+  Widget buildStatistic(ThemeData theme) {
+    final statistic = mod.statistics;
+
+    return SizedBox(
+      height: 35,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          LinkIcons.getIconForDataSource(mod.source),
+          if (statistic != null && statistic.isNotEmpty)
+            for (final entry in statistic)
+              LinkIcons.buildStatisticLabel(entry, theme),
+        ],
       ),
     );
   }
@@ -145,14 +146,17 @@ class ModCardRow extends ModCard {
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: Row(
+        child: Stack(
           children: [
-            buildCover(theme),
-            const SizedBox(width: 12),
-            Expanded(child: buildInfoContent(theme)),
-            // 收藏心形:与 ModTile 行为一致,点击收藏/取消收藏
-            FavoriteToggle(mod: mod),
-            const Icon(Icons.chevron_right),
+            Row(
+              children: [
+                buildCover(theme),
+                const SizedBox(width: 12),
+                Expanded(child: buildInfoContent(theme)),
+                // 收藏心形:与 ModTile 行为一致,点击收藏/取消收藏
+                FavoriteToggle(mod: mod),
+              ],
+            ),
           ],
         ),
       ),
@@ -178,8 +182,8 @@ class ModCardRow extends ModCard {
 
   Widget _buildThumbPlaceholder(ThemeData theme) {
     return Container(
-      width: 72,
-      height: 54,
+      width: 120,
+      height: 90,
       color: theme.colorScheme.surfaceContainerHighest,
       child: const Icon(Icons.image_outlined, size: 24),
     );
