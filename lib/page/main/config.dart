@@ -42,6 +42,11 @@ class _ConfigPageState extends State<ConfigPage> {
     ('红色', Colors.red),
   ];
 
+  static const List<(String, String)> _fontTypes = [
+    ('思源黑体', 'NotoSansSC'),
+    ('Unifont', 'Unifont'),
+  ];
+
   // 推荐方法
   // 与 settings 中的一致(语义对应 mcmod 列表页 sort 参数:
   // createtime=最新收录,lastedittime=最新编辑)
@@ -86,6 +91,7 @@ class _ConfigPageState extends State<ConfigPage> {
               _buildSeedColorSection(theme, s),
               _buildRenderType(theme, s),
               _sectionTitle(theme, '字体设置'),
+              _buildFontType(theme, s),
               _buildFontScaleSection(context, s),
               _sectionTitle(theme, '数据设置'),
               _buildDataSourceSection(theme, s),
@@ -259,6 +265,52 @@ class _ConfigPageState extends State<ConfigPage> {
             onChanged: (RenderType? newValue) {
               if (newValue != null) {
                 SettingsService.instance.setRenderType(newValue);
+              }
+            },
+            // 样式定制（可选）
+            style: theme.textTheme.bodyMedium,
+            // 设置为透明下划线
+            underline: Container(height: 0, color: Colors.transparent),
+            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
+            // 如果希望下拉框宽度自适应内容
+            isDense: false,
+            // 禁用焦点和悬停效果
+            focusColor: Colors.transparent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFontType(ThemeData theme, SettingsService s) {
+    // 转换为 DropdownMenuItem 列表
+    final dropdownItems = _fontTypes.map<DropdownMenuItem<String>>((item) {
+      final (label, value) = item;
+      return DropdownMenuItem<String>(
+        value: value,
+        child: Row(
+          children: [Text(label, style: TextStyle(fontFamily: value))],
+        ),
+      );
+    }).toList();
+
+    final selectedValue = SettingsService.fontTypes.contains(s.fontType)
+        ? s.fontType
+        : 'NotoSansSC';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+      child: Row(
+        children: [
+          Text('字体选择', style: theme.textTheme.bodyMedium),
+          Spacer(),
+          // 使用下拉框
+          DropdownButton<String>(
+            value: selectedValue,
+            items: dropdownItems,
+            onChanged: (String? newValue) {
+              if (newValue != null) {
+                SettingsService.instance.setFontType(newValue);
               }
             },
             // 样式定制（可选）

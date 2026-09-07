@@ -14,6 +14,7 @@ class SettingsService extends ChangeNotifier {
 
   static const String _themeModeKey = 'theme_mode';
   static const String _seedColorKey = 'seed_color';
+  static const String _fontTypeKey = 'font_type';
   static const String _fontScaleKey = 'font_scale';
   static const String _featuredMaxKey = 'featured_max';
   static const String _featuredTypeKey = 'featured_source';
@@ -28,6 +29,9 @@ class SettingsService extends ChangeNotifier {
   /// 推荐列表条数上限的允许范围(与设置页滑条保持一致)
   static const int featuredMin = 5;
   static const int featuredMax = 50;
+
+  /// 切换字体
+  static const List<String> fontTypes = ['NotoSansSC', 'Unifont'];
 
   /// 首页推荐来源的合法取值(与 mcmod.cn 列表页 sort 参数一致)
   static const List<FeatureSource> featuredTypes = [
@@ -57,6 +61,7 @@ class SettingsService extends ChangeNotifier {
   ];
 
   ThemeMode _themeMode = ThemeMode.system;
+  String _fontType = 'NotoSansSC';
   Color _seedColor = Colors.blue;
   double _fontScale = 1.0;
   int _featuredNum = 20;
@@ -67,6 +72,7 @@ class SettingsService extends ChangeNotifier {
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
+  String get fontType => _fontType;
   double get fontScale => _fontScale;
   int get featuredNum => _featuredNum;
   FeatureSource get featuredSource => _featuredType;
@@ -86,11 +92,15 @@ class SettingsService extends ChangeNotifier {
           ThemeMode.values.asNameMap()[prefs.getString(_themeModeKey)] ??
           ThemeMode.system;
       _seedColor = Color(prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32());
+      // 字体样式(未知存储值回落到默认)
+      final ft = prefs.getString(_fontTypeKey);
+      _fontType = (ft != null && fontTypes.contains(ft)) ? ft : 'NotoSansSC';
       // 字体大小
       _fontScale = (prefs.getDouble(_fontScaleKey) ?? 1.0).clamp(
         fontMin,
         fontMax,
       );
+      // 列表最大长度
       _featuredNum = (prefs.getInt(_featuredMaxKey) ?? 20).clamp(
         featuredMin,
         featuredMax,
@@ -139,6 +149,14 @@ class SettingsService extends ChangeNotifier {
     _seedColor = color;
     notifyListeners();
     _persist(_seedColorKey, color.toARGB32());
+  }
+
+  /// 设置字体(未知字体名忽略;同值短路,与其余 setter 一致)
+  void setFontType(String type) {
+    if (!fontTypes.contains(type) || type == _fontType) return;
+    _fontType = type;
+    notifyListeners();
+    _persist(_fontTypeKey, type);
   }
 
   /// 设置全局字体缩放(自动截断到允许范围)

@@ -52,7 +52,7 @@ abstract class ModCover extends StatelessWidget {
     );
   }
 
-  /// 名称 + 副标题 + 统计信息(非滚动 Column;ListView 在 Column/Row 里
+  /// 名称 + 副标题 + 信息(非滚动 Column;ListView 在 Column/Row 里
   /// 会因无限高约束而崩溃)
   Widget _buildName(BuildContext context) {
     final theme = Theme.of(context);
@@ -76,9 +76,6 @@ abstract class ModCover extends StatelessWidget {
             ),
           ),
         ],
-        // 来源(始终有值,显示友好名称)
-        const SizedBox(height: 10),
-        _buildSource(mod, theme),
         const SizedBox(height: 10),
         _buildDescription(mod, theme),
         const SizedBox(height: 16),
@@ -94,7 +91,7 @@ abstract class ModCover extends StatelessWidget {
       backgroundColor: Colors.transparent,
       label: Text(
         SourceManager.getSourceString(mod.source),
-        style: theme.textTheme.labelSmall,
+        style: theme.textTheme.labelMedium,
       ),
     );
   }
@@ -117,16 +114,22 @@ abstract class ModCover extends StatelessWidget {
   // 统计信息
   Widget _buildStatistic(ModDetail mod, ThemeData theme) {
     final statistic = mod.statistics;
+    List<Widget> widget = [];
+
     if (statistic == null || statistic.isEmpty) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 40,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: statistic.length,
-        itemBuilder: (context, index) => Align(
-          child: LinkIcons.buildStatisticLabel(statistic[index], theme),
-        ),
+    for (final entry in statistic) {
+      widget.add(LinkIcons.buildStatisticLabel(entry, theme));
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildSource(mod, theme),
+          const SizedBox(width: 10),
+          ...widget,
+        ],
       ),
     );
   }
@@ -159,13 +162,18 @@ class ModCoverWide extends ModCover {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(64, 16, 64, 16),
+      child: Column(
         children: [
-          _buildIcon(context, width: 280, height: 210),
-          const SizedBox(width: 16),
-          Expanded(child: _buildName(context)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildIcon(context, width: 240, height: 180),
+              const SizedBox(width: 16),
+              Expanded(child: _buildName(context)),
+            ],
+          ),
+          const Divider(),
         ],
       ),
     );

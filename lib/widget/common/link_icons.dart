@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/widget/common/label.dart';
 
 import '../../service/value/source.dart';
 
@@ -111,9 +110,9 @@ class LinkIcons {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 0, 12, 0),
-      child: Label(
-        icon: Icon(icon, size: 16),
-        text: Text(label, style: theme.textTheme.labelMedium),
+      child: Chip(
+        avatar: Icon(icon, size: 16),
+        label: Text(label, style: theme.textTheme.labelMedium),
       ),
     );
   }

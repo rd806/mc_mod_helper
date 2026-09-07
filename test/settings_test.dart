@@ -28,6 +28,7 @@ void main() {
     expect(SettingsService.instance.dataSource, ModSource.mcmod);
     expect(SettingsService.instance.renderType, RenderType.auto);
     expect(SettingsService.instance.displayStyle, DisplayStyle.table);
+    expect(SettingsService.instance.fontType, 'NotoSansSC');
   });
 
   test('setter 写入持久化存储', () async {
@@ -40,7 +41,8 @@ void main() {
       ..setFeaturedSource(FeatureSource.lastEditTime)
       ..setDataSource(ModSource.modrinth)
       ..setDisplayStyle(DisplayStyle.card)
-      ..setRenderType(RenderType.hyper);
+      ..setRenderType(RenderType.hyper)
+      ..setFontType('Unifont');
 
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('theme_mode'), 'dark');
@@ -52,6 +54,7 @@ void main() {
     expect(prefs.getString('data_source'), 'modrinth');
     expect(prefs.getString('display_style'), 'card');
     expect(prefs.getString('render_type'), 'hyper');
+    expect(prefs.getString('font_type'), 'Unifont');
   });
 
   test('load 能恢复已保存的设置(模拟重启)', () async {
@@ -64,6 +67,7 @@ void main() {
       'data_source': 'modrinth',
       'display_style': 'auto',
       'render_type': 'hyper',
+      'font_type': 'Unifont',
     });
     await SettingsService.instance.load();
     expect(SettingsService.instance.themeMode, ThemeMode.dark);
@@ -77,6 +81,7 @@ void main() {
     expect(SettingsService.instance.dataSource, ModSource.modrinth);
     expect(SettingsService.instance.displayStyle, DisplayStyle.auto);
     expect(SettingsService.instance.renderType, RenderType.hyper);
+    expect(SettingsService.instance.fontType, 'Unifont');
   });
 
   test('dataSource setter 生效', () async {
@@ -89,6 +94,12 @@ void main() {
     SharedPreferences.setMockInitialValues({'render_type': 'bogus'});
     await SettingsService.instance.load();
     expect(SettingsService.instance.renderType, RenderType.auto);
+  });
+
+  test('fontType 非法存储值回落到默认', () async {
+    SharedPreferences.setMockInitialValues({'font_type': 'bogus'});
+    await SettingsService.instance.load();
+    expect(SettingsService.instance.fontType, 'NotoSansSC');
   });
 
   test('featuredSource setter 生效', () async {

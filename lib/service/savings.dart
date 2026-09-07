@@ -19,7 +19,7 @@ class Likes {
   Likes({
     required this.id,
     required this.title,
-    required this.description,
+    this.description,
     this.subName,
     this.iconUrl,
     ModSource source = ModSource.mcmod,
@@ -28,10 +28,10 @@ class Likes {
 
   final String id;
   final String title;
-  final String description;
 
   /// 次要名称(如英文名),收藏页卡片副标题用
   final String? subName;
+  final String? description;
   final String? iconUrl;
 
   /// 数据来源的枚举名(如 'modrinth')。
@@ -65,7 +65,7 @@ class Likes {
   ModSummary toSummary() => ModSummary(
     id: id,
     title: title,
-    description: description,
+    description: description ?? '',
     subName: subName,
     iconUrl: iconUrl,
     source: source,
@@ -89,7 +89,7 @@ class FavoritesService extends ChangeNotifier {
     CREATE TABLE likes(
       id TEXT NOT NULL,
       title TEXT NOT NULL,
-      description TEXT NOT NULL,
+      description TEXT,
       sub_name TEXT,
       icon_url TEXT,
       source TEXT NOT NULL,

@@ -31,8 +31,16 @@ class McModHelper extends StatelessWidget {
         return MaterialApp(
           title: 'Minecraft Mod Helper',
           debugShowCheckedModeBanner: false,
-          theme: _buildTheme(Brightness.light, settings.seedColor),
-          darkTheme: _buildTheme(Brightness.dark, settings.seedColor),
+          theme: _buildTheme(
+            Brightness.light,
+            settings.seedColor,
+            settings.fontType,
+          ),
+          darkTheme: _buildTheme(
+            Brightness.dark,
+            settings.seedColor,
+            settings.fontType,
+          ),
           themeMode: settings.themeMode,
           // 全局字体缩放:覆盖 MediaQuery.textScaler。
           // Navigator 是 builder 的 child,因此路由页面/对话框/SnackBar 全部生效。
@@ -49,31 +57,35 @@ class McModHelper extends StatelessWidget {
   }
 }
 
-/// (种子色 ARGB32, 亮度) → ThemeData 缓存。
+/// (种子色 ARGB32, 亮度, 字体) → ThemeData 缓存。
 ///
 /// 设置服务在任意设置变化时都会通知,若每次通知都新建 ThemeData,
 /// MaterialApp 内部的 AnimatedTheme 会因实例不等触发全树主题重建动画;
-/// 缓存保证只有种子色/亮度真正变化时才产生新的 ThemeData 实例。
-final Map<(int, Brightness), ThemeData> _themeCache = {};
+/// 缓存保证只有种子色/亮度/字体真正变化时才产生新的 ThemeData 实例。
+final Map<(int, Brightness, String), ThemeData> _themeCache = {};
 
-/// 按亮度与种子色构建主题:亮/暗共用同一 seed 色,保证是同一品牌色的明暗两版
-ThemeData _buildTheme(Brightness brightness, Color seedColor) {
-  return _themeCache.putIfAbsent((seedColor.toARGB32(), brightness), () {
-    return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: brightness,
-      ),
-      // Web 端对字体回退的支持不可靠,指定 Noto 后
-      // 缺失字形（符号/emoji）会报字体警告甚至显示豆腐块,
-      // 因此 web 不指定字体、交给浏览器系统字体；原生平台用 Noto。
-      fontFamily: kIsWeb ? null : 'NotoSansSC',
-      fontFamilyFallback: const [
-        'Segoe UI Symbol',
-        'Segoe UI Emoji',
-        'Microsoft YaHei',
-      ],
-      useMaterial3: true,
-    );
-  });
+/// 按亮度、种子色与字体构建主题:亮/暗共用同一 seed 色,保证是同一品牌色的明暗两版
+ThemeData _buildTheme(Brightness brightness, Color seedColor, String fontType) {
+  return _themeCache.putIfAbsent(
+    // Web 端不参与字体切换,键里用占位符
+    (seedColor.toARGB32(), brightness, kIsWeb ? '' : fontType),
+    () {
+      return ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: seedColor,
+          brightness: brightness,
+        ),
+        // Web 端对字体回退的支持不可靠,指定 Noto 后
+        // 缺失字形（符号/emoji）会报字体警告甚至显示豆腐块,
+        // 因此 web 不指定字体、交给浏览器系统字体;原生平台用所选字体。
+        fontFamily: kIsWeb ? null : fontType,
+        fontFamilyFallback: const [
+          'Segoe UI Symbol',
+          'Segoe UI Emoji',
+          'Microsoft YaHei',
+        ],
+        useMaterial3: true,
+      );
+    },
+  );
 }

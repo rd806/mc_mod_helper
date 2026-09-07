@@ -281,15 +281,7 @@ class _DetailPageState extends State<DetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 顶部:封面与标题（通栏）
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
-          child: Column(
-            children: [
-              ModCoverWide(mod: mod),
-              const Divider(),
-            ],
-          ),
-        ),
+        ModCoverWide(mod: mod),
         // 下方:左宽右窄两栏
         Expanded(
           child: Row(
@@ -300,7 +292,7 @@ class _DetailPageState extends State<DetailPage> {
                 flex: 2,
                 child: ListView(
                   controller: _leftController,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+                  padding: const EdgeInsets.fromLTRB(64, 0, 8, 0),
                   children: [
                     if (mod.body != null && mod.body!.isNotEmpty) ...[
                       _buildDescription(mod, theme),
@@ -313,7 +305,7 @@ class _DetailPageState extends State<DetailPage> {
                 width: min(450, MediaQuery.of(context).size.width * 0.4),
                 child: ListView(
                   controller: _rightController,
-                  padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(8, 0, 64, 0),
                   children: [
                     _buildEnvironment(mod, theme),
                     _buildAuthors(mod, theme),

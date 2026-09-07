@@ -156,7 +156,7 @@ class _SearchPageState extends State<SearchPage> {
     // 显示搜索结果:左栏来源切换,右栏当前来源的结果
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 480) {
+        if (constraints.maxWidth < 800) {
           return _buildSearchResultNarrow();
         }
         return _buildSearchResultWide();
@@ -167,20 +167,18 @@ class _SearchPageState extends State<SearchPage> {
   /// 宽屏搜索结果
   /// 左右分栏
   Widget _buildSearchResultWide() {
+    List<Widget> source = [];
+    for (final entry in _source) {
+      source.add(_buildSourceButton(entry));
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 左栏:来源切换(高亮当前来源,标注结果条数/失败)，固定宽度
         SizedBox(
-          width: min(200, MediaQuery.of(context).size.width * 0.5),
-          child: ListView.builder(
-            padding: const EdgeInsets.all(2),
-            itemCount: _source.length,
-            itemBuilder: (context, index) => Align(
-              alignment: Alignment.centerLeft,
-              child: _buildSourceButton(index),
-            ),
-          ),
+          width: min(220, MediaQuery.of(context).size.width * 0.5),
+          child: ListView(padding: const EdgeInsets.all(2), children: source),
         ),
         // 右栏:当前来源的搜索结果，铺满右侧空间
         Expanded(flex: 1, child: _showResults()),
@@ -191,21 +189,18 @@ class _SearchPageState extends State<SearchPage> {
   /// 窄屏搜索结果
   /// 上下分栏
   Widget _buildSearchResultNarrow() {
+    List<Widget> source = [];
+    for (final entry in _source) {
+      source.add(_buildSourceButton(entry));
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 上栏:来源切换(高亮当前来源,标注结果条数/失败)，固定宽度
-        SizedBox(
-          height: 100,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.all(2),
-            itemCount: _source.length,
-            itemBuilder: (context, index) => Align(
-              alignment: Alignment.centerLeft,
-              child: _buildSourceButton(index),
-            ),
-          ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [...source]),
         ),
         // 下栏:当前来源的搜索结果，铺满下侧空间
         Expanded(flex: 1, child: _showResults()),
@@ -228,37 +223,29 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   /// 来源按钮
-  Widget _buildSourceButton(int index) {
+  Widget _buildSourceButton(ModSource source) {
     final theme = Theme.of(context);
-    final source = _source[index];
     final selected = source == _selectedSource;
     final icon = LinkIcons.getIconForDataSource(source);
     final label = _sourceErrors.containsKey(source)
         ? '${SourceManager.getSourceString(source)} · 失败'
         : '${SourceManager.getSourceString(source)} (${_totalResults[source]?.length ?? 0})';
-    return TextButton(
-      onPressed: () => _setDisplayResults(index),
-      style: TextButton.styleFrom(
-        foregroundColor: selected
-            ? theme.colorScheme.primary
-            : theme.colorScheme.onSurface,
-        textStyle: theme.textTheme.bodyMedium?.copyWith(
-          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(3, 16, 3, 16),
-        child: Chip(
-          avatar: icon,
-          label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: ActionChip(
+        avatar: icon,
+        onPressed: () => _setDisplayResults(source),
+        backgroundColor: selected
+            ? theme.colorScheme.onPrimary
+            : Colors.transparent,
+        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
     );
   }
 
   /// 切换展示的来源(必须 setState,否则右栏不会重建)
-  void _setDisplayResults(int index) {
-    setState(() => _selectedSource = _source[index]);
+  void _setDisplayResults(ModSource source) {
+    setState(() => _selectedSource = source);
   }
 
   /// 当前来源的搜索结果;来源失败时展示该来源的错误与重试。

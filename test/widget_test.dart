@@ -115,6 +115,25 @@ void main() {
     await tester.pump();
     expect(SettingsService.instance.fontScale, greaterThan(1.0));
 
+    // 切换字体(下拉框) → 服务值变化,主题 fontFamily 即时生效
+    // (回归:主题缓存键曾漏掉字体,切换后需重启才生效)
+    expect(find.text('字体设置'), findsOneWidget);
+    expect(find.text('字体选择'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Unifont').last);
+    await tester.pumpAndSettle(); // 新 ThemeData → 主题过渡动画收尾
+    expect(SettingsService.instance.fontType, 'Unifont');
+    expect(
+      tester
+          .widget<MaterialApp>(find.byType(MaterialApp))
+          .theme
+          ?.textTheme
+          .bodyMedium
+          ?.fontFamily,
+      'Unifont',
+    );
+
     // 拖推荐条数滑条(第二个,可能在可视区外,先滚动到可见)
     await tester.ensureVisible(find.byType(Slider).last);
     await tester.pump();
