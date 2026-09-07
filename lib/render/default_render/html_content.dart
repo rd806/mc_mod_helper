@@ -9,25 +9,20 @@ part 'part/span_grid.dart';
 part 'part/style.dart';
 part 'part/table.dart';
 
-/// 轻量 HTML 渲染器
+/// 轻量 HTML 渲染器（专为 MC百科 设计！）
 ///
-/// fwfh 会为正文里的每个文本块/链接包 MouseRegion(用于光标与
-/// 文本选择)，悬停处内容在帧内重建时触发 Flutter MouseTracker 的
-/// '_debugDuringDeviceUpdate' 断言(框架长期未修的 debug bug)。
-/// 本渲染器只用 Text.rich/Table/Image.network/GestureDetector 等
-/// 原生控件构建,整个正文零 MouseRegion,从根源上消除该断言。
+/// 支持的标签:
+/// - 块级: p/div/h1-h6/ul/ol/li/table/blockquote/pre/details/hr/center;
+/// - 行内: b/strong/i/em/u/del/code/a/img/br/span;
+/// - 表格: (含 colspan/rowspan 合并单元格的表格走自定义网格模型渲染);
+/// - 含图片的表格(画廊): 统一按固定缩略图宽度渲染整表,超出容器时横向滚动。
 ///
-/// 支持的标签:块级 p/div/h1-h6/ul/ol/li/table/blockquote/pre/
-/// details/hr/center;行内 b/strong/i/em/u/del/code/a/img/br/span
-/// (样式取 color、background-color、font-weight、font-style、
-/// text-decoration、font-size)。表格支持 colspan/rowspan 合并单元格
-/// (含合并单元格的表格走自定义网格模型渲染)。含图片的表格(画廊,
-/// 如 mcmod 的「截图欣赏」「更多展示」、JEI 物品表)统一按固定
-/// 缩略图宽度渲染整表,超出容器时横向滚动。
+/// 样式取 color、background-color、font-weight、font-style、text-decoration、font-size;
 ///
-/// 实现按职责拆分在 part 文件 part/ 下:表格(table)、
-/// 合并单元格网格(span_grid)、行内(inline)、图片(image)、
-/// 样式解析(style);本文件保留入口与块级渲染。
+/// 按职责拆分在 part 文件 part/ 下:
+/// 表格(table)、合并单元格网格(span_grid)、行内(inline)、图片(image)、样式解析(style);
+///
+/// 本文件保留入口与块级渲染。
 class HtmlContent extends StatelessWidget {
   const HtmlContent({
     super.key,
@@ -202,8 +197,11 @@ Widget? _buildBlock(
         bottom: 8,
       );
     default:
-      // 未知标签(span 等):按行内渲染兜底
-      final spans = _buildInline(context, theme, base, el.nodes, onLinkTap);
+      // 未知标签(span 等):按行内渲染兜底。
+      // 把元素自身作为行内节点处理(而非只内联其子节点),
+      // span 的 style 才能保留(如小节标题 span 的加粗放大样式,
+      // 与图注分离后单独成块时不能丢)
+      final spans = _buildInline(context, theme, base, [el], onLinkTap);
       if (spans.isEmpty) return null;
       return _block(
         Text.rich(TextSpan(style: base, children: spans)),
@@ -227,6 +225,34 @@ Widget _buildParagraph(
       src,
       height: _contentImageHeight,
       onTap: () => onLinkTap(src),
+    );
+  }
+  // 段内带图注的配图(span.figure 包图片 + figcaption,或
+  // <a><img></a><br>说明):图片块级渲染可点灯箱,图注在下方;
+  // 站点有时把小节标题与配图放在同一段里(如 class/18075 的
+  // 「合影」配图后紧跟「概述」标题),配图两侧的兄弟节点
+  // 需要单独成块,不能跟着图片走行内渲染
+  final captionSrc = _captionImageSrc(el);
+  if (captionSrc != null) {
+    final split = _splitFigure(el);
+    final figcaption = el.querySelector('.figcaption');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ..._buildBlocks(context, theme, base, split.before, 0, onLinkTap),
+        _blockImage(
+          captionSrc,
+          height: _contentImageHeight,
+          onTap: () => onLinkTap(captionSrc),
+        ),
+        ..._captionBlocks(context, theme, base, el, onLinkTap),
+        // figcaption 结构里 _captionBlocks 只取图注文字,
+        // 配图之后的兄弟节点(如「概述」标题)在这里补上;
+        // 块级换行结构(<a><img></a><br>说明)的后续内容
+        // 已由 _captionBlocks 处理,跳过
+        if (figcaption != null)
+          ..._buildBlocks(context, theme, base, split.after, 0, onLinkTap),
+      ],
     );
   }
   final style = _parseBlockStyle(el.attributes['style']);

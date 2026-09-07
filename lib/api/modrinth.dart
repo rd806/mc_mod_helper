@@ -5,10 +5,11 @@ import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
 import 'package:mc_mod_helper/service/value/source.dart';
 
-import '../model/mod_category.dart';
-import '../model/mod_detail.dart';
-import '../model/mod_link.dart';
-import '../model/mod_summary.dart';
+import '../model/author.dart';
+import '../model/mod/mod_category.dart';
+import '../model/mod/mod_detail.dart';
+import '../model/link.dart';
+import '../model/mod/mod_summary.dart';
 
 /// Modrinth(modrinth.com)数据获取服务。
 ///
@@ -93,9 +94,15 @@ class ModrinthApi {
       'https://api.modrinth.com/v2/project/$sourceId/version',
     );
     final versionsBody = await _get(versionsUri);
+    // 作者列表:项目详情只给团队成员 id,成员接口才带用户名/头像/角色
+    final membersUri = Uri.parse(
+      'https://api.modrinth.com/v2/project/$sourceId/members',
+    );
+    final membersBody = await _get(membersUri);
     final detail = _parseDetail(
       body,
       versionsBody: versionsBody,
+      membersBody: membersBody,
       sourceId: sourceId,
       fallbackDescription: fallbackDescription,
     );
@@ -283,6 +290,7 @@ class ModrinthApi {
   static ModDetail _parseDetail(
     String body, {
     required String versionsBody,
+    required String membersBody,
     required String sourceId,
     String? fallbackDescription,
   }) {
@@ -311,7 +319,36 @@ class ModrinthApi {
       platform: _buildPlatform(data),
       environment: _buildEnvironment(data),
       source: ModSource.modrinth,
+      authors: _parseAuthors(membersBody),
     );
+  }
+
+  /// 团队角色 → 中文(未收录的保留原文)
+  static const Map<String, String> _roleNames = {
+    'Owner': '所有者',
+    'Developer': '开发者',
+    'Editor': '编辑',
+    'Manager': '管理',
+  };
+
+  /// 成员列表 → 作者:每个成员带 user(用户名/头像)与 role
+  static List<Author>? _parseAuthors(String body) {
+    final data = jsonDecode(body) as List<dynamic>;
+    final authors = <Author>[];
+    for (final m in data.cast<Map<String, dynamic>>()) {
+      final user = m['user'] as Map<String, dynamic>?;
+      final name = (user?['username'] as String?)?.trim() ?? '';
+      if (name.isEmpty) continue;
+      authors.add(
+        Author(
+          name: name,
+          avatarUrl: user?['avatar_url'] as String?,
+          role:
+              _roleNames[(m['role'] as String?) ?? ''] ?? m['role'] as String?,
+        ),
+      );
+    }
+    return authors.isEmpty ? null : authors;
   }
 
   /// 获取统计信息
@@ -380,11 +417,11 @@ class ModrinthApi {
   }
 
   /// 相关链接:源码/问题反馈/Wiki/Discord/捐赠
-  static List<ModLink> _buildLinks(Map<String, dynamic> data) {
-    final links = <ModLink>[];
+  static List<Link> _buildLinks(Map<String, dynamic> data) {
+    final links = <Link>[];
     void add(String name, String? url) {
       if (url != null && url.isNotEmpty) {
-        links.add(ModLink(name: name, url: url));
+        links.add(Link(name: name, url: url));
       }
     }
 

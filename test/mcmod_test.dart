@@ -27,6 +27,46 @@ void main() {
     expect(d.description, '列表页简介');
     // 正文:bbcode 转换后的回退简介(段落标签包裹)
     expect(d.body, contains('列表页简介'));
+    // 无作者区块 → authors 为 null
+    expect(d.authors, isNull);
+  });
+
+  test('详情页作者区块:头像/名称/角色解析', () async {
+    // 真实结构:li.col-lg-12.author > .frame > ul > li,
+    // 每项是 .avatar img + .name + .position
+    McmodApi.clientFactory = () => MockClient(
+      (request) async => http.Response.bytes(
+        utf8.encode(
+          '<html><head>'
+          '<title>测试模组 - MC百科|最大的Minecraft中文MOD百科</title>'
+          '</head><body>'
+          '<li class="col-lg-12 author"><div class="frame"><ul>'
+          '<li><span class="avatar"><img '
+          'src="//i.mcmod.cn/user/avatar/1.png@45x45.jpg"></span>'
+          '<span class="member"><span class="name">古镇天</span>'
+          '<span class="position">所有者/程序</span></span></li>'
+          '<li><span class="avatar"><img '
+          'src="//i.mcmod.cn/author/avatar/g.png@45x45.jpg"></span>'
+          '<span class="member"><span class="name">Anvil-Dev</span>'
+          '<span class="position">贡献者</span></span></li>'
+          '</ul></div></li>'
+          '</body></html>',
+        ),
+        200,
+      ),
+    );
+
+    final d = await McmodApi.getDetail('1');
+    expect(d.authors, hasLength(2));
+    expect(d.authors!.first.name, '古镇天');
+    // 协议相对地址补全为 https
+    expect(
+      d.authors!.first.avatarUrl,
+      'https://i.mcmod.cn/user/avatar/1.png@45x45.jpg',
+    );
+    expect(d.authors!.first.role, '所有者/程序');
+    expect(d.authors!.last.name, 'Anvil-Dev');
+    expect(d.authors!.last.role, '贡献者');
   });
 
   test('fallbackDescription 为空时 description 为 null', () async {

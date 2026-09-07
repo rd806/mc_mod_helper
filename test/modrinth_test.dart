@@ -111,6 +111,22 @@ Future<http.Response> _handler(http.Request request) async {
       },
     ]);
   }
+  if (request.url.path == '/v2/project/sodium/members') {
+    // 团队成员:user(用户名/头像) + role
+    return _json([
+      {
+        'user': {
+          'username': 'jellysquid3',
+          'avatar_url': 'https://cdn.modrinth.com/avatars/jelly.png',
+        },
+        'role': 'Owner',
+      },
+      {
+        'user': {'username': 'IMS212'},
+        'role': 'Developer',
+      },
+    ]);
+  }
   return http.Response('not found', 404);
 }
 
@@ -165,6 +181,16 @@ void main() {
       expect(d.links.map((l) => l.name), contains('GitHub'));
       expect(d.links.map((l) => l.name), contains('Discord'));
       expect(d.pageUrl, 'https://modrinth.com/mod/sodium');
+      // 作者:成员接口的 username/头像,角色映射中文
+      expect(d.authors, hasLength(2));
+      expect(d.authors!.first.name, 'jellysquid3');
+      expect(
+        d.authors!.first.avatarUrl,
+        'https://cdn.modrinth.com/avatars/jelly.png',
+      );
+      expect(d.authors!.first.role, '所有者');
+      expect(d.authors!.last.name, 'IMS212');
+      expect(d.authors!.last.role, '开发者');
     });
 
     test('非 200 抛出含状态码的异常', () async {
@@ -286,13 +312,15 @@ void main() {
     expect(find.text('Sodium'), findsOneWidget);
     expect(find.text('A modern rendering engine'), findsOneWidget);
 
-    // 点结果进详情:详情要发两个请求(项目详情 + 版本列表),每个都受
-    // 1s 节流且与上次搜索有间隔,显式推进两轮节流计时器
+    // 点结果进详情:详情要发三个请求(项目详情 + 版本列表 + 成员列表),
+    // 每个都受 1s 节流且与上次搜索有间隔,显式推进三轮节流计时器
     await tester.tap(find.text('Sodium'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1)); // 节流 → 项目详情请求发出
     await tester.pump();
     await tester.pump(const Duration(seconds: 1)); // 节流 → 版本列表请求发出
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1)); // 节流 → 成员列表请求发出
     await tester.pump();
     await tester.pump();
 

@@ -4,10 +4,11 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
 
-import '../model/mod_category.dart';
-import '../model/mod_detail.dart';
-import '../model/mod_link.dart';
-import '../model/mod_summary.dart';
+import '../model/author.dart';
+import '../model/mod/mod_category.dart';
+import '../model/mod/mod_detail.dart';
+import '../model/link.dart';
+import '../model/mod/mod_summary.dart';
 import '../service/value/source.dart';
 
 /// CurseForge(curseforge.com)数据获取服务。
@@ -349,7 +350,20 @@ class CurseforgeApi {
       platform: _loadersFromFiles(filesBody),
       environment: _parseEnvironment(data),
       source: ModSource.curseforge,
+      authors: _parseAuthors(data),
     );
+  }
+
+  /// 作者:API 的 authors 列表(id/name/url),无头像与角色信息
+  static List<Author>? _parseAuthors(Map<String, dynamic> data) {
+    final authors = <Author>[];
+    for (final a in (data['authors'] as List<dynamic>? ?? const [])) {
+      if (a is! Map<String, dynamic>) continue;
+      final name = (a['name'] as String?)?.trim() ?? '';
+      if (name.isEmpty) continue;
+      authors.add(Author(name: name));
+    }
+    return authors.isEmpty ? null : authors;
   }
 
   /// 文件列表 → 加载器 → 版本号 的分组映射。
@@ -425,11 +439,11 @@ class CurseforgeApi {
   }
 
   /// 相关链接:官网/源码/问题反馈/Wiki(名称带品牌关键词以命中图标)
-  static List<ModLink> _buildLinks(Map<String, dynamic> data) {
-    final links = <ModLink>[];
+  static List<Link> _buildLinks(Map<String, dynamic> data) {
+    final links = <Link>[];
     void add(String name, String? url) {
       if (url != null && url.isNotEmpty) {
-        links.add(ModLink(name: name, url: url));
+        links.add(Link(name: name, url: url));
       }
     }
 

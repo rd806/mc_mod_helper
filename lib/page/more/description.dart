@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:hyper_render/hyper_render.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
+import 'package:mc_mod_helper/model/author.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/render/hyper_render/hyper.dart';
@@ -15,8 +16,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
-import '../../model/mod_detail.dart';
-import '../../model/mod_summary.dart';
+import '../../model/mod/mod_detail.dart';
+import '../../model/mod/mod_summary.dart';
 import '../../render/default_render/html_content.dart';
 import '../../widget/common/captcha_dialog.dart';
 import '../../widget/common/collapsible_widgets.dart';
@@ -309,12 +310,13 @@ class _DetailPageState extends State<DetailPage> {
               ),
               // 右栏(窄):相关链接 + 支持版本
               SizedBox(
-                width: min(400, MediaQuery.of(context).size.width * 0.5),
+                width: min(450, MediaQuery.of(context).size.width * 0.4),
                 child: ListView(
                   controller: _rightController,
                   padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
                   children: [
                     _buildEnvironment(mod, theme),
+                    _buildAuthors(mod, theme),
                     _buildLinks(mod, theme),
                     _buildModVersion(mod, theme),
                   ],
@@ -336,8 +338,9 @@ class _DetailPageState extends State<DetailPage> {
         ModCoverNarrow(mod: mod),
         const Divider(),
         _buildEnvironment(mod, theme),
-        if (mod.links.isNotEmpty) ...[_buildLinks(mod, theme)],
-        if (mod.mcVersions.isNotEmpty) ...[_buildModVersion(mod, theme)],
+        _buildAuthors(mod, theme),
+        _buildLinks(mod, theme),
+        _buildModVersion(mod, theme),
         if (mod.body != null && mod.body!.isNotEmpty) ...[
           _buildDescription(mod, theme),
         ],
@@ -349,7 +352,7 @@ class _DetailPageState extends State<DetailPage> {
   Widget _buildSectionTitle(String title, ThemeData theme, IconData icon) {
     return Padding(
       // 上下间距写入 Padding 中
-      padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           Icon(icon, color: theme.colorScheme.primary),
@@ -370,8 +373,7 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-  /// 加载环境
-  /// 运行环境:environment 为 [客户端需求, 服务端需求] 的枚举值列表,
+  /// 加载环境：environment 为 [客户端需求, 服务端需求] 的枚举值列表,
   /// 有时只有一侧(mcmod),按实际元素数量显示
   Widget _buildEnvironment(ModDetail mod, ThemeData theme) {
     final env = mod.environment;
@@ -403,7 +405,7 @@ class _DetailPageState extends State<DetailPage> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 0, 16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -433,6 +435,30 @@ class _DetailPageState extends State<DetailPage> {
     }
   }
 
+  /// 模组作者
+  Widget _buildAuthors(ModDetail mod, ThemeData theme) {
+    final authors = mod.authors;
+    if (authors == null || authors.isEmpty) return const SizedBox.shrink();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle('开发团队', theme, Icons.people_rounded),
+            CollapsibleWidgets(
+              widget: [
+                for (final author in authors)
+                  Author.buildAuthorChip(author, theme),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// 相关链接
   Widget _buildLinks(ModDetail mod, ThemeData theme) {
     final links = mod.links;
@@ -440,7 +466,7 @@ class _DetailPageState extends State<DetailPage> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 0, 16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -469,7 +495,7 @@ class _DetailPageState extends State<DetailPage> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 0, 16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -487,7 +513,7 @@ class _DetailPageState extends State<DetailPage> {
                 CollapsibleWidgets(
                   widget: [
                     for (final v in entry.value)
-                      Label(text: Text(v, style: theme.textTheme.labelSmall)),
+                      Label(text: Text(v, style: theme.textTheme.labelMedium)),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -502,7 +528,7 @@ class _DetailPageState extends State<DetailPage> {
   Widget _buildDescription(ModDetail mod, ThemeData theme) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

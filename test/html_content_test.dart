@@ -286,6 +286,11 @@ void main() {
     // 图注文字渲染
     expect(find.text('脉冲延长器'), findsOneWidget);
     expect(find.text('流水线压板'), findsOneWidget);
+    // 图注在单元格图片下方水平居中
+    expect(
+      tester.getCenter(find.text('脉冲延长器')).dx,
+      closeTo(tester.getCenter(find.byType(Image).first).dx, 0.1),
+    );
     // 点击图注图片 → 灯箱分流回调收到图片地址
     await tester.tap(find.byType(Image).first);
     expect(tapped, 'https://x/1.png');
@@ -475,6 +480,68 @@ void main() {
     // 2 列 × 320 + 网格外框左边线 1px
     expect(tester.getSize(find.byWidget(scroll.child!)).width, closeTo(640, 1));
     expect(find.byIcon(Icons.broken_image_outlined), findsNWidgets(3));
+  });
+
+  testWidgets('段内图注配图:图片可点灯箱,图注与标题各自成块', (tester) async {
+    // 真实结构(class/18075 的「合影」):配图与「概述」标题在同一段,
+    // span.figure 包图片 + figcaption,标题 span 紧随其后。
+    // 此前图片走行内渲染(无灯箱),图注文字与标题排在一行
+    String? tapped;
+    await tester.pumpWidget(
+      _wrap(
+        '<p><span class="figure">'
+        '<a href="https://x/1.png"><img src="https://x/1.png"></a>'
+        '<span class="figcaption">合影</span></span>'
+        '<span style="font-weight:bold;font-size:1.35em">概述</span></p>',
+        (u) => tapped = u,
+      ),
+    );
+    await tester.pump(); // 图片网络失败 → errorBuilder 占位
+
+    // 图注文字渲染在图片下方(单独一行,不与标题混排)
+    expect(find.text('合影'), findsOneWidget);
+    // 图注在图片正下方水平居中(与配图同水平中心)
+    final imageBox = find.byWidgetPredicate(
+      (w) => w is SizedBox && w.height == 280,
+    );
+    expect(
+      tester.getCenter(find.text('合影')).dx,
+      closeTo(tester.getCenter(imageBox).dx, 0.1),
+    );
+    // 配图之后的标题单独成块,span 的样式保留(加粗 + 放大)
+    expect(find.text('概述', findRichText: true), findsOneWidget);
+    final titleStyle = _spanStyle(tester, '概述');
+    expect(titleStyle?.fontWeight, FontWeight.bold);
+    expect(titleStyle?.fontSize, greaterThan(14));
+    // 图片块级渲染:280 高的正文配图占位(不是行内小图)
+    expect(
+      find.byWidgetPredicate((w) => w is SizedBox && w.height == 280),
+      findsOneWidget,
+    );
+    // 图片可点灯箱
+    await tester.tap(find.byType(Image));
+    expect(tapped, 'https://x/1.png');
+  });
+
+  testWidgets('段内图注配图(块级换行结构):图片块级化,说明在下方', (tester) async {
+    // 另一种图注结构:<a><img></a><br>说明,段落里同样块级化
+    String? tapped;
+    await tester.pumpWidget(
+      _wrap(
+        '<p><a href="https://x/2.png"><img src="https://x/2.png"></a>'
+        '<br>另一张说明</p>',
+        (u) => tapped = u,
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('另一张说明'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate((w) => w is SizedBox && w.height == 280),
+      findsOneWidget,
+    );
+    await tester.tap(find.byType(Image));
+    expect(tapped, 'https://x/2.png');
   });
 
   testWidgets('正文链接/图片/表格均不产生 MouseRegion(fwfh 断言根源回归)', (tester) async {

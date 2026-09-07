@@ -70,6 +70,9 @@ Future<http.Response> _handler(http.Request request) async {
           'issuesUrl': 'https://github.com/CaffeineMC/sodium/issues',
           'wikiUrl': null,
         },
+        'authors': [
+          {'id': 1, 'name': 'jellysquid3', 'url': 'https://example.com/a'},
+        ],
       },
     });
   }
@@ -123,6 +126,11 @@ void main() {
     // 链接:源码命中 GitHub 品牌名,官网在列
     expect(d.links.map((l) => l.name), contains('GitHub'));
     expect(d.links.map((l) => l.name), contains('官网'));
+    // 作者:API 的 authors 列表,无头像与角色
+    expect(d.authors, hasLength(1));
+    expect(d.authors!.single.name, 'jellysquid3');
+    expect(d.authors!.single.avatarUrl, isNull);
+    expect(d.authors!.single.role, isNull);
   });
 
   test('getCategories 翻译中文名,id 为数字字符串', () async {

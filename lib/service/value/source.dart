@@ -1,6 +1,6 @@
 import 'package:mc_mod_helper/api/curseforge.dart';
-import 'package:mc_mod_helper/model/mod_category.dart';
-import 'package:mc_mod_helper/model/mod_summary.dart';
+import 'package:mc_mod_helper/model/mod/mod_category.dart';
+import 'package:mc_mod_helper/model/mod/mod_summary.dart';
 
 import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';

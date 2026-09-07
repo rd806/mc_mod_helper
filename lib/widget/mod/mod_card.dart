@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../model/mod_summary.dart';
+import '../../model/mod/mod_summary.dart';
 import '../../page/more/description.dart';
 import 'favorite_toggle.dart';
 

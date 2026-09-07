@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 
 import '../../api/mcmod.dart';
-import '../../model/mod_category.dart';
+import '../../model/mod/mod_category.dart';
 import '../../service/settings.dart';
 import '../../widget/common/captcha_dialog.dart';
 import '../../widget/mod/category_card.dart';

@@ -128,7 +128,9 @@ List<Widget> _captionBlocks(
   dom.Element cell,
   void Function(String) onLinkTap,
 ) {
-  // 站点图注结构:取 figcaption 的文本,居中显示在图片下方
+  // 站点图注结构:取 figcaption 的文本,居中显示在图片下方。
+  // 占满行宽才能让 textAlign.center 对单行文字生效
+  // (Text 只有内容宽时居中不改变视觉位置)
   final figcaption = cell.querySelector('.figcaption');
   if (figcaption != null) {
     final text = figcaption.text.trim();
@@ -136,35 +138,54 @@ List<Widget> _captionBlocks(
     return [
       Padding(
         padding: const EdgeInsets.only(top: 4),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        child: SizedBox(
+          width: double.infinity,
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ),
     ];
   }
-  // 块级换行结构:图片之后的顶层节点(去掉紧随的换行占位)
-  final nodes = <dom.Node>[];
-  var seen = false;
-  for (final n in cell.nodes) {
-    if (!seen) {
-      if (n is dom.Element && n.querySelector('img') != null) {
-        seen = true;
-      }
-      continue;
-    }
-    nodes.add(n);
-  }
-  // 图片与说明之间的换行占位直接丢弃
+  // 块级换行结构:图片之后的顶层节点(去掉紧随的换行占位),
+  // 说明内容在图片下方水平居中
+  final nodes = _splitFigure(cell).after;
   if (nodes.isNotEmpty &&
       nodes.first is dom.Element &&
       (nodes.first as dom.Element).localName == 'br') {
     nodes.removeAt(0);
   }
-  return _buildBlocks(context, theme, base, nodes, 0, onLinkTap);
+  return [
+    SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: _buildBlocks(context, theme, base, nodes, 0, onLinkTap),
+      ),
+    ),
+  ];
+}
+
+/// 按图片所在节点把顶层节点拆成 之前/之后 两组。
+///
+/// 站点有时把小节标题与配图放在同一段里(如 class/18075 的「合影」
+/// 配图后紧跟「概述」标题),配图两侧的兄弟节点需要单独成块渲染
+({List<dom.Node> before, List<dom.Node> after}) _splitFigure(dom.Element el) {
+  final before = <dom.Node>[];
+  final after = <dom.Node>[];
+  var seen = false;
+  for (final n in el.nodes) {
+    if (!seen && n is dom.Element && n.querySelector('img') != null) {
+      seen = true;
+      continue;
+    }
+    (seen ? after : before).add(n);
+  }
+  return (before: before, after: after);
 }
 
 /// 图注的块级分隔标签(说明文字位于图片下方的标志)

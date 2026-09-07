@@ -59,6 +59,14 @@ Future<http.Response> _handler(http.Request request) async {
       },
     ]);
   }
+  if (request.url.path == '/v2/project/jei/members') {
+    return _json([
+      {
+        'user': {'username': 'mezz'},
+        'role': 'Owner',
+      },
+    ]);
+  }
   return http.Response('not found', 404);
 }
 
@@ -148,12 +156,14 @@ void main() {
     await _pumpApp(tester);
     await _searchJei(tester);
 
-    // 进详情页:两个请求(项目详情 + 版本列表)各等 1s 节流
+    // 进详情页:三个请求(项目详情 + 版本列表 + 成员列表)各等 1s 节流
     await tester.tap(find.text('JEI'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1)); // 节流 → 项目详情请求发出
     await tester.pump();
     await tester.pump(const Duration(seconds: 1)); // 节流 → 版本列表请求发出
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1)); // 节流 → 成员列表请求发出
     await tester.pump();
     await tester.pump();
 

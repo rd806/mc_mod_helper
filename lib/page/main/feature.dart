@@ -3,7 +3,7 @@ import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 
 import '../../api/mcmod.dart';
-import '../../model/mod_summary.dart';
+import '../../model/mod/mod_summary.dart';
 import '../../service/settings.dart';
 import '../../widget/common/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';

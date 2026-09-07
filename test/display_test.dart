@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mc_mod_helper/model/mod_summary.dart';
+import 'package:mc_mod_helper/model/mod/mod_summary.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/widget/mod/mod_card.dart';

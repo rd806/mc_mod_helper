@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/widget/common/link_icons.dart';
 
-import '../../model/mod_detail.dart';
+import '../../model/mod/mod_detail.dart';
 import 'image_box.dart';
 
 /// 详情页封面与标题的公共基类:

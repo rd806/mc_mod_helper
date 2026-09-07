@@ -57,7 +57,7 @@ class LinkIcons {
     if (n.contains('youtube')) return Icon(youtube);
     if (n.contains('b站')) return Icon(bilibili, color: Colors.pink);
 
-    if (n.contains('qq')) return Icon(qq);
+    if (n.contains('qq')) return Icon(qq, color: Colors.blue);
     if (n.contains('网盘') || n.contains('云盘') || n.contains('蓝奏云')) {
       return Icon(Icons.cloud);
     }

@@ -1,6 +1,7 @@
+import 'package:mc_mod_helper/model/author.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 
-import 'mod_link.dart';
+import '../link.dart';
 
 /// 模组详细信息(解析自详情页)
 class ModDetail {
@@ -10,6 +11,7 @@ class ModDetail {
     required this.source,
     this.subName,
     this.description,
+    this.authors,
     this.body,
     this.statistics,
     this.coverUrl,
@@ -45,7 +47,7 @@ class ModDetail {
   final String? coverUrl;
 
   /// 相关链接(CurseForge / GitHub 等)
-  final List<ModLink> links;
+  final List<Link> links;
 
   /// 支持的 MC 版本,按加载器分组:
   /// key 为加载器名(Forge/NeoForge/Fabric 等,与数据源原始写法一致),
@@ -58,6 +60,9 @@ class ModDetail {
   /// 加载环境（如 客户端需装, 服务端无效）
   /// 使用 Modrinth 标准：[required|required]
   final List<String>? environment;
+
+  /// 模组作者
+  final List<Author>? authors;
 
   /// 数据来源：'mcmod' 或 'modrinth'
   final ModSource source;
@@ -72,6 +77,7 @@ class ModDetail {
     source: source,
     subName: subName,
     description: description ?? this.description,
+    authors: authors,
     body: body,
     statistics: statistics,
     coverUrl: coverUrl,

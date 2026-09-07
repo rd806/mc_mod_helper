@@ -7,10 +7,11 @@ import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 import 'package:mc_mod_helper/service/value/source.dart';
 
-import '../model/mod_category.dart';
-import '../model/mod_detail.dart';
-import '../model/mod_link.dart';
-import '../model/mod_summary.dart';
+import '../model/author.dart';
+import '../model/mod/mod_category.dart';
+import '../model/mod/mod_detail.dart';
+import '../model/link.dart';
+import '../model/mod/mod_summary.dart';
 
 /// 被站点限流时抛出的异常
 class McmodThrottledException implements Exception {
@@ -531,7 +532,7 @@ class McmodApi {
     }
 
     // 相关链接(CurseForge / GitHub / ...)
-    final links = <ModLink>[];
+    final links = <Link>[];
     for (final li in doc.querySelectorAll('ul.common-link-icon-frame li')) {
       final a = li.querySelector('a[href]');
       final name =
@@ -551,7 +552,7 @@ class McmodApi {
         }
       }
       if (name.isNotEmpty && href.isNotEmpty) {
-        links.add(ModLink(name: name, url: href));
+        links.add(Link(name: name, url: href));
       }
     }
 
@@ -608,6 +609,28 @@ class McmodApi {
       return parts.map(convertToEnum).toList();
     }
 
+    // 作者:左侧信息面板的作者区块(li.col-lg-12.author),
+    // 每项是 头像(.avatar img) + 名称(.name) + 角色(.position)
+    List<Author>? parseAuthors() {
+      final items = doc.querySelectorAll('.author .frame li');
+      if (items.isEmpty) return null;
+      final authors = <Author>[];
+      for (final li in items) {
+        final name = li.querySelector('.name')?.text.trim() ?? '';
+        if (name.isEmpty) continue;
+        var avatar = li.querySelector('.avatar img')?.attributes['src'] ?? '';
+        if (avatar.startsWith('//')) avatar = 'https:$avatar';
+        authors.add(
+          Author(
+            name: name,
+            avatarUrl: avatar.isEmpty ? null : avatar,
+            role: li.querySelector('.position')?.text.trim(),
+          ),
+        );
+      }
+      return authors.isEmpty ? null : authors;
+    }
+
     // 统计信息(最多 3 项):总浏览、昨日指数,再补面板其余条目。
     // 页面结构:.infos > .span 每块是 数值(.n) + 标签(.t);
     // 昨日指数单独在头部文本里(如 '昨日指数: 9080')
@@ -657,6 +680,7 @@ class McmodApi {
       platform: field('支持平台'),
       environment: getEnvironment(field('运行环境')),
       statistics: parseStatistics(),
+      authors: parseAuthors(),
     );
   }
 

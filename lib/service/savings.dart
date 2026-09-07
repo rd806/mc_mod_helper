@@ -2,7 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/model/mod_summary.dart';
+import 'package:mc_mod_helper/model/mod/mod_summary.dart';
 import 'package:path/path.dart' as p;
 // 副作用导入:sqflite 库加载时把插件工厂设为默认工厂
 // (databaseFactoryOrNull ??= 插件工厂),移动端(Android/iOS)靠它
