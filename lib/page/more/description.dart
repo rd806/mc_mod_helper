@@ -1,27 +1,23 @@
 import 'dart:math';
 
-import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
-import 'package:hyper_render/hyper_render.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
-import 'package:mc_mod_helper/model/author.dart';
-import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/render/hyper_render/hyper.dart';
-import 'package:mc_mod_helper/service/settings.dart';
-import 'package:mc_mod_helper/widget/detail/cover.dart';
-import 'package:mc_mod_helper/widget/common/label.dart';
-import 'package:mc_mod_helper/widget/common/link_icons.dart';
+import 'package:mc_mod_helper/widget/detail/selection_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
 import '../../model/mod/mod_detail.dart';
 import '../../model/mod/mod_summary.dart';
-import '../../render/default_render/html_content.dart';
 import '../../widget/common/captcha_dialog.dart';
-import '../../widget/common/collapsible_widgets.dart';
-import '../../widget/detail/image_box.dart';
+import '../../widget/detail/authors_card.dart';
+import '../../widget/detail/cover.dart';
+import '../../widget/detail/description_card.dart';
+import '../../widget/detail/environment_card.dart';
+import '../../widget/common/image_box.dart';
+import '../../widget/detail/links_card.dart';
+import '../../widget/detail/version_card.dart';
 import '../../widget/mod/favorite_toggle.dart';
 
 /// 模组详情页
@@ -51,11 +47,21 @@ class DetailPage extends StatefulWidget {
 }
 
 class _DetailPageState extends State<DetailPage> {
+  // 当前展示的组件
+  int _currentIndex = 0;
+  // 待加载的信息
   late Future<ModDetail> _future;
 
+  final List<(String, int)> _button = [('介绍', 0), ('信息', 1)];
   // 左右控制器
   final ScrollController _leftController = ScrollController();
   final ScrollController _rightController = ScrollController();
+
+  void _switchTo(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   void initState() {
@@ -276,7 +282,6 @@ class _DetailPageState extends State<DetailPage> {
 
   /// 宽屏布局:顶部通栏封面+名称,下方左右两栏(左宽右窄)各自独立滚动
   Widget _buildWidePage(ModDetail mod) {
-    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -293,11 +298,7 @@ class _DetailPageState extends State<DetailPage> {
                 child: ListView(
                   controller: _leftController,
                   padding: const EdgeInsets.fromLTRB(64, 0, 8, 0),
-                  children: [
-                    if (mod.body != null && mod.body!.isNotEmpty) ...[
-                      _buildDescription(mod, theme),
-                    ],
-                  ],
+                  children: [DescriptionCard(mod: mod, onLinkTap: _openUrl)],
                 ),
               ),
               // 右栏(窄):相关链接 + 支持版本
@@ -306,12 +307,7 @@ class _DetailPageState extends State<DetailPage> {
                 child: ListView(
                   controller: _rightController,
                   padding: const EdgeInsets.fromLTRB(8, 0, 64, 0),
-                  children: [
-                    _buildEnvironment(mod, theme),
-                    _buildAuthors(mod, theme),
-                    _buildLinks(mod, theme),
-                    _buildModVersion(mod, theme),
-                  ],
+                  children: [_buildOther(mod)],
                 ),
               ),
             ],
@@ -323,264 +319,37 @@ class _DetailPageState extends State<DetailPage> {
 
   /// 窄屏布局:单列滚动，内容顺序排列
   Widget _buildNarrowPage(ModDetail mod) {
-    final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(16),
       children: [
         ModCoverNarrow(mod: mod),
         const Divider(),
-        _buildEnvironment(mod, theme),
-        _buildAuthors(mod, theme),
-        _buildLinks(mod, theme),
-        _buildModVersion(mod, theme),
-        if (mod.body != null && mod.body!.isNotEmpty) ...[
-          _buildDescription(mod, theme),
-        ],
+        SelectionButton(
+          button: _button,
+          selectedIndex: _currentIndex,
+          switchTo: _switchTo,
+        ),
+        // _button 列表中的顺序应该与 IndexedStack 中的一致
+        IndexedStack(
+          index: _currentIndex,
+          children: [
+            DescriptionCard(mod: mod, onLinkTap: _openUrl),
+            _buildOther(mod),
+          ],
+        ),
       ],
     );
   }
 
-  /// 区块标题:上间距 + titleLarge 标题 + 下间距,配合 ... 展开使用
-  Widget _buildSectionTitle(String title, ThemeData theme, IconData icon) {
-    return Padding(
-      // 上下间距写入 Padding 中
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Icon(icon, color: theme.colorScheme.primary),
-          const SizedBox(width: 10),
-          // 右栏较窄时标题可能超宽，Expanded + 省略号兜底,避免溢出报错
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 加载环境：environment 为 [客户端需求, 服务端需求] 的枚举值列表,
-  /// 有时只有一侧(mcmod),按实际元素数量显示
-  Widget _buildEnvironment(ModDetail mod, ThemeData theme) {
-    final env = mod.environment;
-    if (env == null || env.isEmpty) return const SizedBox.shrink();
-    // 首元素(客户端)必然存在;服务端可能缺位(mcmod 有时只标一侧)
-    final client = _getInfo(env[0]);
-    final server = env.length > 1 ? _getInfo(env[1]) : null;
-    // 收集所有有效的 Chip
-    // 使用 Wrap 实现响应式布局
-    final List<Widget> chips = [];
-    if (client != null) {
-      chips.add(
-        Chip(
-          avatar: Icon(Icons.computer_rounded, size: 18),
-          visualDensity: VisualDensity.standard,
-          label: Text('客户端：$client', style: theme.textTheme.labelMedium),
-        ),
-      );
-    }
-    if (server != null) {
-      chips.add(
-        Chip(
-          avatar: Icon(Icons.storage_rounded, size: 18),
-          visualDensity: VisualDensity.standard,
-          label: Text('服务端：$server', style: theme.textTheme.labelMedium),
-        ),
-      );
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle('加载环境', theme, Icons.construction_rounded),
-            Wrap(
-              spacing: 8.0, // 水平间距
-              runSpacing: 8.0, // 垂直间距（换行时）
-              children: chips,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 转换描述文字
-  String? _getInfo(String s) {
-    switch (s) {
-      case 'required':
-        return '必需';
-      case 'optional':
-        return '可选';
-      case 'unsupported':
-        return '无效';
-      default:
-        return '未知';
-    }
-  }
-
-  /// 模组作者
-  Widget _buildAuthors(ModDetail mod, ThemeData theme) {
-    final authors = mod.authors;
-    if (authors == null || authors.isEmpty) return const SizedBox.shrink();
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle('开发团队', theme, Icons.people_rounded),
-            CollapsibleWidgets(
-              widget: [
-                for (final author in authors)
-                  Author.buildAuthorChip(author, theme),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 相关链接
-  Widget _buildLinks(ModDetail mod, ThemeData theme) {
-    final links = mod.links;
-    if (links.isEmpty) return const SizedBox.shrink();
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle('相关链接', theme, Icons.insert_link_rounded),
-            CollapsibleWidgets(
-              widget: [
-                for (final link in mod.links)
-                  ActionChip(
-                    avatar: LinkIcons.getLinkIcon(link.name),
-                    backgroundColor: theme.colorScheme.onPrimary.withAlpha(100),
-                    label: Text(link.name, style: theme.textTheme.labelMedium),
-                    onPressed: () => _openUrl(link.url),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 支持版本：按加载器分组展示,每组一个加载器标签 + 折叠 chips
-  Widget _buildModVersion(ModDetail mod, ThemeData theme) {
-    final versions = mod.mcVersions;
-    if (versions.isEmpty) return const SizedBox.shrink();
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle('支持版本', theme, Icons.check_circle_rounded),
-            for (final entry in mod.mcVersions.entries)
-              if (entry.value.isNotEmpty) ...[
-                Text(
-                  entry.key,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                CollapsibleWidgets(
-                  widget: [
-                    for (final v in entry.value)
-                      Label(text: Text(v, style: theme.textTheme.labelMedium)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 详细内容
-  Widget _buildDescription(ModDetail mod, ThemeData theme) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle('模组介绍', theme, Icons.article_rounded),
-            _buildHTML(mod, theme),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 正文链接点击:图片地址(清洗时已包成 <a href=图片地址>)走灯箱,
-  /// 其余按站内跳转/浏览器规则分流
-  void _handleContentLink(String url) {
-    _openUrl(url);
-  }
-
-  /// 渲染 HTML 正文(两种来源的描述都是清洗后的 HTML)。
-  ///
-  /// 按设置里的渲染方法二选一:
-  /// - default:自写 HtmlContent(逐标签映射控件,正文零 MouseRegion)
-  /// - hyperViewer:hyper_render(单 RenderObject 布局引擎,性能更优)
-  Widget _buildHTML(ModDetail mod, ThemeData theme) {
-    RenderType type = SettingsService.instance.renderType;
-    switch (type) {
-      case RenderType.auto:
-        return HtmlContent(
-          html: mod.body!,
-          textStyle: theme.textTheme.bodyMedium,
-          onLinkTap: _handleContentLink,
-        );
-      case RenderType.hyper:
-        return _mouseDraggable(
-          HyperViewer(
-            html: mod.body!,
-            mode: HyperRenderMode.sync,
-            shrinkWrap: true,
-            selectable: false,
-            customCss: HyperRender.hyperCss(theme),
-            onLinkTap: _handleContentLink,
-          ),
-        );
-    }
-  }
-
-  /// 桌面端 ScrollBehavior 默认只认触摸/手写笔拖拽,鼠标拖不动
-  /// 正文里表格的横向滚动容器;包一层开启鼠标/触控板拖拽的配置
-  /// (只作用于描述内容,不影响外层列表的既有滚动方式)
-  Widget _mouseDraggable(Widget widget) {
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(
-        dragDevices: {
-          PointerDeviceKind.touch,
-          PointerDeviceKind.mouse,
-          PointerDeviceKind.stylus,
-          PointerDeviceKind.trackpad,
-          PointerDeviceKind.invertedStylus,
-        },
-      ),
-      child: widget,
+  /// 右栏(宽屏)或「其他」页签(窄屏):环境/作者/链接/版本四个区块
+  Widget _buildOther(ModDetail mod) {
+    return Column(
+      children: [
+        EnvironmentCard(mod: mod),
+        AuthorsCard(mod: mod),
+        LinksCard(mod: mod, onOpenUrl: _openUrl),
+        ModVersionCard(mod: mod),
+      ],
     );
   }
 }
