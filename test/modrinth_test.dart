@@ -298,9 +298,12 @@ void main() {
     await tester.pump();
     expect(find.text('科技'), findsWidgets); // Modrinth 分类卡片已渲染
 
-    // 进搜索页签
-    await tester.tap(find.text('搜索'));
+    // 回首页,点悬浮搜索按钮进搜索页(搜索不再是侧边栏页签)
+    await tester.tap(find.text('首页'));
     await tester.pump();
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
 
     // 搜索:分类请求已占用节流时间戳,搜索请求要等 1s 节流计时器
     await tester.enterText(find.byType(TextField), 'sodium');

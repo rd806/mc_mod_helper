@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/page/more/search.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 
 import '../../api/mcmod.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../service/settings.dart';
-import '../../widget/common/captcha_dialog.dart';
+import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 
 /// 应用主页:展示 mcmod.cn 首页的模组分类与首页推荐模组列表
@@ -146,6 +147,14 @@ class _FeaturePageState extends State<FeaturePage> {
             _buildFeaturedSection(),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => SearchPage()));
+        },
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        child: Icon(Icons.search),
       ),
     );
   }

@@ -10,12 +10,13 @@ import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
 import '../../model/mod/mod_detail.dart';
 import '../../model/mod/mod_summary.dart';
-import '../../widget/common/captcha_dialog.dart';
+import '../../widget/handler/captcha_dialog.dart';
+import '../../widget/common/image_box.dart';
+import '../../widget/handler/scroll_button.dart';
 import '../../widget/detail/card/authors_card.dart';
 import '../../widget/detail/intro/cover.dart';
 import '../../widget/detail/card/description_card.dart';
 import '../../widget/detail/card/environment_card.dart';
-import '../../widget/common/image_box.dart';
 import '../../widget/detail/card/links_card.dart';
 import '../../widget/detail/card/version_card.dart';
 import '../../widget/mod/favorite_toggle.dart';
@@ -56,6 +57,8 @@ class _DetailPageState extends State<DetailPage> {
   // 左右控制器
   final ScrollController _leftController = ScrollController();
   final ScrollController _rightController = ScrollController();
+  // 窄屏整页滚动控制器(返回顶部按钮需要驱动它)
+  final ScrollController _narrowController = ScrollController();
 
   void _switchTo(int index) {
     setState(() {
@@ -74,6 +77,7 @@ class _DetailPageState extends State<DetailPage> {
     // 释放资源，防止内存泄漏
     _leftController.dispose();
     _rightController.dispose();
+    _narrowController.dispose();
     super.dispose();
   }
 
@@ -270,13 +274,23 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-  /// 正确的模组界面
+  /// 正确的模组界面:按宽度选布局,并把返回顶部按钮浮在内容之上
   Widget _buildSuccess(ModDetail mod) {
-    // 按宽度选择布局:窄屏单列滚动,宽屏左右双列独立滚动
     return LayoutBuilder(
-      builder: (context, constraints) => constraints.maxWidth < 800
-          ? _buildNarrowPage(mod)
-          : _buildWidePage(mod),
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 800;
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: narrow ? _buildNarrowPage(mod) : _buildWidePage(mod),
+            ),
+            // 返回顶部:窄屏滚整页(含封面),宽屏滚左栏正文列
+            ScrollToTopButton(
+              controller: narrow ? _narrowController : _leftController,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -317,9 +331,15 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-  /// 窄屏布局:单列滚动，内容顺序排列
+  /// 窄屏布局:单列滚动,封面滚出、SelectionButton 吸顶,下方正文。
+  ///
+  /// 正文按当前页签替换对应 sliver,而不是用 IndexedStack 叠放两个子项:
+  /// IndexedStack 高度取所有子项的最大者——长「介绍」会让切到短「信息」
+  /// 后仍保留巨大的滚动范围(下方大段空白)。只放当前页签,滚动范围
+  /// 与当前内容一致。
   Widget _buildNarrowPage(ModDetail mod) {
     return CustomScrollView(
+      controller: _narrowController,
       slivers: [
         // 封面区域
         SliverToBoxAdapter(
@@ -339,14 +359,34 @@ class _DetailPageState extends State<DetailPage> {
             barHeight: SelectionButton.preferredHeight(context),
           ),
         ),
-        // IndexedStack 内容区 - 独立滚动
-        SliverToBoxAdapter(
-          child: IndexedStack(
-            index: _currentIndex,
-            children: [_buildDescription(mod), _buildOther(mod)],
-          ),
-        ),
+        // 正文:只放当前页签,滚动范围与内容一致
+        if (_currentIndex == 0) _introSliver(mod) else _infoSliver(mod),
       ],
+    );
+  }
+
+  /// 「介绍」正文:整段描述(可能很长,作为单个块随页面滚动)
+  Widget _introSliver(ModDetail mod) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsetsGeometry.fromLTRB(16, 0, 16, 16),
+        child: DescriptionCard(mod: mod, onLinkTap: _openUrl),
+      ),
+    );
+  }
+
+  /// 「信息」正文:环境/作者/链接/版本区块
+  Widget _infoSliver(ModDetail mod) {
+    return SliverPadding(
+      padding: const EdgeInsetsGeometry.fromLTRB(16, 0, 16, 16),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          EnvironmentCard(mod: mod),
+          AuthorsCard(mod: mod),
+          LinksCard(mod: mod, onOpenUrl: _openUrl),
+          ModVersionCard(mod: mod),
+        ]),
+      ),
     );
   }
 
@@ -375,22 +415,21 @@ class _DetailPageState extends State<DetailPage> {
 }
 
 /// SelectionButton 的 SliverPersistentHeader 代理
+/// 实现吸顶效果
 class _SelectionButtonSliverDelegate extends SliverPersistentHeaderDelegate {
-  final List<(String, int)> button;
-  final int selectedIndex;
-  final void Function(int) switchTo;
-
-  /// 吸顶条的高度(SelectionButton 实际高,页面构建时用
-  /// SelectionButton.preferredHeight 按当前主题字号算好传入;
-  /// extent 必须与组件实际高一致,否则被拉高悬浮或放不下被裁剪)
-  final double barHeight;
-
   _SelectionButtonSliverDelegate({
     required this.button,
     required this.selectedIndex,
     required this.switchTo,
     required this.barHeight,
   });
+
+  final List<(String, int)> button;
+  final int selectedIndex;
+  final void Function(int) switchTo;
+
+  /// 吸顶条的高度
+  final double barHeight;
 
   // 高度固定、不随滚动收缩,min/max 相等
   @override

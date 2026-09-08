@@ -59,15 +59,17 @@ void main() {
     // 分类在独立页签(IndexedStack 只展示当前页签)
     expect(find.text('模组分类'), findsNothing);
     expect(find.textContaining('加载失败'), findsOneWidget);
-    // 侧边栏四个入口(测试窗口 800x600 走宽屏 NavigationRail)
+    // 侧边栏四个入口(测试窗口 800x600 走宽屏 NavigationRail;
+    // 搜索已不是页签,入口是主页的悬浮按钮)
     expect(find.text('首页'), findsOneWidget);
     expect(find.text('分类'), findsOneWidget);
-    expect(find.text('搜索'), findsOneWidget);
+    expect(find.text('收藏'), findsOneWidget);
     expect(find.text('设置'), findsOneWidget);
+    expect(find.byIcon(Icons.search), findsOneWidget); // 首页悬浮搜索
     expect(find.byIcon(Icons.refresh), findsOneWidget);
   });
 
-  testWidgets('侧边栏切换页签:分类页与搜索页各自展示', (tester) async {
+  testWidgets('侧边栏切换页签 + 主页悬浮按钮进搜索', (tester) async {
     await pumpApp(tester);
 
     // 切到分类页签
@@ -77,12 +79,15 @@ void main() {
     expect(find.textContaining('加载失败'), findsOneWidget); // 分类区错误
     expect(find.text('首页推荐'), findsNothing);
 
-    // 切到搜索页签
-    await tester.tap(find.text('搜索'));
+    // 回首页,点悬浮搜索按钮进独立搜索页(不再是页签)
+    await tester.tap(find.text('首页'));
     await tester.pump();
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('模组搜索'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('首页推荐'), findsNothing);
   });
 
   testWidgets('进入设置页,可修改主题/字体/推荐条数', (tester) async {
@@ -255,8 +260,10 @@ void main() {
     ModrinthApi.clearCaches(); // 重置惰性客户端,让上面的工厂生效
 
     await pumpApp(tester);
-    await tester.tap(find.text('搜索'));
+    // 搜索入口:首页(默认页签)的悬浮按钮 → 独立搜索页
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
 
     await tester.enterText(find.byType(TextField), 'jei');
     await tester.tap(find.byIcon(Icons.arrow_forward));

@@ -544,6 +544,43 @@ void main() {
     expect(tapped, 'https://x/2.png');
   });
 
+  testWidgets('平级嵌套列表(嵌套 ul 与 li 同级)归属上一项渲染', (tester) async {
+    // 真实结构(class/29176):嵌套 <ul> 直接作为外层 <ul> 的子节点,
+    // 与 <li> 平级(非包在 li 内)。浏览器把它画成上一项的缩进子列表,
+    // 旧实现只收集 li 子节点,整段下属列表被丢弃
+    await tester.pumpWidget(
+      _wrap(
+        '<p>Sable 与 Create Aeronautics:</p>'
+        '<ul style="list-style-type: disc;"><li><p>当前的安全兼容方式已针对'
+        '以下组合实现，并确认这些版本可以一起启动和进入游戏：</p></li>'
+        '<ul style="list-style-type: square;"><li><p>Sable 2.0.3；</p></li>'
+        '<li><p>Create Aeronautics 1.3.0；</p></li></ul>'
+        '<li><p>下一个顶层条目</p></li></ul>',
+      ),
+    );
+
+    // 外层的引导句与后续条目都渲染
+    expect(
+      find.textContaining('当前的安全兼容方式已针对以下组合实现', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.text('下一个顶层条目', findRichText: true), findsOneWidget);
+    // 关键回归:平级嵌套列表的下属内容不再丢失
+    expect(find.text('Sable 2.0.3；', findRichText: true), findsOneWidget);
+    expect(
+      find.text('Create Aeronautics 1.3.0；', findRichText: true),
+      findsOneWidget,
+    );
+    // 嵌套条目缩进在外层条目之下(左边缘更靠右)
+    final outerLeft = tester
+        .getTopLeft(find.text('下一个顶层条目', findRichText: true))
+        .dx;
+    final subLeft = tester
+        .getTopLeft(find.text('Sable 2.0.3；', findRichText: true))
+        .dx;
+    expect(subLeft, greaterThan(outerLeft));
+  });
+
   testWidgets('正文链接/图片/表格均不产生 MouseRegion(fwfh 断言根源回归)', (tester) async {
     await tester.pumpWidget(
       _wrap(

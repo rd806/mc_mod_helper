@@ -342,7 +342,14 @@ List<String> _codeLines(dom.Element el) {
   return lines;
 }
 
-/// 列表:每个条目一行,无序用圆点、有序用序号;嵌套列表按层级缩进
+/// 列表:每个条目一行,无序用圆点、有序用序号;嵌套列表按层级缩进。
+///
+/// 嵌套支持两种写法:
+/// - 规范写法:嵌套 `<ul>/<ol>` 包在某个 `<li>` 里;
+/// - 宽松写法(站点编辑常见):嵌套 `<ul>/<ol>` 直接作为外层列表的
+///   子节点、与 `<li>` 平级(如 "…已针对以下组合实现:" 的下属列表)。
+///   后者按浏览器语义归属到前面最近的条目之下渲染成缩进子列表,
+///   而不是被丢弃。
 Widget _buildList(
   BuildContext context,
   ThemeData theme,
@@ -352,39 +359,93 @@ Widget _buildList(
   void Function(String) onLinkTap,
 ) {
   final ordered = el.localName == 'ol';
-  final items = el.children.whereType<dom.Element>().where(
-    (c) => c.localName == 'li',
-  );
-  var index = 0;
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final li in items)
-          Padding(
-            padding: EdgeInsets.only(left: 16 * listDepth, bottom: 4),
-            child: Row(
+  final entries = <Widget>[];
+
+  // 当前正在收集的条目:序号与元素,以及其后跟随的平级嵌套列表
+  dom.Element? curLi;
+  int? curNumber;
+  final tails = <Widget>[];
+  var hasRow = false;
+
+  void flushRow() {
+    if (!hasRow) return;
+    entries.add(
+      Padding(
+        padding: EdgeInsets.only(left: 16 * listDepth, bottom: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 2, right: 4),
-                  child: Text(ordered ? '${++index}.' : '•', style: base),
+                  child: Text(
+                    curNumber == null ? '•' : '$curNumber.',
+                    style: base,
+                  ),
                 ),
                 Expanded(
                   child: _richContent(
                     context,
                     theme,
                     base,
-                    li,
+                    curLi!,
                     listDepth + 1,
                     onLinkTap,
                   ),
                 ),
               ],
             ),
+            // 平级嵌套列表:紧随条目内容下方、再缩进一级
+            ...tails,
+          ],
+        ),
+      ),
+    );
+    tails.clear();
+    hasRow = false;
+  }
+
+  var nextNumber = 1;
+  for (final node in el.nodes) {
+    if (node is! dom.Element) continue;
+    if (node.localName == 'li') {
+      // 新条目:先落盘上一个条目
+      flushRow();
+      curLi = node;
+      curNumber = ordered ? nextNumber++ : null;
+      hasRow = true;
+    } else if (node.localName == 'ul' || node.localName == 'ol') {
+      final nested = _buildList(
+        context,
+        theme,
+        base,
+        node,
+        listDepth + 1,
+        onLinkTap,
+      );
+      if (hasRow) {
+        // 附到当前条目内容下方
+        tails.add(nested);
+      } else {
+        // 列表开头没有前驱条目(畸形):单独渲染为缩进块
+        entries.add(
+          Padding(
+            padding: EdgeInsets.only(left: 16 * listDepth),
+            child: nested,
           ),
-      ],
+        );
+      }
+    }
+  }
+  flushRow();
+
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: entries,
     ),
   );
 }

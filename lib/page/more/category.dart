@@ -8,6 +8,7 @@ import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../service/settings.dart';
+import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 
 /// 分类模组列表页：网格卡片展示，滚动到底自动加载下一页
@@ -24,6 +25,9 @@ class _CategoryPageState extends State<CategoryPage> {
   final ScrollController _controller = ScrollController();
 
   final List<ModSummary> _mods = [];
+
+  /// 推荐请求序号:丢弃过期响应,防止快速切换排序/条数时旧结果覆盖新结果
+  int _categorySeq = 0;
 
   /// 已成功加载的页数(0 = 尚未加载)
   int _page = 0;
@@ -72,6 +76,7 @@ class _CategoryPageState extends State<CategoryPage> {
 
   /// 加载首页内容
   Future<void> _loadInitial() async {
+    final seq = ++_categorySeq;
     setState(() {
       _initialLoading = true;
       _error = null;
@@ -96,6 +101,18 @@ class _CategoryPageState extends State<CategoryPage> {
           _loadNextPage();
         }
       });
+    } on McmodCaptchaException catch (e) {
+      if (!mounted || seq != _categorySeq) return;
+      final ok = await resolveCaptcha(context, e.challenge);
+      if (!mounted || seq != _categorySeq) return;
+      if (!ok) {
+        setState(() {
+          _error = e.toString();
+          _initialLoading = false;
+        });
+        return;
+      }
+      await _loadInitial();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -107,6 +124,7 @@ class _CategoryPageState extends State<CategoryPage> {
 
   /// 加载下一页内容
   Future<void> _loadNextPage() async {
+    final seq = ++_categorySeq;
     // 错误加载
     if (_loading || _loadMoreFailed || !_hasMore || _initialLoading) return;
     setState(() => _loading = true);
@@ -119,6 +137,18 @@ class _CategoryPageState extends State<CategoryPage> {
         _totalPages = result.totalPages;
         _loading = false;
       });
+    } on McmodCaptchaException catch (e) {
+      if (!mounted || seq != _categorySeq) return;
+      final ok = await resolveCaptcha(context, e.challenge);
+      if (!mounted || seq != _categorySeq) return;
+      if (!ok) {
+        setState(() {
+          _error = e.toString();
+          _initialLoading = false;
+        });
+        return;
+      }
+      await _loadInitial();
     } catch (_) {
       // 保留已加载内容,尾部显示重试
       if (!mounted) return;

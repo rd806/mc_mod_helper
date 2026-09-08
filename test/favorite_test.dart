@@ -79,11 +79,12 @@ Future<void> _pumpApp(WidgetTester tester) async {
   await tester.pump(); // 渲染错误态
 }
 
-/// 搜索页签里搜索 jei 并等结果渲染(Modrinth 假响应,mcmod 真实 400;
-/// mcmod 搜索走 www 节流,请求要等 1s 计时器)
+/// 在搜索页(主页悬浮按钮打开)里搜索 jei 并等结果渲染
+/// (Modrinth 假响应,mcmod 真实 400;mcmod 搜索走 www 节流,请求要等 1s 计时器)
 Future<void> _searchJei(WidgetTester tester) async {
-  await tester.tap(find.text('搜索'));
+  await tester.tap(find.byType(FloatingActionButton));
   await tester.pump();
+  await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
   await tester.enterText(find.byType(TextField), 'jei');
   await tester.tap(find.byIcon(Icons.arrow_forward));
   await tester.pump(); // 搜索发起

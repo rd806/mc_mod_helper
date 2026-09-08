@@ -7,7 +7,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
-import 'package:mc_mod_helper/widget/common/captcha_dialog.dart';
+import 'package:mc_mod_helper/widget/handler/captcha_dialog.dart';
 
 /// 1x1 透明 PNG(弹窗测试需要真实可解码的图片)
 const String _tinyPng =

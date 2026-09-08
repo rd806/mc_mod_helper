@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// 分段切换按钮(详情页窄屏「介绍/信息」切换器)。
+/// 分段切换按钮
 ///
-/// 选中项由父组件通过 [selectedIndex] 驱动:高亮滑块用
-/// AnimatedPositioned 跟随选中按钮滑动。滑块目标存在 State 里,
-/// 选中变化在 didUpdateWidget 中同步重测——此时按钮已完成布局
-/// (按钮位置与选中无关),随后必然发生的 build 让 AnimatedPositioned
-/// 从旧位置隐式动画到新位置;首次构建(按钮未布局)用帧后回调定位。
+/// 构建的按钮文本由父项的 [button] 传入
+/// 按钮与页面序号的对应关系由 [selectedIndex] 决定
+/// 点击对应按钮将让父组件更新选中值
+///
+/// 切换时使用平滑动画。
 class SelectionButton extends StatefulWidget {
   const SelectionButton({
     super.key,
