@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../model/mod/mod_detail.dart';
-import 'section_title.dart';
+import '../../../model/mod/mod_detail.dart';
+import '../intro/section_title.dart';
 
 /// 加载环境:environment 为 [客户端需求, 服务端需求] 的枚举值列表,
 /// 有时只有一侧(mcmod),按实际元素数量显示

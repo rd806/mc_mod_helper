@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../model/mod/mod_detail.dart';
-import '../common/collapsible_widgets.dart';
-import '../common/label.dart';
-import 'section_title.dart';
+import '../../../model/mod/mod_detail.dart';
+import '../../common/collapsible_widgets.dart';
+import '../../common/label.dart';
+import '../intro/section_title.dart';
 
 /// 支持版本:按加载器分组展示,每组一个加载器标签 + 折叠 chips
 class ModVersionCard extends StatelessWidget {

@@ -6,8 +6,8 @@ import 'package:mc_mod_helper/render/hyper_render/hyper.dart';
 import 'package:mc_mod_helper/service/settings.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 
-import '../../model/mod/mod_detail.dart';
-import 'section_title.dart';
+import '../../../model/mod/mod_detail.dart';
+import '../intro/section_title.dart';
 
 /// 模组介绍:渲染清洗后的 HTML 正文(两种来源的描述都是清洗后的 HTML)。
 ///

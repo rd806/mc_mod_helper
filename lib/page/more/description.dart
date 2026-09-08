@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/widget/detail/selection_button.dart';
+import 'package:mc_mod_helper/widget/detail/intro/selection_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/mcmod.dart';
@@ -11,13 +11,13 @@ import '../../api/modrinth.dart';
 import '../../model/mod/mod_detail.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../widget/common/captcha_dialog.dart';
-import '../../widget/detail/authors_card.dart';
-import '../../widget/detail/cover.dart';
-import '../../widget/detail/description_card.dart';
-import '../../widget/detail/environment_card.dart';
+import '../../widget/detail/card/authors_card.dart';
+import '../../widget/detail/intro/cover.dart';
+import '../../widget/detail/card/description_card.dart';
+import '../../widget/detail/card/environment_card.dart';
 import '../../widget/common/image_box.dart';
-import '../../widget/detail/links_card.dart';
-import '../../widget/detail/version_card.dart';
+import '../../widget/detail/card/links_card.dart';
+import '../../widget/detail/card/version_card.dart';
 import '../../widget/mod/favorite_toggle.dart';
 
 /// 模组详情页
@@ -297,8 +297,8 @@ class _DetailPageState extends State<DetailPage> {
                 flex: 2,
                 child: ListView(
                   controller: _leftController,
-                  padding: const EdgeInsets.fromLTRB(64, 0, 8, 0),
-                  children: [DescriptionCard(mod: mod, onLinkTap: _openUrl)],
+                  padding: const EdgeInsets.fromLTRB(32, 0, 0, 0),
+                  children: [_buildDescription(mod)],
                 ),
               ),
               // 右栏(窄):相关链接 + 支持版本
@@ -306,7 +306,7 @@ class _DetailPageState extends State<DetailPage> {
                 width: min(450, MediaQuery.of(context).size.width * 0.4),
                 child: ListView(
                   controller: _rightController,
-                  padding: const EdgeInsets.fromLTRB(8, 0, 64, 0),
+                  padding: const EdgeInsets.fromLTRB(0, 0, 32, 0),
                   children: [_buildOther(mod)],
                 ),
               ),
@@ -319,37 +319,108 @@ class _DetailPageState extends State<DetailPage> {
 
   /// 窄屏布局:单列滚动，内容顺序排列
   Widget _buildNarrowPage(ModDetail mod) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        ModCoverNarrow(mod: mod),
-        const Divider(),
-        SelectionButton(
-          button: _button,
-          selectedIndex: _currentIndex,
-          switchTo: _switchTo,
+    return CustomScrollView(
+      slivers: [
+        // 封面区域
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: ModCoverNarrow(mod: mod),
+          ),
         ),
-        // _button 列表中的顺序应该与 IndexedStack 中的一致
-        IndexedStack(
-          index: _currentIndex,
-          children: [
-            DescriptionCard(mod: mod, onLinkTap: _openUrl),
-            _buildOther(mod),
-          ],
+        // SelectionButton 吸顶效果
+        SliverPersistentHeader(
+          pinned: true, // 关键：固定吸顶
+          delegate: _SelectionButtonSliverDelegate(
+            button: _button,
+            selectedIndex: _currentIndex,
+            switchTo: _switchTo,
+            // 吸顶条高度与按钮实际高一致(按当前字号计算),不留空带不裁剪
+            barHeight: SelectionButton.preferredHeight(context),
+          ),
+        ),
+        // IndexedStack 内容区 - 独立滚动
+        SliverToBoxAdapter(
+          child: IndexedStack(
+            index: _currentIndex,
+            children: [_buildDescription(mod), _buildOther(mod)],
+          ),
         ),
       ],
     );
   }
 
-  /// 右栏(宽屏)或「其他」页签(窄屏):环境/作者/链接/版本四个区块
-  Widget _buildOther(ModDetail mod) {
-    return Column(
-      children: [
-        EnvironmentCard(mod: mod),
-        AuthorsCard(mod: mod),
-        LinksCard(mod: mod, onOpenUrl: _openUrl),
-        ModVersionCard(mod: mod),
-      ],
+  /// 描述区域
+  Widget _buildDescription(ModDetail mod) {
+    return Padding(
+      padding: const EdgeInsetsGeometry.fromLTRB(16, 0, 16, 16),
+      child: DescriptionCard(mod: mod, onLinkTap: _openUrl),
     );
+  }
+
+  /// 其他页签: 环境/作者/链接/版本四个区块
+  Widget _buildOther(ModDetail mod) {
+    return Padding(
+      padding: const EdgeInsetsGeometry.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        children: [
+          EnvironmentCard(mod: mod),
+          AuthorsCard(mod: mod),
+          LinksCard(mod: mod, onOpenUrl: _openUrl),
+          ModVersionCard(mod: mod),
+        ],
+      ),
+    );
+  }
+}
+
+/// SelectionButton 的 SliverPersistentHeader 代理
+class _SelectionButtonSliverDelegate extends SliverPersistentHeaderDelegate {
+  final List<(String, int)> button;
+  final int selectedIndex;
+  final void Function(int) switchTo;
+
+  /// 吸顶条的高度(SelectionButton 实际高,页面构建时用
+  /// SelectionButton.preferredHeight 按当前主题字号算好传入;
+  /// extent 必须与组件实际高一致,否则被拉高悬浮或放不下被裁剪)
+  final double barHeight;
+
+  _SelectionButtonSliverDelegate({
+    required this.button,
+    required this.selectedIndex,
+    required this.switchTo,
+    required this.barHeight,
+  });
+
+  // 高度固定、不随滚动收缩,min/max 相等
+  @override
+  double get minExtent => barHeight;
+
+  @override
+  double get maxExtent => barHeight;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    // 这里的 Container 背景色防止滚动内容从吸顶条下方透出
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SelectionButton(
+        button: button,
+        selectedIndex: selectedIndex,
+        switchTo: switchTo,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SelectionButtonSliverDelegate oldDelegate) {
+    return selectedIndex != oldDelegate.selectedIndex ||
+        button != oldDelegate.button ||
+        barHeight != oldDelegate.barHeight;
   }
 }

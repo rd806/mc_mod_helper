@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/widget/common/link_icons.dart';
 
-import '../../model/mod/mod_detail.dart';
-import '../common/image_box.dart';
+import '../../../model/mod/mod_detail.dart';
+import '../../common/image_box.dart';
 
 /// 详情页封面与标题的公共基类:
 /// 点击封面开灯箱、名称+副标题构建等公共逻辑,
@@ -149,6 +149,8 @@ class ModCoverNarrow extends ModCover {
           _buildIcon(context, width: double.infinity, height: 200),
           const SizedBox(height: 12),
           _buildName(context),
+          const SizedBox(height: 12),
+          const Divider(),
         ],
       ),
     );
