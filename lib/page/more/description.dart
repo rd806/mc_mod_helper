@@ -300,7 +300,10 @@ class _DetailPageState extends State<DetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 顶部:封面与标题（通栏）
-        ModCoverWide(mod: mod),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(64, 16, 64, 16),
+          child: ModCoverWide(mod: mod),
+        ),
         // 下方:左宽右窄两栏
         Expanded(
           child: Row(
@@ -308,20 +311,25 @@ class _DetailPageState extends State<DetailPage> {
             children: [
               // 左栏(宽):模组介绍
               Expanded(
-                flex: 2,
-                child: ListView(
-                  controller: _leftController,
-                  padding: const EdgeInsets.fromLTRB(32, 0, 0, 0),
-                  children: [_buildDescription(mod)],
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(64, 0, 0, 0),
+                  child: ListView(
+                    controller: _leftController,
+                    padding: const EdgeInsets.fromLTRB(0, 0, 10, 0),
+                    children: [_buildDescription(mod)],
+                  ),
                 ),
               ),
               // 右栏(窄):相关链接 + 支持版本
               SizedBox(
                 width: min(450, MediaQuery.of(context).size.width * 0.4),
-                child: ListView(
-                  controller: _rightController,
-                  padding: const EdgeInsets.fromLTRB(0, 0, 32, 0),
-                  children: [_buildOther(mod)],
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 0, 54, 0),
+                  child: ListView(
+                    controller: _rightController,
+                    padding: const EdgeInsets.fromLTRB(0, 0, 10, 0),
+                    children: [_buildOther(mod)],
+                  ),
                 ),
               ),
             ],
@@ -344,7 +352,7 @@ class _DetailPageState extends State<DetailPage> {
         // 封面区域
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
             child: ModCoverNarrow(mod: mod),
           ),
         ),
@@ -392,24 +400,18 @@ class _DetailPageState extends State<DetailPage> {
 
   /// 描述区域
   Widget _buildDescription(ModDetail mod) {
-    return Padding(
-      padding: const EdgeInsetsGeometry.fromLTRB(16, 0, 16, 16),
-      child: DescriptionCard(mod: mod, onLinkTap: _openUrl),
-    );
+    return DescriptionCard(mod: mod, onLinkTap: _openUrl);
   }
 
   /// 其他页签: 环境/作者/链接/版本四个区块
   Widget _buildOther(ModDetail mod) {
-    return Padding(
-      padding: const EdgeInsetsGeometry.fromLTRB(16, 0, 16, 16),
-      child: Column(
-        children: [
-          EnvironmentCard(mod: mod),
-          AuthorsCard(mod: mod),
-          LinksCard(mod: mod, onOpenUrl: _openUrl),
-          ModVersionCard(mod: mod),
-        ],
-      ),
+    return Column(
+      children: [
+        EnvironmentCard(mod: mod),
+        AuthorsCard(mod: mod),
+        LinksCard(mod: mod, onOpenUrl: _openUrl),
+        ModVersionCard(mod: mod),
+      ],
     );
   }
 }

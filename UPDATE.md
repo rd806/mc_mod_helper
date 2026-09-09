@@ -2,6 +2,9 @@
 
 ## Lastest
 
+> [!Warning]
+> Windows端的默认文件存储位置已更改：`com.example/MCModHelper` -> `com.github.rd806/MCModHelper`
+
 添加：
 * 模组详情页增加“开发团队”卡片和“返回顶部”按钮。
 * 设置页可选择字体。

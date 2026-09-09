@@ -141,18 +141,15 @@ class ModCoverNarrow extends ModCover {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildIcon(context, width: double.infinity, height: 200),
-          const SizedBox(height: 12),
-          _buildName(context),
-          const SizedBox(height: 12),
-          const Divider(),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildIcon(context, width: double.infinity, height: 200),
+        const SizedBox(height: 12),
+        _buildName(context),
+        const SizedBox(height: 12),
+        const Divider(),
+      ],
     );
   }
 }
@@ -163,21 +160,18 @@ class ModCoverWide extends ModCover {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(64, 16, 64, 16),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildIcon(context, width: 240, height: 180),
-              const SizedBox(width: 16),
-              Expanded(child: _buildName(context)),
-            ],
-          ),
-          const Divider(),
-        ],
-      ),
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildIcon(context, width: 240, height: 180),
+            const SizedBox(width: 16),
+            Expanded(child: _buildName(context)),
+          ],
+        ),
+        const Divider(),
+      ],
     );
   }
 }

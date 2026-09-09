@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
+            VALUE "CompanyName", "com.github.rd806" "\0"
             VALUE "FileDescription", "MCModHelper" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "mc_mod_helper" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.github.rd806. All rights reserved." "\0"
             VALUE "OriginalFilename", "mc_mod_helper.exe" "\0"
             VALUE "ProductName", "MCModHelper" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
