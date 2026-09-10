@@ -678,7 +678,7 @@ class McmodApi {
       links: links,
       mcVersions: mcVersions,
       platform: field('支持平台'),
-      environment: getEnvironment(field('运行环境')),
+      sides: getEnvironment(field('运行环境')),
       statistics: parseStatistics(),
       authors: parseAuthors(),
     );

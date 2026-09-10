@@ -18,7 +18,7 @@ class ModDetail {
     this.links = const [],
     this.mcVersions = const {},
     this.platform,
-    this.environment,
+    this.sides,
   });
 
   /// 统一模组标识(字符串):
@@ -49,6 +49,10 @@ class ModDetail {
   /// 相关链接(CurseForge / GitHub 等)
   final List<Link> links;
 
+  /// 加载侧（如 客户端需装, 服务端无效）
+  /// 使用 Modrinth 标准：[required|required]
+  final List<String>? sides;
+
   /// 支持的 MC 版本,按加载器分组:
   /// key 为加载器名(Forge/NeoForge/Fabric 等,与数据源原始写法一致),
   /// value 为该加载器支持的 MC 版本列表
@@ -56,10 +60,6 @@ class ModDetail {
 
   /// 支持平台(如 Java版)
   final String? platform;
-
-  /// 加载环境（如 客户端需装, 服务端无效）
-  /// 使用 Modrinth 标准：[required|required]
-  final List<String>? environment;
 
   /// 模组作者
   final List<Author>? authors;
@@ -84,6 +84,6 @@ class ModDetail {
     links: links,
     mcVersions: mcVersions,
     platform: platform,
-    environment: environment,
+    sides: sides,
   );
 }

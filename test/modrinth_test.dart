@@ -172,7 +172,7 @@ void main() {
       expect(d.platform, 'Fabric');
       // 环境为 [客户端, 服务端] 枚举值列表(client_side=required,
       // server_side=unsupported → 仅客户端)
-      expect(d.environment, ['required', 'unsupported']);
+      expect(d.sides, ['required', 'unsupported']);
       // 版本按加载器分组(版本列表接口聚合,去重保序)
       expect(d.mcVersions, {
         'fabric': ['1.21.1', '1.20.4'],

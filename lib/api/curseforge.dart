@@ -348,7 +348,7 @@ class CurseforgeApi {
       links: _buildLinks(data),
       mcVersions: _parseVersionsFromFiles(filesBody),
       platform: _loadersFromFiles(filesBody),
-      environment: _parseEnvironment(data),
+      sides: _parseEnvironment(data),
       source: ModSource.curseforge,
       authors: _parseAuthors(data),
     );

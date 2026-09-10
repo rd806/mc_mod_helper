@@ -18,7 +18,6 @@ import '../../widget/detail/intro/cover.dart';
 import '../../widget/detail/card/description_card.dart';
 import '../../widget/detail/card/environment_card.dart';
 import '../../widget/detail/card/links_card.dart';
-import '../../widget/detail/card/version_card.dart';
 import '../../widget/mod/favorite_toggle.dart';
 
 /// 模组详情页
@@ -392,7 +391,6 @@ class _DetailPageState extends State<DetailPage> {
           EnvironmentCard(mod: mod),
           AuthorsCard(mod: mod),
           LinksCard(mod: mod, onOpenUrl: _openUrl),
-          ModVersionCard(mod: mod),
         ]),
       ),
     );
@@ -410,7 +408,6 @@ class _DetailPageState extends State<DetailPage> {
         EnvironmentCard(mod: mod),
         AuthorsCard(mod: mod),
         LinksCard(mod: mod, onOpenUrl: _openUrl),
-        ModVersionCard(mod: mod),
       ],
     );
   }

@@ -317,7 +317,7 @@ class ModrinthApi {
       links: _buildLinks(data),
       mcVersions: _parseVersionsByLoader(versionsBody),
       platform: _buildPlatform(data),
-      environment: _buildEnvironment(data),
+      sides: _buildEnvironment(data),
       source: ModSource.modrinth,
       authors: _parseAuthors(membersBody),
     );

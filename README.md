@@ -10,6 +10,7 @@
 
 > [!Note]
 > 因为 MC百科 没有公开的官方 API，所以本应用通过模拟 HTTP 请求获取网页内容并转换为可读界面。
+> （注意，**这不会绕过**可能出现的验证界面！）
 > 
 > 由于 CurseForge 的 API 需要申请 API key，因此暂不真正实现，仅保留选项接口。
 > 
@@ -29,9 +30,8 @@
 因为尚未找到符合要求的通用渲染方法：
 * `flutter_html` 暂不兼容当前的 flutter 版本。
 * `flutter_widget_from_html` 插件在处理 **MC百科** 的 HTML 文本时会出现调试断言错误影响开发。 
-* `flutter_markdown_plus` 无法处理 HTML 标签。
-
-同时又不想内嵌一个浏览器。
+* `flutter_markdown_plus` 无法处理 HTML 标签。 
+* 同时又不想内嵌一个浏览器。
 
 > 核心是难以处理表格（带图片的表格，合并单元格的表格）内容。如有更好的方法，欢迎提出 issue！
 
@@ -80,4 +80,5 @@ flutter test
 
 * `mc_mod_helper.json` 是来自 [Ico moon](https://icomoon.io/new-app/) 的图标文件集合。
 * `UPDATE.md` 存放更新描述。
+* 模组加载器的图标来源于 Modrinth。
 

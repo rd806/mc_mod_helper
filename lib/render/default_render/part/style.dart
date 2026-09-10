@@ -144,8 +144,9 @@ Color? _parseColor(String? value) {
 /// 等宽样式:代码块/行内代码
 TextStyle _monoStyle(ThemeData theme, TextStyle base) {
   return base.copyWith(
-    fontFamily: 'monospace',
-    fontFamilyFallback: const ['Consolas', 'Courier New'],
+    fontFamily: 'Consolas',
+    // Microsoft YaHei 保证中文字体正常显示
+    fontFamilyFallback: const ['monospace', 'Courier New', 'Microsoft YaHei'],
     backgroundColor: theme.colorScheme.surfaceContainerHighest,
   );
 }
