@@ -10,8 +10,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/main.dart';
-import 'package:mc_mod_helper/service/savings.dart';
-import 'package:mc_mod_helper/service/settings.dart';
+import 'package:mc_mod_helper/service/saves/likes.dart';
+import 'package:mc_mod_helper/setting/agent_settings.dart';
+import 'package:mc_mod_helper/setting/settings.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
@@ -45,6 +46,7 @@ void main() {
     // load 对缺失键显式赋默认值,单例随之复位
     SharedPreferences.setMockInitialValues({});
     await SettingsService.instance.load();
+    await AgentSettings.instance.load();
     // 重置各 Api 的节流时间戳与缓存:否则上个用例残留的请求时间
     // 会让"第一个请求立即发出"的节流节奏不可预测
     McmodApi.clearCaches();
@@ -59,17 +61,18 @@ void main() {
     // 分类在独立页签(IndexedStack 只展示当前页签)
     expect(find.text('模组分类'), findsNothing);
     expect(find.textContaining('加载失败'), findsOneWidget);
-    // 侧边栏四个入口(测试窗口 800x600 走宽屏 NavigationRail;
-    // 搜索已不是页签,入口是主页的悬浮按钮)
+    // 侧边栏五个入口(测试窗口 800x600 走宽屏 NavigationRail)
     expect(find.text('首页'), findsOneWidget);
     expect(find.text('分类'), findsOneWidget);
+    expect(find.text('搜索'), findsOneWidget);
     expect(find.text('收藏'), findsOneWidget);
     expect(find.text('设置'), findsOneWidget);
-    expect(find.byIcon(Icons.search), findsOneWidget); // 首页悬浮搜索
-    expect(find.byIcon(Icons.refresh), findsOneWidget);
+    expect(find.byIcon(Icons.refresh), findsOneWidget); // 主页刷新按钮
+    // 主页悬浮入口:模组助手(搜索是侧边栏页签)
+    expect(find.byIcon(Icons.smart_toy_outlined), findsOneWidget);
   });
 
-  testWidgets('侧边栏切换页签 + 主页悬浮按钮进搜索', (tester) async {
+  testWidgets('侧边栏切换页签:分类与搜索', (tester) async {
     await pumpApp(tester);
 
     // 切到分类页签
@@ -79,13 +82,10 @@ void main() {
     expect(find.textContaining('加载失败'), findsOneWidget); // 分类区错误
     expect(find.text('首页推荐'), findsNothing);
 
-    // 回首页,点悬浮搜索按钮进独立搜索页(不再是页签)
-    await tester.tap(find.text('首页'));
+    // 切到搜索页签(IndexedStack 切换非选中页 offstage,
+    // 设置页的输入框不会干扰 TextField 计数)
+    await tester.tap(find.text('搜索'));
     await tester.pump();
-    await tester.tap(find.byType(FloatingActionButton));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
-    await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('模组搜索'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
   });
@@ -122,9 +122,11 @@ void main() {
 
     // 切换字体(下拉框) → 服务值变化,主题 fontFamily 即时生效
     // (回归:主题缓存键曾漏掉字体,切换后需重启才生效)
+    // 注意:AI 设置里的「目标语言」也是 DropdownButton<String>,
+    // 字体下拉在页面更靠前,用 .first 取它
     expect(find.text('字体设置'), findsOneWidget);
     expect(find.text('字体选择'), findsOneWidget);
-    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.tap(find.byType(DropdownButton<String>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Unifont').last);
     await tester.pumpAndSettle(); // 新 ThemeData → 主题过渡动画收尾
@@ -199,6 +201,20 @@ void main() {
     await tester.tap(find.text('网格').last);
     await tester.pumpAndSettle();
     expect(SettingsService.instance.displayStyle, DisplayStyle.card);
+
+    // AI 设置:接口地址输入后即时写入(旧实现要回车/点开别处才提交,
+    // 用户改完直接离开会丢失 —— "改了不生效")。
+    // AI 设置里的三个 TextField 依次是 接口地址 / API Key / 模型
+    await tester.ensureVisible(find.text('AI 设置'));
+    await tester.pump();
+    final baseUrlField = find.byType(TextField).first;
+    await tester.enterText(baseUrlField, 'https://api.deepseek.com/v1');
+    await tester.pump();
+    expect(AgentSettings.instance.baseUrl, 'https://api.deepseek.com/v1');
+    // 清空输入框 → 回落默认地址
+    await tester.enterText(baseUrlField, '');
+    await tester.pump();
+    expect(AgentSettings.instance.baseUrl, AgentSettings.defaultBaseUrl);
   });
 
   testWidgets('点击刷新按钮重新加载推荐', (tester) async {
@@ -260,10 +276,9 @@ void main() {
     ModrinthApi.clearCaches(); // 重置惰性客户端,让上面的工厂生效
 
     await pumpApp(tester);
-    // 搜索入口:首页(默认页签)的悬浮按钮 → 独立搜索页
-    await tester.tap(find.byType(FloatingActionButton));
+    // 搜索入口:侧边栏「搜索」页签
+    await tester.tap(find.text('搜索'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
 
     await tester.enterText(find.byType(TextField), 'jei');
     await tester.tap(find.byIcon(Icons.arrow_forward));

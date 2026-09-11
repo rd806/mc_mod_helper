@@ -7,7 +7,7 @@ import '../../model/mod/mod_category.dart';
 import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
 import '../../model/mod/mod_summary.dart';
-import '../../service/settings.dart';
+import '../../setting/settings.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 

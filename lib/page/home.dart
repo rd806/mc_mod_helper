@@ -4,6 +4,8 @@ import 'package:mc_mod_helper/page/main/favorite.dart';
 import 'package:mc_mod_helper/page/main/feature.dart';
 import 'package:mc_mod_helper/page/main/sort.dart';
 
+import 'main/search.dart';
+
 /// 主页
 /// 包含导航栏
 class HomePage extends StatefulWidget {
@@ -21,6 +23,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     FeaturePage(),
     SortPage(),
+    SearchPage(),
     FavoritePage(),
     ConfigPage(),
   ];
@@ -28,6 +31,7 @@ class _HomePageState extends State<HomePage> {
   final List<NavigationItem> _navItems = const [
     NavigationItem(icon: Icons.home, label: '首页'),
     NavigationItem(icon: Icons.category, label: '分类'),
+    NavigationItem(icon: Icons.search_rounded, label: '搜索'),
     NavigationItem(icon: Icons.favorite, label: '收藏'),
     NavigationItem(icon: Icons.settings, label: '设置'),
   ];

@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/page/home.dart';
 
-import 'service/savings.dart';
-import 'service/settings.dart';
+import 'service/agent/history.dart';
+import 'service/saves/likes.dart';
+import 'setting/agent_settings.dart';
+import 'setting/settings.dart';
 
 /// 应用程序入口
 Future<void> main() async {
@@ -12,6 +14,10 @@ Future<void> main() async {
   await FavoritesService.instance.init();
   // 先加载保存的设置再启动应用，避免启动后主题/字体跳变
   await SettingsService.instance.load();
+  // AI 接口配置(翻译与助手共用)
+  await AgentSettings.instance.load();
+  // 助手对话记录(关掉面板/重启后接着聊,并作为多轮上下文)
+  await AgentHistoryService.instance.load();
   runApp(const McModHelper());
 }
 

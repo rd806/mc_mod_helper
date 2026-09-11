@@ -5,7 +5,8 @@ import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:mc_mod_helper/service/settings.dart';
+import 'package:mc_mod_helper/setting/agent_settings.dart';
+import 'package:mc_mod_helper/setting/settings.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,90 @@ void main() {
     expect(SettingsService.instance.renderType, RenderType.auto);
     expect(SettingsService.instance.displayStyle, DisplayStyle.table);
     expect(SettingsService.instance.fontType, 'NotoSansSC');
+    // 翻译目标语言默认简体中文(接口地址/Key/模型见 AgentSettings 用例)
+    expect(SettingsService.instance.translateLang, 'zh-Hans');
+  });
+
+  test('翻译目标语言:setter 写入并可恢复', () async {
+    await SettingsService.instance.load();
+    SettingsService.instance.setTranslateLang('en');
+    expect(SettingsService.instance.translateLangLabel, '英语');
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('translate_lang'), 'en');
+
+    // 模拟重启恢复
+    SharedPreferences.setMockInitialValues({'translate_lang': 'en'});
+    await SettingsService.instance.load();
+    expect(SettingsService.instance.translateLang, 'en');
+  });
+
+  test('翻译目标语言:非法存储值与非法 setter 都忽略', () async {
+    SharedPreferences.setMockInitialValues({'translate_lang': 'klingon'});
+    await SettingsService.instance.load();
+    expect(SettingsService.instance.translateLang, 'zh-Hans');
+    SettingsService.instance.setTranslateLang('klingon');
+    expect(SettingsService.instance.translateLang, 'zh-Hans');
+  });
+
+  group('AgentSettings(AI 接口配置,翻译与助手共用)', () {
+    test('无存档时回到默认值', () async {
+      await AgentSettings.instance.load();
+      expect(AgentSettings.instance.baseUrl, AgentSettings.defaultBaseUrl);
+      expect(AgentSettings.instance.apiKey, '');
+      expect(AgentSettings.instance.model, AgentSettings.defaultModel);
+      expect(AgentSettings.instance.configured, isFalse);
+    });
+
+    test('setter 写入并可恢复', () async {
+      await AgentSettings.instance.load();
+      AgentSettings.instance
+        ..setBaseUrl('https://api.deepseek.com/v1')
+        ..setApiKey('sk-test')
+        ..setModel('deepseek-chat');
+      expect(AgentSettings.instance.configured, isTrue);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('agent_base_url'), 'https://api.deepseek.com/v1');
+      expect(prefs.getString('agent_api_key'), 'sk-test');
+      expect(prefs.getString('agent_model'), 'deepseek-chat');
+
+      // 模拟重启恢复
+      SharedPreferences.setMockInitialValues({
+        'agent_base_url': 'https://api.deepseek.com/v1',
+        'agent_api_key': 'sk-test',
+        'agent_model': 'deepseek-chat',
+      });
+      await AgentSettings.instance.load();
+      expect(AgentSettings.instance.baseUrl, 'https://api.deepseek.com/v1');
+      expect(AgentSettings.instance.apiKey, 'sk-test');
+      expect(AgentSettings.instance.model, 'deepseek-chat');
+    });
+
+    test('空串/空白存储值回落默认;Key 可清空(关闭 AI 功能)', () async {
+      SharedPreferences.setMockInitialValues({
+        'agent_base_url': '   ',
+        'agent_model': '',
+      });
+      await AgentSettings.instance.load();
+      expect(AgentSettings.instance.baseUrl, AgentSettings.defaultBaseUrl);
+      expect(AgentSettings.instance.model, AgentSettings.defaultModel);
+
+      AgentSettings.instance
+        ..setApiKey('x')
+        ..setApiKey('');
+      expect(AgentSettings.instance.apiKey, '');
+      expect(AgentSettings.instance.configured, isFalse);
+
+      // 地址/模型允许清空:存取空串,读取回落默认(设置页的占位提示)
+      AgentSettings.instance
+        ..setBaseUrl('https://api.deepseek.com/v1')
+        ..setBaseUrl('')
+        ..setModel('deepseek-chat')
+        ..setModel('');
+      expect(AgentSettings.instance.baseUrl, AgentSettings.defaultBaseUrl);
+      expect(AgentSettings.instance.model, AgentSettings.defaultModel);
+    });
   });
 
   test('setter 写入持久化存储', () async {

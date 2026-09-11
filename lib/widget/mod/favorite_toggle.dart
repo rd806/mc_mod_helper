@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/model/mod/mod_summary.dart';
-import 'package:mc_mod_helper/service/savings.dart';
+import 'package:mc_mod_helper/service/saves/likes.dart';
 
 /// 收藏开关按钮:心形,点亮=已收藏。
 ///

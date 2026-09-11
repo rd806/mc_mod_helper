@@ -7,7 +7,7 @@ import 'package:mc_mod_helper/widget/common/link_icons.dart';
 
 import '../../api/mcmod.dart';
 import '../../model/mod/mod_summary.dart';
-import '../../service/settings.dart';
+import '../../setting/settings.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 

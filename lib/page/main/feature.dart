@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/page/more/search.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 
 import '../../api/mcmod.dart';
 import '../../model/mod/mod_summary.dart';
-import '../../service/settings.dart';
+import '../../setting/settings.dart';
+import '../../widget/agent/agent_sheet.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 
@@ -148,13 +148,18 @@ class _FeaturePageState extends State<FeaturePage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context)
-              .push(MaterialPageRoute(builder: (_) => SearchPage()));
-        },
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        child: Icon(Icons.search),
+      // 两个悬浮入口:上方「模组助手」对话面板,下方站内搜索
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            tooltip: '模组助手',
+            onPressed: () => showAgentSheet(context),
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            child: Icon(Icons.smart_toy_outlined),
+          ),
+        ],
       ),
     );
   }

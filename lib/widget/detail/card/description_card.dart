@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:hyper_render/hyper_render.dart';
 import 'package:mc_mod_helper/render/default_render/html_content.dart';
 import 'package:mc_mod_helper/render/hyper_render/hyper.dart';
-import 'package:mc_mod_helper/service/settings.dart';
+import 'package:mc_mod_helper/setting/agent_settings.dart';
+import 'package:mc_mod_helper/setting/settings.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 
+import '../../../service/agent/translate.dart';
 import '../../../model/mod/mod_detail.dart';
 import '../intro/section_title.dart';
 
@@ -14,7 +16,10 @@ import '../intro/section_title.dart';
 /// 按设置里的渲染方法二选一:
 /// - default:自写 HtmlContent(逐标签映射控件,正文零 MouseRegion)
 /// - hyperViewer:hyper_render(单 RenderObject 布局引擎,性能更优)
-class DescriptionCard extends StatelessWidget {
+///
+/// 标题行右侧提供「翻译/原文」按钮:由用户手动决定是否用 AI 翻译正文
+/// (译文按 模组+语言 缓存在会话内,再次切换不再重复请求)。
+class DescriptionCard extends StatefulWidget {
   const DescriptionCard({
     super.key,
     required this.mod,
@@ -27,8 +32,101 @@ class DescriptionCard extends StatelessWidget {
   final void Function(String url) onLinkTap;
 
   @override
+  State<DescriptionCard> createState() => _DescriptionCardState();
+}
+
+class _DescriptionCardState extends State<DescriptionCard> {
+  /// 是否展示译文
+  bool _showTranslated = false;
+
+  /// 正在请求翻译
+  bool _loading = false;
+
+  /// 分块翻译进度(总块数 > 1 时按钮显示 已完成/总数)
+  int _chunkDone = 0;
+  int _chunkTotal = 0;
+
+  /// 当前译文及其目标语言(语言变化时视为失效,回到原文)
+  String? _translatedHtml;
+  String? _translatedLang;
+
+  /// 缓存/请求用的键:区分来源与模组
+  String get _cacheKey => '${widget.mod.source.name}:${widget.mod.id}';
+
+  /// 当前应渲染的正文
+  String get _html {
+    final lang = SettingsService.instance.translateLang;
+    if (_showTranslated && _translatedHtml != null && _translatedLang == lang) {
+      return _translatedHtml!;
+    }
+    return widget.mod.body!;
+  }
+
+  /// 译文当前是否生效(按钮文案/状态据此判断)
+  bool get _translatedActive =>
+      _showTranslated &&
+      _translatedHtml != null &&
+      _translatedLang == SettingsService.instance.translateLang;
+
+  Future<void> _toggleTranslate() async {
+    if (_loading) return;
+    final lang = SettingsService.instance.translateLang;
+    // 已有该语言译文:直接切换原文/译文,不再请求
+    final cached = _translatedHtml != null && _translatedLang == lang
+        ? _translatedHtml
+        : TranslateApi.cachedHtml(_cacheKey, targetLang: lang);
+    if (cached != null) {
+      setState(() {
+        _translatedHtml = cached;
+        _translatedLang = lang;
+        _showTranslated = !_translatedActive;
+      });
+      return;
+    }
+    if (!AgentSettings.instance.configured) {
+      _showMessage('尚未配置 AI 接口 Key,请到「设置 → AI 设置」填写');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _chunkDone = 0;
+      _chunkTotal = 0;
+    });
+    try {
+      final html = await TranslateApi.translateHtml(
+        widget.mod.body!,
+        cacheKey: _cacheKey,
+        // 长正文分块翻译,进度反馈到按钮(翻译中 2/5)
+        onProgress: (done, total) {
+          if (!mounted) return;
+          setState(() {
+            _chunkDone = done;
+            _chunkTotal = total;
+          });
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _translatedHtml = html;
+        _translatedLang = lang;
+        _showTranslated = true;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showMessage('$e');
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (mod.body == null || mod.body!.isEmpty) {
+    if (widget.mod.body == null || widget.mod.body!.isEmpty) {
       return const SizedBox.shrink();
     }
     return Card(
@@ -37,12 +135,47 @@ class DescriptionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const DetailSectionTitle(
-              title: '模组介绍',
-              icon: Icons.article_rounded,
+            Row(
+              children: [
+                const Expanded(
+                  child: DetailSectionTitle(
+                    title: '模组介绍',
+                    icon: Icons.article_rounded,
+                  ),
+                ),
+                _buildTranslateButton(context),
+              ],
             ),
             _buildHTML(context),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 翻译/原文切换按钮(加载中转圈,未配置密钥时点击给出引导)
+  Widget _buildTranslateButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final langLabel = SettingsService.instance.translateLangLabel;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Tooltip(
+        message: _translatedActive ? '显示原文' : '翻译为$langLabel',
+        child: TextButton.icon(
+          onPressed: _toggleTranslate,
+          icon: _loading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.translate, size: 18),
+          label: Text(
+            _loading
+                ? (_chunkTotal > 1 ? '翻译中 $_chunkDone/$_chunkTotal' : '翻译中…')
+                : (_translatedActive ? '原文' : '翻译'),
+            style: theme.textTheme.labelLarge,
+          ),
         ),
       ),
     );
@@ -55,20 +188,20 @@ class DescriptionCard extends StatelessWidget {
     switch (type) {
       case RenderType.auto:
         return HtmlContent(
-          html: mod.body!,
+          html: _html,
           textStyle: theme.textTheme.bodyMedium,
-          onLinkTap: onLinkTap,
+          onLinkTap: widget.onLinkTap,
         );
       case RenderType.hyper:
         return _mouseDraggable(
           context,
           HyperViewer(
-            html: mod.body!,
+            html: _html,
             mode: HyperRenderMode.sync,
             shrinkWrap: true,
             selectable: false,
             customCss: HyperRender.hyperCss(theme),
-            onLinkTap: onLinkTap,
+            onLinkTap: widget.onLinkTap,
           ),
         );
     }

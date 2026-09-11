@@ -10,8 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/page/more/description.dart';
-import 'package:mc_mod_helper/service/savings.dart';
-import 'package:mc_mod_helper/service/settings.dart';
+import 'package:mc_mod_helper/service/saves/likes.dart';
+import 'package:mc_mod_helper/setting/settings.dart';
 
 http.Response _json(Object data) => http.Response.bytes(
   utf8.encode(jsonEncode(data)),
