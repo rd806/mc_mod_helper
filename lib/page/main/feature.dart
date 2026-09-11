@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/page/more/about.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 
@@ -8,6 +9,7 @@ import '../../setting/settings.dart';
 import '../../widget/agent/agent_sheet.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
+import 'config.dart';
 
 /// 应用主页:展示 mcmod.cn 首页的模组分类与首页推荐模组列表
 class FeaturePage extends StatefulWidget {
@@ -134,6 +136,28 @@ class _FeaturePageState extends State<FeaturePage> {
             tooltip: '刷新',
             icon: const Icon(Icons.refresh),
             onPressed: _refresh,
+          ),
+          // 设置
+          IconButton(
+            tooltip: '设置',
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ConfigPage()),
+              );
+            },
+          ),
+          // 关于
+          IconButton(
+            tooltip: '关于',
+            icon: const Icon(Icons.info_outline_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AboutPage()),
+              );
+            },
           ),
         ],
       ),

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/widget/common/dropdown_box.dart';
+import 'package:mc_mod_helper/widget/handler/input_box.dart';
 import 'package:mc_mod_helper/widget/common/link_icons.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../setting/agent_settings.dart';
 import '../../setting/settings.dart';
@@ -26,24 +27,6 @@ class _ConfigPageState extends State<ConfigPage> {
     SettingsService.fontMin,
     SettingsService.fontMax,
   );
-
-  // AI 接口配置文本输入(每次输入即时写入,见 _buildTranslateText)
-  late final TextEditingController _translateBaseUrlCtrl =
-      TextEditingController(text: AgentSettings.instance.baseUrl);
-  late final TextEditingController _translateApiKeyCtrl = TextEditingController(
-    text: AgentSettings.instance.apiKey,
-  );
-  late final TextEditingController _translateModelCtrl = TextEditingController(
-    text: AgentSettings.instance.model,
-  );
-
-  @override
-  void dispose() {
-    _translateBaseUrlCtrl.dispose();
-    _translateApiKeyCtrl.dispose();
-    _translateModelCtrl.dispose();
-    super.dispose();
-  }
 
   /// 系统主题
   static const List<(String, ThemeMode)> _themeMode = [
@@ -106,25 +89,31 @@ class _ConfigPageState extends State<ConfigPage> {
             padding: const EdgeInsets.symmetric(vertical: 8),
             children: [
               _sectionTitle(theme, '主题设置'),
-              _buildThemeModeSection(theme, s),
+              _buildThemeModeSection(s),
               _buildSeedColorSection(theme, s),
-              _buildRenderType(theme, s),
+              _buildRenderType(s),
               _sectionTitle(theme, '字体设置'),
-              _buildFontType(theme, s),
+              _buildFontType(s),
               _buildFontScaleSection(context, s),
               _sectionTitle(theme, '数据设置'),
-              _buildDataSourceSection(theme, s),
-              _buildListSource(theme, s),
+              _buildDataSourceSection(s),
+              _buildListSource(s),
               _buildListMaxSection(theme, s),
-              _buildDisplayStyle(theme, s),
-              // 翻译与模组助手共用同一套 AI 接口配置
+              _buildDisplayStyle(s),
+              _buildTranslateLang(s),
+              // 翻译与模组助手共用同一套 AI 接口配置;三项都是弹窗输入,
+              // 保存后要跟着服务值刷新行内展示,故包一层监听
               _sectionTitle(theme, 'AI 设置'),
-              _buildTranslateBaseUrl(theme, s),
-              _buildTranslateApiKey(theme, s),
-              _buildTranslateModel(theme, s),
-              _buildTranslateLang(theme, s),
-              _sectionTitle(theme, '关于项目'),
-              _buildLink(),
+              ListenableBuilder(
+                listenable: AgentSettings.instance,
+                builder: (context, _) => Column(
+                  children: [
+                    _buildAgentBaseUrl(AgentSettings.instance),
+                    _buildAgentApiKey(AgentSettings.instance),
+                    _buildAgentModel(AgentSettings.instance),
+                  ],
+                ),
+              ),
             ],
           );
         },
@@ -141,54 +130,15 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 主题模式；跟随系统 / 亮色 / 暗色。
-  Widget _buildThemeModeSection(ThemeData theme, SettingsService s) {
-    final themeMode = s.themeMode;
-    // 将 _themeMode 转换为 DropdownMenuItem 列表
-    final dropdownItems = _themeMode.map<DropdownMenuItem<ThemeMode>>((item) {
-      final (label, value) = item;
-      return DropdownMenuItem<ThemeMode>(
-        value: value,
-        child: Row(
-          children: [
-            Icon(_getIconForThemeMode(value)),
-            const SizedBox(width: 10),
-            Text(label),
-          ],
-        ),
-      );
-    }).toList();
-    // 确定当前选中的值（防御性处理）
-    final selectedValue = _themeMode.any((f) => f.$2 == themeMode)
-        ? themeMode
-        : ThemeMode.system;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Row(
-        children: [
-          Text('主题选择', style: theme.textTheme.bodyMedium),
-          const Spacer(),
-          // 使用下拉框
-          DropdownButton<ThemeMode>(
-            value: selectedValue,
-            items: dropdownItems,
-            onChanged: (ThemeMode? newValue) {
-              if (newValue != null) {
-                SettingsService.instance.setThemeMode(newValue);
-              }
-            },
-            // 样式定制（可选）
-            style: theme.textTheme.bodyMedium,
-            // 设置为透明下划线
-            underline: Container(height: 0, color: Colors.transparent),
-            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
-            // 如果希望下拉框宽度自适应内容
-            isDense: false,
-            // 禁用焦点和悬停效果
-            focusColor: Colors.transparent,
-          ),
-        ],
-      ),
+  Widget _buildThemeModeSection(SettingsService s) {
+    return DropdownBox<ThemeMode>(
+      title: '主题选择',
+      value: s.themeMode,
+      options: [
+        for (final (label, mode) in _themeMode)
+          DropdownOption(label, mode, icon: Icon(_getIconForThemeMode(mode))),
+      ],
+      onChanged: SettingsService.instance.setThemeMode,
     );
   }
 
@@ -266,90 +216,27 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 渲染方法
-  Widget _buildRenderType(ThemeData theme, SettingsService s) {
-    // 转换为 DropdownMenuItem 列表
-    final dropdownItems = _renderType.map<DropdownMenuItem<RenderType>>((item) {
-      final (label, value) = item;
-      return DropdownMenuItem<RenderType>(value: value, child: Text(label));
-    }).toList();
-
-    final selectedValue = SettingsService.renderTypes.contains(s.renderType)
-        ? s.renderType
-        : RenderType.auto;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Row(
-        children: [
-          Text('渲染方法', style: theme.textTheme.bodyMedium),
-          Spacer(),
-          // 使用下拉框
-          DropdownButton<RenderType>(
-            value: selectedValue,
-            items: dropdownItems,
-            onChanged: (RenderType? newValue) {
-              if (newValue != null) {
-                SettingsService.instance.setRenderType(newValue);
-              }
-            },
-            // 样式定制（可选）
-            style: theme.textTheme.bodyMedium,
-            // 设置为透明下划线
-            underline: Container(height: 0, color: Colors.transparent),
-            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
-            // 如果希望下拉框宽度自适应内容
-            isDense: false,
-            // 禁用焦点和悬停效果
-            focusColor: Colors.transparent,
-          ),
-        ],
-      ),
+  Widget _buildRenderType(SettingsService s) {
+    return DropdownBox<RenderType>(
+      title: '渲染方法',
+      value: s.renderType,
+      options: [
+        for (final (label, type) in _renderType) DropdownOption(label, type),
+      ],
+      onChanged: SettingsService.instance.setRenderType,
     );
   }
 
-  Widget _buildFontType(ThemeData theme, SettingsService s) {
-    // 转换为 DropdownMenuItem 列表
-    final dropdownItems = _fontTypes.map<DropdownMenuItem<String>>((item) {
-      final (label, value) = item;
-      return DropdownMenuItem<String>(
-        value: value,
-        child: Row(
-          children: [Text(label, style: TextStyle(fontFamily: value))],
-        ),
-      );
-    }).toList();
-
-    final selectedValue = SettingsService.fontTypes.contains(s.fontType)
-        ? s.fontType
-        : 'NotoSansSC';
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Row(
-        children: [
-          Text('字体选择', style: theme.textTheme.bodyMedium),
-          Spacer(),
-          // 使用下拉框
-          DropdownButton<String>(
-            value: selectedValue,
-            items: dropdownItems,
-            onChanged: (String? newValue) {
-              if (newValue != null) {
-                SettingsService.instance.setFontType(newValue);
-              }
-            },
-            // 样式定制（可选）
-            style: theme.textTheme.bodyMedium,
-            // 设置为透明下划线
-            underline: Container(height: 0, color: Colors.transparent),
-            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
-            // 如果希望下拉框宽度自适应内容
-            isDense: false,
-            // 禁用焦点和悬停效果
-            focusColor: Colors.transparent,
-          ),
-        ],
-      ),
+  /// 字体选择(选项与选中值都用该字体渲染,便于预览)
+  Widget _buildFontType(SettingsService s) {
+    return DropdownBox<String>(
+      title: '字体选择',
+      value: s.fontType,
+      options: [
+        for (final (label, font) in _fontTypes)
+          DropdownOption(label, font, textStyle: TextStyle(fontFamily: font)),
+      ],
+      onChanged: SettingsService.instance.setFontType,
     );
   }
 
@@ -388,152 +275,53 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 搜索/详情数据来源(MC百科/Modrinth),修改后持久化
-  Widget _buildDataSourceSection(ThemeData theme, SettingsService s) {
-    // 转换为 DropdownMenuItem 列表
-    final dropdownItems = _modSource.map<DropdownMenuItem<ModSource>>((item) {
-      final (label, value) = item;
-      return DropdownMenuItem<ModSource>(
-        value: value,
-        child: Row(
-          children: [
-            LinkIcons.getIconForDataSource(value),
-            const SizedBox(width: 10),
-            Text(label),
-          ],
-        ),
-      );
-    }).toList();
-
-    final selectedValue = SettingsService.dataSources.contains(s.dataSource)
-        ? s.dataSource
-        : ModSource.mcmod;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Row(
-        children: [
-          Text('数据来源', style: theme.textTheme.bodyMedium),
-          Spacer(),
-          // 使用下拉框
-          DropdownButton<ModSource>(
-            value: selectedValue,
-            items: dropdownItems,
-            onChanged: (ModSource? newValue) {
-              if (newValue != null) {
-                SettingsService.instance.setDataSource(newValue);
-              }
-            },
-            // 样式定制（可选）
-            style: theme.textTheme.bodyMedium,
-            // 设置为透明下划线
-            underline: Container(height: 0, color: Colors.transparent),
-            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
-            // 如果希望下拉框宽度自适应内容
-            isDense: false,
-            // 禁用焦点和悬停效果
-            focusColor: Colors.transparent,
+  Widget _buildDataSourceSection(SettingsService s) {
+    return DropdownBox<ModSource>(
+      title: '数据来源',
+      value: s.dataSource,
+      options: [
+        for (final (label, source) in _modSource)
+          DropdownOption(
+            label,
+            source,
+            icon: LinkIcons.getIconForDataSource(source),
           ),
-        ],
-      ),
+      ],
+      onChanged: SettingsService.instance.setDataSource,
     );
   }
 
   /// 推荐列表来源(最新收录/最新编辑),修改后持久化,主页监听变化自动重拉
-  Widget _buildListSource(ThemeData theme, SettingsService s) {
-    // 转换为 DropdownMenuItem 列表
-    final dropdownItems = _sortMethod.map<DropdownMenuItem<FeatureSource>>((
-      item,
-    ) {
-      final (label, value) = item;
-      return DropdownMenuItem<FeatureSource>(value: value, child: Text(label));
-    }).toList();
-
-    final selectedValue =
-        SettingsService.featuredTypes.contains(s.featuredSource)
-        ? s.featuredSource
-        : FeatureSource.none;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Row(
-        children: [
-          Text('推荐来源', style: theme.textTheme.bodyMedium),
-          Spacer(),
-          // 使用下拉框
-          DropdownButton<FeatureSource>(
-            value: selectedValue,
-            items: dropdownItems,
-            onChanged: (FeatureSource? newValue) {
-              if (newValue != null) {
-                SettingsService.instance.setFeaturedSource(newValue);
-              }
-            },
-            // 样式定制（可选）
-            style: theme.textTheme.bodyMedium,
-            // 设置为透明下划线
-            underline: Container(height: 0, color: Colors.transparent),
-            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
-            // 如果希望下拉框宽度自适应内容
-            isDense: false,
-            // 禁用焦点和悬停效果
-            focusColor: Colors.transparent,
-          ),
-        ],
-      ),
+  Widget _buildListSource(SettingsService s) {
+    return DropdownBox<FeatureSource>(
+      title: '推荐来源',
+      value: s.featuredSource,
+      options: [
+        for (final (label, source) in _sortMethod)
+          DropdownOption(label, source),
+      ],
+      onChanged: SettingsService.instance.setFeaturedSource,
     );
   }
 
   /// 模组信息展示方式(网格/列表/自适应),修改后持久化,
   /// 首页推荐/分类/收藏页监听变化即时切换布局
-  Widget _buildDisplayStyle(ThemeData theme, SettingsService s) {
-    // 转换为 DropdownMenuItem 列表
-    final dropdownItems = _displayStyle.map<DropdownMenuItem<DisplayStyle>>((
-      item,
-    ) {
-      final (label, value) = item;
-      return DropdownMenuItem<DisplayStyle>(
-        value: value,
-        child: Row(
-          children: [
-            Icon(_getIconForDisplayStyle(value)),
-            const SizedBox(width: 10),
-            Text(label),
-          ],
-        ),
-      );
-    }).toList();
-
-    final selectedValue = SettingsService.displayStyles.contains(s.displayStyle)
-        ? s.displayStyle
-        : DisplayStyle.table;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Row(
-        children: [
-          Text('展示方式', style: theme.textTheme.bodyMedium),
-          Spacer(),
-          // 使用下拉框
-          DropdownButton<DisplayStyle>(
-            value: selectedValue,
-            items: dropdownItems,
-            onChanged: (DisplayStyle? newValue) {
-              if (newValue != null) {
-                SettingsService.instance.setDisplayStyle(newValue);
-              }
-            },
-            // 样式定制（可选）
-            style: theme.textTheme.bodyMedium,
-            // 设置为透明下划线
-            underline: Container(height: 0, color: Colors.transparent),
-            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
-            // 如果希望下拉框宽度自适应内容
-            isDense: false,
-            // 禁用焦点和悬停效果
-            focusColor: Colors.transparent,
+  Widget _buildDisplayStyle(SettingsService s) {
+    return DropdownBox<DisplayStyle>(
+      title: '展示方式',
+      value: s.displayStyle,
+      // 回退值是「列表」而不是第一项「网格」(设置服务已校验,
+      // 这里只是存储值异常时的兜底)
+      fallback: DisplayStyle.table,
+      options: [
+        for (final (label, style) in _displayStyle)
+          DropdownOption(
+            label,
+            style,
+            icon: Icon(_getIconForDisplayStyle(style)),
           ),
-        ],
-      ),
+      ],
+      onChanged: SettingsService.instance.setDisplayStyle,
     );
   }
 
@@ -585,130 +373,47 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// AI 接口地址(OpenAI 兼容,如 https://api.openai.com/v1)
-  Widget _buildTranslateBaseUrl(ThemeData theme, SettingsService s) {
-    return _buildTranslateText(
-      theme,
-      '接口地址',
-      _translateBaseUrlCtrl,
+  Widget _buildAgentBaseUrl(AgentSettings a) {
+    return InputBox(
+      title: '接口地址',
+      value: a.baseUrl,
       hint: AgentSettings.defaultBaseUrl,
-      onChanged: AgentSettings.instance.setBaseUrl,
+      onSaved: a.setBaseUrl,
     );
   }
 
   /// AI 接口 Key(用户自行填写;留空则翻译/助手给出引导)
-  Widget _buildTranslateApiKey(ThemeData theme, SettingsService s) {
-    return _buildTranslateText(
-      theme,
-      'API Key',
-      _translateApiKeyCtrl,
+  Widget _buildAgentApiKey(AgentSettings a) {
+    return InputBox(
+      title: 'API Key',
+      value: a.apiKey,
       hint: '未配置',
       obscure: true,
-      onChanged: AgentSettings.instance.setApiKey,
+      onSaved: a.setApiKey,
     );
   }
 
   /// AI 模型名
-  Widget _buildTranslateModel(ThemeData theme, SettingsService s) {
-    return _buildTranslateText(
-      theme,
-      '模型',
-      _translateModelCtrl,
+  Widget _buildAgentModel(AgentSettings a) {
+    return InputBox(
+      title: '模型',
+      value: a.model,
       hint: AgentSettings.defaultModel,
-      onChanged: AgentSettings.instance.setModel,
+      onSaved: a.setModel,
     );
   }
 
   /// 翻译目标语言(详情页翻译按钮使用该语言)
-  Widget _buildTranslateLang(ThemeData theme, SettingsService s) {
-    final dropdownItems = SettingsService.translateLangs
-        .map<DropdownMenuItem<String>>(
-          (item) =>
-              DropdownMenuItem<String>(value: item.$2, child: Text(item.$1)),
-        )
-        .toList();
-    final selectedValue =
-        SettingsService.translateLangs.any((e) => e.$2 == s.translateLang)
-        ? s.translateLang
-        : SettingsService.defaultTranslateLang;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Row(
-        children: [
-          Text('目标语言', style: theme.textTheme.bodyMedium),
-          const Spacer(),
-          DropdownButton<String>(
-            value: selectedValue,
-            items: dropdownItems,
-            onChanged: (String? v) {
-              if (v != null) SettingsService.instance.setTranslateLang(v);
-            },
-            style: theme.textTheme.bodyMedium,
-            underline: Container(height: 0, color: Colors.transparent),
-            icon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
-            focusColor: Colors.transparent,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 翻译配置的单行文本输入。
-  ///
-  /// 每次输入即写入设置:早期实现只在回车/点开别处时提交,用户改完地址
-  /// 直接离开或滚动页面就丢失了,"改了不生效"。这里 onChanged 即时生效,
-  /// onSubmitted / onTapOutside 再兜一次(清空输入表示恢复默认值)
-  Widget _buildTranslateText(
-    ThemeData theme,
-    String label,
-    TextEditingController controller, {
-    required String hint,
-    required ValueChanged<String> onChanged,
-    bool obscure = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Row(
-        children: [
-          Text(label, style: theme.textTheme.bodyMedium),
-          const SizedBox(width: 16),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              obscureText: obscure,
-              textInputAction: TextInputAction.done,
-              onChanged: onChanged,
-              onSubmitted: onChanged,
-              onTapOutside: (_) => onChanged(controller.text),
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: hint,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLink() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Row(
-        children: [
-          const Text('项目地址'),
-          const Spacer(),
-          TextButton(
-            onPressed: () {
-              launchUrl(
-                Uri.parse('https://github.com/rd806/mc_mod_helper'),
-                mode: LaunchMode.externalApplication,
-              );
-            },
-            child: Chip(avatar: Icon(LinkIcons.github), label: Text('点击打开')),
-          ),
-        ],
-      ),
+  Widget _buildTranslateLang(SettingsService s) {
+    return DropdownBox<String>(
+      title: '目标语言',
+      value: s.translateLang,
+      fallback: SettingsService.defaultTranslateLang,
+      options: [
+        for (final (label, code) in SettingsService.translateLangs)
+          DropdownOption(label, code),
+      ],
+      onChanged: SettingsService.instance.setTranslateLang,
     );
   }
 }

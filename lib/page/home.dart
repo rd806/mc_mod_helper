@@ -25,7 +25,6 @@ class _HomePageState extends State<HomePage> {
     SortPage(),
     SearchPage(),
     FavoritePage(),
-    ConfigPage(),
   ];
 
   final List<NavigationItem> _navItems = const [
@@ -33,7 +32,6 @@ class _HomePageState extends State<HomePage> {
     NavigationItem(icon: Icons.category, label: '分类'),
     NavigationItem(icon: Icons.search_rounded, label: '搜索'),
     NavigationItem(icon: Icons.favorite, label: '收藏'),
-    NavigationItem(icon: Icons.settings, label: '设置'),
   ];
 
   // 点击切换页面
@@ -91,17 +89,6 @@ class _HomePageState extends State<HomePage> {
           selectedIndex: _currentIndex,
           onDestinationSelected: _onItemTapped,
           labelType: NavigationRailLabelType.all,
-
-          leading: Padding(
-            padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
-            child: Image.asset(
-              'assets/icon/app_icon.png',
-              width: 50, // 设置宽度
-              height: 50, // 设置高度
-              fit: BoxFit.cover, // 设置图片的填充模式
-            ),
-          ),
-
           destinations: _navItems
               .map(
                 (item) => NavigationRailDestination(
@@ -114,8 +101,26 @@ class _HomePageState extends State<HomePage> {
                 ),
               )
               .toList(),
-        ),
 
+          trailing: Expanded(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: IconButton(
+                  tooltip: '设置',
+                  icon: const Icon(Icons.settings),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ConfigPage()),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
         // 右侧内容区域（填充剩余空间）
         Expanded(
           child: IndexedStack(index: _currentIndex, children: _pages),

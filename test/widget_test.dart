@@ -61,12 +61,16 @@ void main() {
     // 分类在独立页签(IndexedStack 只展示当前页签)
     expect(find.text('模组分类'), findsNothing);
     expect(find.textContaining('加载失败'), findsOneWidget);
-    // 侧边栏五个入口(测试窗口 800x600 走宽屏 NavigationRail)
+    // 侧边栏四个页签入口(测试窗口 800x600 走宽屏 NavigationRail;
+    // 设置/关于不再是页签,入口在主页 AppBar)
     expect(find.text('首页'), findsOneWidget);
     expect(find.text('分类'), findsOneWidget);
     expect(find.text('搜索'), findsOneWidget);
     expect(find.text('收藏'), findsOneWidget);
-    expect(find.text('设置'), findsOneWidget);
+    expect(find.text('设置'), findsNothing);
+    // 设置入口:主页 AppBar 一个,宽屏侧边栏底部还留了一个
+    expect(find.byTooltip('设置'), findsWidgets);
+    expect(find.byTooltip('关于'), findsOneWidget);
     expect(find.byIcon(Icons.refresh), findsOneWidget); // 主页刷新按钮
     // 主页悬浮入口:模组助手(搜索是侧边栏页签)
     expect(find.byIcon(Icons.smart_toy_outlined), findsOneWidget);
@@ -99,10 +103,13 @@ void main() {
 
     await pumpApp(tester);
 
-    await tester.tap(find.text('设置'));
-    await tester.pump(); // IndexedStack 切换;配置页无网络请求、无挂起计时器
+    // 设置页从主页 AppBar 推开(不再是页签);无网络请求、无挂起计时器
+    await tester.tap(find.byTooltip('设置').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
+    await tester.pump(const Duration(milliseconds: 350));
 
-    // 各设置区块都在(「设置」同时出现在侧边栏标签与页面标题)
+    // 各设置区块都在(页面标题「设置」)
     expect(find.widgetWithText(AppBar, '设置'), findsOneWidget);
     expect(find.text('主题设置'), findsOneWidget);
     expect(find.text('字体大小'), findsOneWidget);
@@ -202,18 +209,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(SettingsService.instance.displayStyle, DisplayStyle.card);
 
-    // AI 设置:接口地址输入后即时写入(旧实现要回车/点开别处才提交,
-    // 用户改完直接离开会丢失 —— "改了不生效")。
-    // AI 设置里的三个 TextField 依次是 接口地址 / API Key / 模型
+    // AI 设置:三项都是「点击弹出输入框」,弹窗里「确定」才写回
     await tester.ensureVisible(find.text('AI 设置'));
     await tester.pump();
-    final baseUrlField = find.byType(TextField).first;
-    await tester.enterText(baseUrlField, 'https://api.deepseek.com/v1');
+    expect(find.text('接口地址'), findsOneWidget);
+    expect(find.text('API Key'), findsOneWidget);
+    expect(find.text('模型'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('接口地址'));
     await tester.pump();
+    await tester.tap(find.text('接口地址'));
+    await tester.pumpAndSettle(); // 弹窗入场
+    expect(find.byType(AlertDialog), findsOneWidget);
+    await tester.enterText(
+      find.byType(TextField),
+      'https://api.deepseek.com/v1',
+    );
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
     expect(AgentSettings.instance.baseUrl, 'https://api.deepseek.com/v1');
-    // 清空输入框 → 回落默认地址
-    await tester.enterText(baseUrlField, '');
-    await tester.pump();
+    // 行内展示跟着服务值刷新
+    expect(find.text('https://api.deepseek.com/v1'), findsOneWidget);
+
+    // 再点开清空 → 回落到默认地址
+    await tester.tap(find.text('接口地址'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '');
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
     expect(AgentSettings.instance.baseUrl, AgentSettings.defaultBaseUrl);
   });
 

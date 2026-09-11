@@ -10,6 +10,8 @@ import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
 import '../../model/mod/mod_detail.dart';
 import '../../model/mod/mod_summary.dart';
+import '../../service/agent/agent.dart';
+import '../../widget/agent/agent_sheet.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/image_box.dart';
 import '../../widget/handler/scroll_button.dart';
@@ -251,6 +253,21 @@ class _DetailPageState extends State<DetailPage> {
           return _buildSuccess(snapshot.data!);
         },
       ),
+      // 模组助手:总结当前模组 / 推荐相似模组。
+      // 详情还没加载出来时没有可总结的内容,先不显示入口
+      floatingActionButton: FutureBuilder<ModDetail>(
+        future: _future,
+        builder: (context, snapshot) {
+          final mod = snapshot.data;
+          if (mod == null) return const SizedBox.shrink();
+          return FloatingActionButton(
+            tooltip: '模组助手',
+            onPressed: () =>
+                showAgentSheet(context, mod: AgentModContext.fromDetail(mod)),
+            child: const Icon(Icons.smart_toy_outlined),
+          );
+        },
+      ),
     );
   }
 
@@ -283,9 +300,11 @@ class _DetailPageState extends State<DetailPage> {
             Positioned.fill(
               child: narrow ? _buildNarrowPage(mod) : _buildWidePage(mod),
             ),
-            // 返回顶部:窄屏滚整页(含封面),宽屏滚左栏正文列
+            // 返回顶部:窄屏滚整页(含封面),宽屏滚左栏正文列。
+            // 右下角让给助手悬浮按钮,故整体上移
             ScrollToTopButton(
               controller: narrow ? _narrowController : _leftController,
+              padding: const EdgeInsets.only(bottom: 96, right: 20),
             ),
           ],
         );
