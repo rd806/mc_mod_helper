@@ -105,6 +105,10 @@ class McmodApi {
   /// 按页缓存而不是按 sort 缓存整份结果：条数上限变化时已抓页复用，只增量抓新页
   static final Map<String, List<ModSummary>> _featuredPageCache = {};
 
+  /// 推荐列表的整页缓存(带总页数,「查看更多」页用)
+  static final Map<String, ({List<ModSummary> mods, int totalPages})>
+  _featuredModsPageCache = {};
+
   @visibleForTesting
   static void clearCaches() {
     _searchCache.clear();
@@ -112,6 +116,7 @@ class McmodApi {
     _categoryCache = null;
     _categoryModsCache.clear();
     _featuredPageCache.clear();
+    _featuredModsPageCache.clear();
     _cookies.clear();
     _lastWwwAt = null;
     // 重置惰性缓存的客户端,让测试可以替换 clientFactory
@@ -251,20 +256,48 @@ class McmodApi {
     return all.take(limit).toList();
   }
 
-  /// 获取推荐列表页第 [page] 页的模组(带会话缓存)
+  /// 获取推荐列表第 [page] 页的模组与总页数(「查看更多」页用)。
+  ///
+  /// 与 [getFeaturedMods] 取同一个列表页,区别是这里按页返回,
+  /// 由页面在滚到底时增量请求下一页
+  static Future<({List<ModSummary> mods, int totalPages})> getFeaturedModsPage(
+    String sort, {
+    int page = 1,
+  }) async {
+    final key = '$sort-$page';
+    final cached = _featuredModsPageCache[key];
+    if (cached != null) return cached;
+
+    final body = await _fetchWithRetry(
+      _featuredUri(sort, page),
+      _detailMinInterval,
+      _lastWwwAt,
+    );
+    final result = _parseModlistPage(body);
+    _featuredModsPageCache[key] = result;
+    return result;
+  }
+
+  /// 推荐列表页第 [page] 页的模组(带会话缓存)
   static Future<List<ModSummary>> _featuredPage(String sort, int page) async {
     final key = '$sort-$page';
     final cached = _featuredPageCache[key];
     if (cached != null) return cached;
 
-    final uri = Uri.parse(
-      'https://www.mcmod.cn/modlist.html',
-    ).replace(queryParameters: {'sort': sort, if (page > 1) 'page': '$page'});
-    final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
+    final body = await _fetchWithRetry(
+      _featuredUri(sort, page),
+      _detailMinInterval,
+      _lastWwwAt,
+    );
     final mods = _parseModlist(body);
     _featuredPageCache[key] = mods;
     return mods;
   }
+
+  /// 推荐列表页地址:sort 为空即默认排序(站内推荐序),第 1 页不带 page 参数
+  static Uri _featuredUri(String sort, int page) => Uri.parse(
+    'https://www.mcmod.cn/modlist.html',
+  ).replace(queryParameters: {'sort': sort, if (page > 1) 'page': '$page'});
 
   /// 获取 mcmod.cn 首页展示的模组分类(科技/魔法等)。
   ///

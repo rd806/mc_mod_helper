@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../model/mod/mod_summary.dart';
-import '../../page/more/description.dart';
+import '../more/description.dart';
 import '../../service/agent/agent.dart';
 import '../../service/agent/history.dart';
 import '../../icon/link_icons.dart';
@@ -298,11 +298,6 @@ class _AgentSheetState extends State<AgentSheet> {
             tooltip: '清空当前对话',
             icon: const Icon(Icons.delete_sweep_outlined),
             onPressed: _items.isEmpty ? null : _confirmClear,
-          ),
-          IconButton(
-            tooltip: '关闭',
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(),
           ),
         ],
       ),

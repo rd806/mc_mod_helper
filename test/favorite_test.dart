@@ -70,12 +70,14 @@ Future<http.Response> _handler(http.Request request) async {
   return http.Response('not found', 404);
 }
 
-/// 启动应用并推过首页推荐/分类两个 400 请求(mcmod 真实客户端)
+/// 启动应用并推过首页三个版块与分类页的 400 请求(mcmod 真实客户端)。
+/// 各请求共用 1s 节流:一个发完下一个才轮到,故逐个推进假时钟
 Future<void> _pumpApp(WidgetTester tester) async {
   await tester.pumpWidget(const McModHelper());
-  await tester.pump(); // 推荐请求 400 → setState
-  await tester.pump(const Duration(seconds: 1)); // 节流计时器 → 分类请求发出
-  await tester.pump(); // 分类 400 → setState
+  for (var i = 0; i < 5; i++) {
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+  }
   await tester.pump(); // 渲染错误态
 }
 

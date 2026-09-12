@@ -19,17 +19,18 @@ import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 
-/// 启动应用并推进到两个页签(推荐/分类)都完成失败渲染。
+/// 启动应用并推进到首页三个版块与分类页都完成失败渲染。
 ///
-/// 测试环境中网络请求被禁用(返回 HTTP 400)。四个页面挂在 IndexedStack
-/// 中同时挂载,推荐页与分类页的两个请求共用 www 节流:推荐立即发出,
-/// 分类挂起在约 1 秒的间隔计时器上;pumpAndSettle 会提前退出
-/// 留下 pending Timer,因此这里显式推进假时钟。
+/// 测试环境中网络请求被禁用(返回 HTTP 400)。各页面挂在 IndexedStack
+/// 中同时挂载,请求共用 mcmod www 的 1s 节流:一个发完下一个才轮到。
+/// pumpAndSettle 会提前退出留下 pending Timer,因此这里显式推进假时钟。
 Future<void> pumpApp(WidgetTester tester) async {
   await tester.pumpWidget(const McModHelper());
-  await tester.pump(); // 推荐请求 400 → setState
-  await tester.pump(const Duration(seconds: 1)); // 间隔计时器触发 → 分类请求发出
-  await tester.pump(); // 分类 400 → setState
+  // 首页三个版块各一次请求(顺序发起)+ 分类页一次,逐个推过节流计时器
+  for (var i = 0; i < 5; i++) {
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+  }
   await tester.pump(); // 渲染最终错误态
 }
 
@@ -57,26 +58,35 @@ void main() {
     ModrinthApi.clearCaches();
   });
 
-  testWidgets('启动显示主页:推荐加载失败,侧边栏导航可用', (tester) async {
+  testWidgets('启动显示主页:三个版块各加载失败,侧边栏导航可用', (tester) async {
+    // 加高窗口:三个版块要同时在可视区才会被 ListView 构建
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await pumpApp(tester);
 
     expect(find.text('MC Mod Helper'), findsOneWidget);
-    expect(find.text('首页推荐'), findsOneWidget);
+    // 首页三个版块(默认排序/最新收录/最新编辑),各带一个「查看更多」
+    for (final title in ['默认排序', '最新收录', '最新编辑']) {
+      expect(find.text(title), findsOneWidget);
+    }
+    expect(find.text('查看更多'), findsNWidgets(3));
+    // 三个版块都请求失败(测试环境 HTTP 400)
+    expect(find.textContaining('加载失败'), findsNWidgets(3));
     // 分类在独立页签(IndexedStack 只展示当前页签)
     expect(find.text('模组分类'), findsNothing);
-    expect(find.textContaining('加载失败'), findsOneWidget);
-    // 侧边栏四个页签入口(测试窗口 800x600 走宽屏 NavigationRail;
+    // 侧边栏五个页签入口(测试窗口 800x600 走宽屏 NavigationRail;
     // 设置不再是页签,入口在主页 AppBar)
     expect(find.text('首页'), findsOneWidget);
     expect(find.text('分类'), findsOneWidget);
     expect(find.text('搜索'), findsOneWidget);
+    expect(find.text('AI'), findsOneWidget);
     expect(find.text('收藏'), findsOneWidget);
     expect(find.text('设置'), findsNothing);
     // 设置入口:主页 AppBar 一个,宽屏侧边栏底部还留了一个
     expect(find.byTooltip('设置'), findsWidgets);
     expect(find.byIcon(Icons.refresh), findsOneWidget); // 主页刷新按钮
-    // 主页悬浮入口:模组助手(搜索是侧边栏页签)
-    expect(find.byIcon(Icons.smart_toy_outlined), findsOneWidget);
   });
 
   testWidgets('侧边栏切换页签:分类与搜索', (tester) async {
@@ -86,8 +96,8 @@ void main() {
     await tester.tap(find.text('分类'));
     await tester.pump(); // IndexedStack 切换,无路由动画
     expect(find.text('模组分类'), findsOneWidget);
-    expect(find.textContaining('加载失败'), findsOneWidget); // 分类区错误
-    expect(find.text('首页推荐'), findsNothing);
+    expect(find.textContaining('加载失败'), findsWidgets); // 分类区错误
+    expect(find.text('默认排序'), findsNothing); // 已离开首页
 
     // 切到搜索页签(IndexedStack 切换非选中页 offstage,
     // 设置页的输入框不会干扰 TextField 计数)
@@ -155,28 +165,12 @@ void main() {
       'Unifont',
     );
 
-    // ---- 显示:渲染方法/数据来源/推荐来源/条数/展示方式 ----
+    // ---- 显示:渲染方法/数据来源/展示方式 ----
     await tester.tap(find.text('显示'));
     await tester.pumpAndSettle();
     expect(find.text('渲染方法'), findsOneWidget);
     expect(find.text('数据来源'), findsOneWidget);
-    expect(find.text('推荐来源'), findsOneWidget);
-    expect(find.text('最多显示'), findsOneWidget);
     expect(find.text('展示方式'), findsOneWidget);
-
-    // 拖推荐条数滑条(显示分组里唯一一个,可能在可视区外,先滚动到可见)
-    await tester.ensureVisible(find.byType(Slider).last);
-    await tester.pump();
-    await tester.drag(find.byType(Slider).last, const Offset(400, 0));
-    await tester.pump();
-    expect(DisplaySettings.instance.featuredNum, greaterThan(20));
-
-    // 条数变化触发推荐页(离屏但已挂载)重新拉取:先走节流计时器再发请求,
-    // 测试环境请求返回 400;必须显式推进假时钟,不能用 pumpAndSettle
-    // (它会提前退出留下 pending Timer,与 pumpApp 里是同一个坑)
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump();
-    await tester.pump();
 
     // 切换渲染方法(RenderType 下拉框) → 服务值变化;
     // 渲染方法不触发主页重拉,无新计时器
@@ -188,30 +182,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(DisplaySettings.instance.renderType, RenderType.hyper);
 
-    // 切换推荐来源(FeatureSource 下拉框) → 服务值变化,推荐页再次重拉
-    await tester.ensureVisible(find.byType(DropdownButton<FeatureSource>));
-    await tester.pump();
-    await tester.tap(find.byType(DropdownButton<FeatureSource>));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('最新编辑').last);
-    await tester.pumpAndSettle();
-    expect(DisplaySettings.instance.featuredSource, FeatureSource.lastEditTime);
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump();
-    await tester.pump();
-
     // 数据来源下拉框切到 Modrinth(选项文本只在菜单打开后出现)
     await tester.ensureVisible(find.byType(DropdownButton<ModSource>));
     await tester.pump();
     await tester.tap(find.byType(DropdownButton<ModSource>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Modrinth').last);
-    // dataSource 变化触发推荐页与分类页重拉:推荐请求无节流立即发出,
-    // 分类请求挂在 ModrinthApi 1s 节流计时器上,显式推进假时钟
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump();
-    await tester.pump();
+    // dataSource 变化触发三个版块与分类页重拉:第一个请求无节流立即发出,
+    // 后续请求挂在 ModrinthApi 1s 节流计时器上,显式推进假时钟
+    for (var i = 0; i < 4; i++) {
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    }
     expect(DisplaySettings.instance.dataSource, ModSource.modrinth);
 
     // 展示方式下拉框(网格/列表/自适应) → 服务值变化;
@@ -264,33 +246,59 @@ void main() {
     expect(AgentSettings.instance.baseUrl, AgentSettings.defaultBaseUrl);
   });
 
-  testWidgets('点击刷新按钮重新加载推荐', (tester) async {
+  testWidgets('点击刷新按钮:三个版块重新加载', (tester) async {
+    // 加高窗口:三个版块要同时在可视区才会被 ListView 构建
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await pumpApp(tester);
 
     await tester.tap(find.byIcon(Icons.refresh));
-    await tester.pump(); // 推荐区回到加载态
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pump(); // 三个版块一起回到加载态
+    expect(find.byType(CircularProgressIndicator), findsNWidgets(3));
     expect(find.textContaining('加载失败'), findsNothing);
 
-    await tester.pump(const Duration(seconds: 1)); // 节流计时器触发
-    await tester.pump(); // 请求 400 → setState
-    await tester.pump(); // 渲染错误态
-    expect(find.textContaining('加载失败'), findsOneWidget);
+    // 三个请求依次受 1s 节流约束:逐个推进假时钟(不能用 pumpAndSettle)
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+    }
+    expect(find.textContaining('加载失败'), findsNWidgets(3));
   });
 
-  testWidgets('修改推荐条数上限后推荐重新拉取', (tester) async {
+  testWidgets('「查看更多」进入对应版块的列表页', (tester) async {
     await pumpApp(tester);
-    expect(find.textContaining('加载失败'), findsOneWidget);
 
-    DisplaySettings.instance.setFeaturedMax(30);
-    await tester.pump(); // 触发重载 → 推荐区回到加载态
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.textContaining('加载失败'), findsNothing);
+    // 第一个「查看更多」属于「默认排序」版块
+    await tester.tap(find.text('查看更多').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
+    await tester.pump(const Duration(milliseconds: 350));
 
-    await tester.pump(const Duration(seconds: 1)); // 节流计时器触发
-    await tester.pump(); // 请求 400 → setState
-    await tester.pump(); // 渲染错误态
-    expect(find.textContaining('加载失败'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '默认排序'), findsOneWidget);
+    expect(find.byTooltip('刷新'), findsWidgets); // 列表页自带刷新
+
+    // 列表页的首屏请求挂着 mcmod 的 1s 节流:推完它再结束,避免留下计时器
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+  });
+
+  testWidgets('切换数据来源后首页三个版块重新拉取', (tester) async {
+    await pumpApp(tester);
+    expect(find.textContaining('加载失败'), findsWidgets);
+
+    DisplaySettings.instance.setDataSource(ModSource.modrinth);
+    await tester.pump(); // 版块回到加载态
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
+
+    // 三个版块依次请求,逐个推过节流计时器
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+    }
+    expect(DisplaySettings.instance.dataSource, ModSource.modrinth);
+    expect(find.textContaining('加载失败'), findsWidgets);
   });
 
   testWidgets('聚合搜索:来源按钮切换展示,失败来源单独报错', (tester) async {

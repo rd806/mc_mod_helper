@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/page/more/config.dart';
 import 'package:mc_mod_helper/page/main/favorite.dart';
-import 'package:mc_mod_helper/page/main/feature.dart';
+import 'package:mc_mod_helper/page/main/recommend.dart';
 import 'package:mc_mod_helper/page/main/sort.dart';
 
+import 'main/agent_sheet.dart';
 import 'main/search.dart';
 
 /// 主页
@@ -24,6 +25,7 @@ class _HomePageState extends State<HomePage> {
     FeaturePage(),
     SortPage(),
     SearchPage(),
+    AgentSheet(),
     FavoritePage(),
   ];
 
@@ -31,6 +33,7 @@ class _HomePageState extends State<HomePage> {
     NavigationItem(icon: Icons.home, label: '首页'),
     NavigationItem(icon: Icons.category, label: '分类'),
     NavigationItem(icon: Icons.search_rounded, label: '搜索'),
+    NavigationItem(icon: Icons.smart_toy_outlined, label: 'AI'),
     NavigationItem(icon: Icons.favorite, label: '收藏'),
   ];
 

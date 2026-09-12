@@ -11,7 +11,7 @@ import '../../api/modrinth.dart';
 import '../../model/mod/mod_detail.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../service/agent/agent.dart';
-import '../../widget/agent/agent_sheet.dart';
+import '../main/agent_sheet.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/image_box.dart';
 import '../../widget/handler/scroll_button.dart';

@@ -22,10 +22,6 @@ class ConfigPage extends StatefulWidget {
 }
 
 class _ConfigPageState extends State<ConfigPage> {
-  /// 推荐条数滑条草稿值:拖动过程中只改草稿,松手(onChangeEnd)才提交,
-  /// 避免每个档位变化都触发主页重新拉取(多页抓取耗时较长)
-  late double _featuredDraft = DisplaySettings.instance.featuredNum.toDouble();
-
   /// 字体缩放滑条草稿值(独立于推荐条数草稿)
   late double _fontScaleDraft = ThemeSettings.instance.fontScale.clamp(
     ThemeSettings.fontMin,
@@ -51,15 +47,6 @@ class _ConfigPageState extends State<ConfigPage> {
   static const List<(String, String)> _fontTypes = [
     ('思源黑体', 'NotoSansSC'),
     ('Unifont', 'Unifont'),
-  ];
-
-  // 推荐方法
-  // 与 settings 中的一致(语义对应 mcmod 列表页 sort 参数:
-  // createtime=最新收录,lastedittime=最新编辑)
-  static const List<(String, FeatureSource)> _sortMethod = [
-    ('默认', FeatureSource.none),
-    ('最新收录', FeatureSource.createTime),
-    ('最新编辑', FeatureSource.lastEditTime),
   ];
 
   static const List<(String, DisplayStyle)> _displayStyle = [
@@ -111,8 +98,6 @@ class _ConfigPageState extends State<ConfigPage> {
               children: [
                 _buildRenderType(DisplaySettings.instance),
                 _buildDataSourceSection(DisplaySettings.instance),
-                _buildListSource(DisplaySettings.instance),
-                _buildListMaxSection(theme, DisplaySettings.instance),
                 _buildDisplayStyle(DisplaySettings.instance),
               ],
             ),
@@ -372,19 +357,6 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
-  /// 推荐列表来源(最新收录/最新编辑),修改后持久化,主页监听变化自动重拉
-  Widget _buildListSource(DisplaySettings s) {
-    return DropdownBox<FeatureSource>(
-      title: '推荐来源',
-      value: s.featuredSource,
-      options: [
-        for (final (label, source) in _sortMethod)
-          DropdownOption(label, source),
-      ],
-      onChanged: DisplaySettings.instance.setFeaturedSource,
-    );
-  }
-
   /// 模组信息展示方式(网格/列表/自适应),修改后持久化,
   /// 首页推荐/分类/收藏页监听变化即时切换布局
   Widget _buildDisplayStyle(DisplaySettings s) {
@@ -416,41 +388,6 @@ class _ConfigPageState extends State<ConfigPage> {
       case DisplayStyle.auto:
         return Icons.hdr_auto_rounded;
     }
-  }
-
-  /// 推荐列表条数上限:滑条 5–50,步进 5(divisions=9)。
-  /// 拖动中只更新草稿并即时显示数值,松手才提交到服务
-  Widget _buildListMaxSection(ThemeData theme, DisplaySettings s) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text('最多显示', style: theme.textTheme.bodyMedium),
-              const Spacer(),
-              Text(
-                '${_featuredDraft.round()} 条',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
-          Slider(
-            value: _featuredDraft,
-            min: DisplaySettings.featuredMin.toDouble(),
-            max: DisplaySettings.featuredMax.toDouble(),
-            divisions: 9,
-            label: '${_featuredDraft.round()} 条',
-            onChanged: (v) => setState(() => _featuredDraft = v),
-            onChangeEnd: (v) =>
-                DisplaySettings.instance.setFeaturedMax(v.round()),
-          ),
-        ],
-      ),
-    );
   }
 
   /// AI 接口地址(OpenAI 兼容,如 https://api.openai.com/v1)

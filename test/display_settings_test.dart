@@ -15,8 +15,6 @@ void main() {
 
   test('load 在无存档时回到默认值', () async {
     await DisplaySettings.instance.load();
-    expect(DisplaySettings.instance.featuredNum, 20);
-    expect(DisplaySettings.instance.featuredSource, FeatureSource.none);
     expect(DisplaySettings.instance.dataSource, ModSource.mcmod);
     expect(DisplaySettings.instance.renderType, RenderType.auto);
     expect(DisplaySettings.instance.displayStyle, DisplayStyle.table);
@@ -25,16 +23,12 @@ void main() {
   test('setter 写入持久化存储', () async {
     await DisplaySettings.instance.load();
     DisplaySettings.instance
-      ..setFeaturedMax(35)
-      ..setFeaturedSource(FeatureSource.lastEditTime)
       ..setDataSource(ModSource.modrinth)
       ..setDisplayStyle(DisplayStyle.card)
       ..setRenderType(RenderType.hyper);
 
     final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getInt('featured_max'), 35);
-    // 存枚举的 name 字符串(与 data_source 一致)
-    expect(prefs.getString('featured_source'), 'lastEditTime');
+    // 存枚举的 name 字符串(读回时按 name 还原,枚举增删不影响旧数据)
     expect(prefs.getString('data_source'), 'modrinth');
     expect(prefs.getString('display_style'), 'card');
     expect(prefs.getString('render_type'), 'hyper');
@@ -42,15 +36,11 @@ void main() {
 
   test('load 能恢复已保存的设置(模拟重启)', () async {
     SharedPreferences.setMockInitialValues({
-      'featured_max': 45,
-      'featured_source': 'lastEditTime',
       'data_source': 'modrinth',
       'display_style': 'auto',
       'render_type': 'hyper',
     });
     await DisplaySettings.instance.load();
-    expect(DisplaySettings.instance.featuredNum, 45);
-    expect(DisplaySettings.instance.featuredSource, FeatureSource.lastEditTime);
     expect(DisplaySettings.instance.dataSource, ModSource.modrinth);
     expect(DisplaySettings.instance.displayStyle, DisplayStyle.auto);
     expect(DisplaySettings.instance.renderType, RenderType.hyper);
@@ -68,21 +58,6 @@ void main() {
     expect(DisplaySettings.instance.renderType, RenderType.auto);
   });
 
-  test('featuredSource setter 生效', () async {
-    await DisplaySettings.instance.load();
-    DisplaySettings.instance.setFeaturedSource(FeatureSource.lastEditTime);
-    expect(DisplaySettings.instance.featuredSource, FeatureSource.lastEditTime);
-    // 同值短路,不写盘不通知
-    DisplaySettings.instance.setFeaturedSource(FeatureSource.lastEditTime);
-    expect(DisplaySettings.instance.featuredSource, FeatureSource.lastEditTime);
-  });
-
-  test('featuredSource 非法存储值回落到默认', () async {
-    SharedPreferences.setMockInitialValues({'featured_source': 'bogus'});
-    await DisplaySettings.instance.load();
-    expect(DisplaySettings.instance.featuredSource, FeatureSource.none);
-  });
-
   test('displayStyle setter 生效', () async {
     await DisplaySettings.instance.load();
     DisplaySettings.instance.setDisplayStyle(DisplayStyle.card);
@@ -96,13 +71,5 @@ void main() {
     SharedPreferences.setMockInitialValues({'display_style': 'bogus'});
     await DisplaySettings.instance.load();
     expect(DisplaySettings.instance.displayStyle, DisplayStyle.table);
-  });
-
-  test('featuredMax 超出范围时被截断', () async {
-    await DisplaySettings.instance.load();
-    DisplaySettings.instance.setFeaturedMax(500);
-    expect(DisplaySettings.instance.featuredNum, 50);
-    DisplaySettings.instance.setFeaturedMax(1);
-    expect(DisplaySettings.instance.featuredNum, 5);
   });
 }

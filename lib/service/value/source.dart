@@ -44,12 +44,10 @@ class SourceManager {
   ) async {
     switch (modSource) {
       case ModSource.mcmod:
-        final sort = switch (featureSource) {
-          FeatureSource.none => '',
-          FeatureSource.createTime => 'createtime',
-          FeatureSource.lastEditTime => 'lastedittime',
-        };
-        return await McmodApi.getFeaturedMods(sort: sort, limit: limit);
+        return await McmodApi.getFeaturedMods(
+          sort: mcmodFeatureSort(featureSource),
+          limit: limit,
+        );
       case ModSource.modrinth:
         return await ModrinthApi.getFeaturedMods(
           sort: featureSource,
@@ -62,6 +60,44 @@ class SourceManager {
         );
     }
   }
+
+  /// 分页获取推荐列表(首页各版块「查看更多」进入的列表页用):
+  /// 返回该页模组与总页数,由页面滚到底时增量请求
+  static Future<({List<ModSummary> mods, int totalPages})> getFeaturePage(
+    ModSource modSource,
+    FeatureSource featureSource,
+    int page,
+  ) async {
+    switch (modSource) {
+      case ModSource.mcmod:
+        return await McmodApi.getFeaturedModsPage(
+          mcmodFeatureSort(featureSource),
+          page: page,
+        );
+      case ModSource.modrinth:
+        return await ModrinthApi.getFeaturedModsPage(featureSource, page: page);
+      case ModSource.curseforge:
+        return await CurseforgeApi.getFeaturedModsPage(
+          featureSource,
+          page: page,
+        );
+    }
+  }
+
+  /// [FeatureSource] → mcmod 列表页的 sort 参数
+  /// (空串即默认排序,站内推荐序)
+  static String mcmodFeatureSort(FeatureSource source) => switch (source) {
+    FeatureSource.none => '',
+    FeatureSource.createTime => 'createtime',
+    FeatureSource.lastEditTime => 'lastedittime',
+  };
+
+  /// 首页版块的标题
+  static String getFeatureTitle(FeatureSource source) => switch (source) {
+    FeatureSource.none => '默认排序',
+    FeatureSource.createTime => '最新收录',
+    FeatureSource.lastEditTime => '最新编辑',
+  };
 
   /// 获取主页分类
   static Future<List<ModCategory>> getCategory(ModSource source) async {

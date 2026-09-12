@@ -47,6 +47,10 @@ class CurseforgeApi {
   /// 推荐列表缓存:key='$sortField-$limit'(limit 影响 API 返回条数,一起作 key)
   static final Map<String, List<ModSummary>> _featuredCache = {};
 
+  /// 推荐列表的整页缓存(带总页数,「查看更多」页用)
+  static final Map<String, ({List<ModSummary> mods, int totalPages})>
+  _featuredModsPageCache = {};
+
   /// Minecraft 游戏 ID(CurseForge 中 Minecraft 的 gameId 固定为 432)
   static const int _gameId = 432;
 
@@ -89,6 +93,7 @@ class CurseforgeApi {
     _categoryCache = null;
     _categoryModsCache.clear();
     _featuredCache.clear();
+    _featuredModsPageCache.clear();
     _lastAt = null;
     // 重置惰性缓存的客户端,让测试可以替换 clientFactory
     _clientInstance = null;
@@ -212,11 +217,7 @@ class CurseforgeApi {
   }) async {
     final clamped = limit.clamp(0, 50);
     if (clamped == 0) return const [];
-    final sortField = switch (sort) {
-      FeatureSource.none => '1',
-      FeatureSource.createTime => '11',
-      FeatureSource.lastEditTime => '3',
-    };
+    final sortField = _featuredSortField(sort);
     final key = '$sortField-$clamped';
     final cached = _featuredCache[key];
     if (cached != null) return cached;
@@ -235,6 +236,42 @@ class CurseforgeApi {
     _featuredCache[key] = results;
     return results;
   }
+
+  /// 获取推荐列表第 [page] 页(每页 20 个)与总页数(「查看更多」页用)。
+  ///
+  /// 与 [getCategoryMods] 一样走 search 接口,只是不按分类过滤、
+  /// 排序换成 [sort];分页是 index 偏移制,(page-1)*20 换算
+  static Future<({List<ModSummary> mods, int totalPages})> getFeaturedModsPage(
+    FeatureSource sort, {
+    int page = 1,
+  }) async {
+    final sortField = _featuredSortField(sort);
+    final key = '$sortField-$page';
+    final cached = _featuredModsPageCache[key];
+    if (cached != null) return cached;
+
+    final uri = Uri.parse('https://api.curseforge.com/v1/mods/search').replace(
+      queryParameters: {
+        'gameId': '$_gameId',
+        'classId': '$_modClassId',
+        'pageSize': '20',
+        'index': '${(page - 1) * 20}',
+        'sortField': sortField,
+        'sortOrder': 'desc',
+      },
+    );
+    final body = await _get(uri);
+    final result = _parseCategoryPage(body);
+    _featuredModsPageCache[key] = result;
+    return result;
+  }
+
+  /// [FeatureSource] → ModsSearchSortField 的 sortField
+  static String _featuredSortField(FeatureSource sort) => switch (sort) {
+    FeatureSource.none => '1', // Featured(站内精选)
+    FeatureSource.createTime => '11', // ReleasedDate
+    FeatureSource.lastEditTime => '3', // LastUpdated
+  };
 
   // ---------- 请求基础 ----------
 

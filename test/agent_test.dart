@@ -15,7 +15,7 @@ import 'package:mc_mod_helper/service/agent/history.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
-import 'package:mc_mod_helper/widget/agent/agent_sheet.dart';
+import 'package:mc_mod_helper/page/main/agent_sheet.dart';
 
 http.Response _json(Object data) => http.Response.bytes(
   utf8.encode(jsonEncode(data)),
@@ -450,8 +450,9 @@ void main() {
     await tester.pump();
     expect(find.text('推荐 JEI'), findsOneWidget);
 
-    // 关掉再打开:新开一个对话,看不到上一轮消息
-    await tester.tap(find.byTooltip('关闭'));
+    // 关掉再打开(面板已无「关闭」按钮,点面板外的遮罩收起):
+    // 新开一个对话,看不到上一轮消息
+    await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
     await openSheet();
     expect(find.text('推荐 JEI'), findsNothing);

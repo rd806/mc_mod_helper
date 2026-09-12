@@ -4,7 +4,7 @@ import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 内容显示设置(渲染方法/数据来源/展示方式/推荐来源与条数):
+/// 内容显示设置(渲染方法/数据来源/展示方式):
 /// 单例 ChangeNotifier + shared_preferences 持久化。
 ///
 /// 主题模式/强调色/字体/字号属于 [SettingsService](会重建整个应用),
@@ -15,22 +15,9 @@ class DisplaySettings extends ChangeNotifier {
   /// 全局唯一实例
   static final DisplaySettings instance = DisplaySettings._();
 
-  static const String _featuredMaxKey = 'featured_max';
-  static const String _featuredTypeKey = 'featured_source';
   static const String _dataSourceKey = 'data_source';
   static const String _displayStyleKey = 'display_style';
   static const String _renderTypeKey = 'render_type';
-
-  /// 推荐列表条数上限的允许范围(与设置页滑条保持一致)
-  static const int featuredMin = 5;
-  static const int featuredMax = 50;
-
-  /// 首页推荐来源的合法取值(与 mcmod.cn 列表页 sort 参数一致)
-  static const List<FeatureSource> featuredTypes = [
-    FeatureSource.none,
-    FeatureSource.createTime,
-    FeatureSource.lastEditTime,
-  ];
 
   /// 搜索/详情数据来源的合法取值
   static const List<ModSource> dataSources = [
@@ -52,14 +39,10 @@ class DisplaySettings extends ChangeNotifier {
     DisplayStyle.auto,
   ];
 
-  int _featuredNum = 20;
-  FeatureSource _featuredType = FeatureSource.none;
   ModSource _dataSource = ModSource.mcmod;
   DisplayStyle _displayStyle = DisplayStyle.table;
   RenderType _renderType = RenderType.auto;
 
-  int get featuredNum => _featuredNum;
-  FeatureSource get featuredSource => _featuredType;
   ModSource get dataSource => _dataSource;
   DisplayStyle get displayStyle => _displayStyle;
   RenderType get renderType => _renderType;
@@ -71,18 +54,6 @@ class DisplaySettings extends ChangeNotifier {
   Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // 列表最大长度
-      _featuredNum = (prefs.getInt(_featuredMaxKey) ?? 20).clamp(
-        featuredMin,
-        featuredMax,
-      );
-
-      final type = prefs.getString(_featuredTypeKey);
-      FeatureSource featureSource = SourceManager.featureToString(type);
-      _featuredType = (type != null && featuredTypes.contains(featureSource))
-          ? featureSource
-          : FeatureSource.none;
-
       final ds = prefs.getString(_dataSourceKey);
       ModSource modSource = SourceManager.sourceToString(ds);
       _dataSource = (ds != null && dataSources.contains(modSource))
@@ -106,18 +77,6 @@ class DisplaySettings extends ChangeNotifier {
     }
   }
 
-  /// 设置首页推荐来源(最新收录/最新编辑),非法值忽略
-  void setFeaturedSource(FeatureSource source) {
-    if (!featuredTypes.contains(source) || source == _featuredType) {
-      return;
-    }
-    _featuredType = source;
-    notifyListeners();
-    // 与 setDataSource 同理:存 name 字符串而非枚举对象,
-    // 否则 _persist 的 switch 没有对应分支,什么都不会写入
-    _persist(_featuredTypeKey, source.name);
-  }
-
   /// 设置搜索/详情数据来源(MC百科/Modrinth),非法值忽略
   void setDataSource(ModSource source) {
     if (!dataSources.contains(source) || source == _dataSource) return;
@@ -126,15 +85,6 @@ class DisplaySettings extends ChangeNotifier {
     // 磁盘存枚举的 name 字符串(与 setThemeMode 存 mode.name 一致);
     // 直接存枚举对象的话 _persist 的 switch 没有对应分支,什么都不会写入
     _persist(_dataSourceKey, source.name);
-  }
-
-  /// 设置首页推荐列表条数上限(自动截断到允许范围)
-  void setFeaturedMax(int max) {
-    final clamped = max.clamp(featuredMin, featuredMax);
-    if (clamped == _featuredNum) return;
-    _featuredNum = clamped;
-    notifyListeners();
-    _persist(_featuredMaxKey, clamped);
   }
 
   /// 设置正文渲染方法(与 setDataSource 一致:非法值忽略,同值短路)
