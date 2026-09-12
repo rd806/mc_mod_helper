@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/page/agent.dart';
 import 'package:mc_mod_helper/page/more/config.dart';
-import 'package:mc_mod_helper/page/main/favorite.dart';
-import 'package:mc_mod_helper/page/main/recommend.dart';
-import 'package:mc_mod_helper/page/main/sort.dart';
-
-import 'main/agent_sheet.dart';
-import 'main/search.dart';
+import 'package:mc_mod_helper/page/custom.dart';
+import 'package:mc_mod_helper/page/recommend.dart';
+import 'package:mc_mod_helper/page/discover.dart';
 
 /// 主页
 /// 包含导航栏
@@ -23,18 +21,16 @@ class _HomePageState extends State<HomePage> {
   // 定义页面列表（对应底栏每个选项）
   final List<Widget> _pages = [
     FeaturePage(),
-    SortPage(),
-    SearchPage(),
-    AgentSheet(),
-    FavoritePage(),
+    DiscoverPage(),
+    AgentPage(),
+    CustomPage(),
   ];
 
   final List<NavigationItem> _navItems = const [
     NavigationItem(icon: Icons.home, label: '首页'),
-    NavigationItem(icon: Icons.category, label: '分类'),
-    NavigationItem(icon: Icons.search_rounded, label: '搜索'),
+    NavigationItem(icon: Icons.category, label: '探索'),
     NavigationItem(icon: Icons.smart_toy_outlined, label: 'AI'),
-    NavigationItem(icon: Icons.favorite, label: '收藏'),
+    NavigationItem(icon: Icons.person_outline, label: '我的'),
   ];
 
   // 点击切换页面

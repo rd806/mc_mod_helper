@@ -24,6 +24,12 @@ class SelectionButton extends StatefulWidget {
   /// 切换回调(由父组件更新选中值)
   final void Function(int index) switchTo;
 
+  /// 分段文字样式:公式与实际布局共用一份。
+  ///
+  /// 两处各写一个 textTheme 条目容易分叉(字号不同时,字体放大后
+  /// 公式给的高度与实际布局对不上,吸顶会拉起空带或裁掉文字)
+  static TextStyle? _labelStyle(ThemeData theme) => theme.textTheme.bodyMedium;
+
   /// 组件总高(含 Card 外边距),按当前主题字号精确计算。
   ///
   /// 吸顶用的 SliverPersistentHeader 需要数值型 extent,高度写死会造成
@@ -31,10 +37,10 @@ class SelectionButton extends StatefulWidget {
   /// 结果一致的高度,委托用它与 min/maxExtent 对齐
   static double preferredHeight(BuildContext context) {
     final theme = Theme.of(context);
-    final style = theme.textTheme.titleMedium;
+    final style = _labelStyle(theme);
     final scaler = MediaQuery.textScalerOf(context);
     // 文字行高(字号 × 行高系数,再乘系统/应用字体缩放)
-    final textH = (style?.height ?? 1.4) * scaler.scale(style?.fontSize ?? 16);
+    final textH = (style?.height ?? 1.4) * scaler.scale(style?.fontSize ?? 14);
     // 按钮高 = max(M3 最小高 40, 文字 + 上下内边距 5*2)
     final btnH = textH + 10 > 40 ? textH + 10 : 40;
     // Card 内边距 4*2 + Card 外边距 4*2
@@ -112,33 +118,33 @@ class _SelectionButtonState extends State<SelectionButton> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Card(
-        // 显式固定外边距(M3 默认随版本变化,公式按 4 计算)
-        margin: const EdgeInsets.all(4),
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Stack(
-            key: _stackKey,
-            children: [
-              // 高亮滑块:铺在按钮行下层,随选中滑动(Row 决定 Stack 尺寸)
-              if (_target != null)
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                  left: _target!.left,
-                  top: _target!.top,
-                  width: _target!.width,
-                  height: _target!.height,
-                  child: _buildHighlight(theme),
-                ),
-              Row(
+    return Card(
+      // 显式固定外边距(M3 默认随版本变化,公式按 4 计算)
+      margin: const EdgeInsets.all(4),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Stack(
+          key: _stackKey,
+          children: [
+            // 高亮滑块:铺在按钮行下层,随选中滑动(Row 决定 Stack 尺寸)
+            if (_target != null)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                left: _target!.left,
+                top: _target!.top,
+                width: _target!.width,
+                height: _target!.height,
+                child: _buildHighlight(theme),
+              ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: _buildButtons(theme),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -171,9 +177,8 @@ class _SelectionButtonState extends State<SelectionButton> {
         padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
         child: Text(
           label,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: SelectionButton._labelStyle(theme)
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
       ),
     );

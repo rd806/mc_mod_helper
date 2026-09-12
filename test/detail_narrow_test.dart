@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/page/more/description.dart';
+import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 
@@ -61,6 +62,8 @@ void main() {
       'mcmodhelper_sqlite_narrow_test',
     );
     await FavoritesService.instance.init(dbPath: '${dir.path}/favorites.db');
+    // 详情页加载成功会记一条浏览历史,同样先建库(生产环境由 main() 完成)
+    await HistoryService.instance.init(dbPath: '${dir.path}/history.db');
   });
 
   setUp(() async {

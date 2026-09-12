@@ -73,7 +73,6 @@ class _ConfigPageState extends State<ConfigPage> {
       // 页面级监听:一个 ListenableBuilder 覆盖三个区块,
       // 设置变化即时反映到控件选中态
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
         children: [
           _buildIcon(theme),
           ListenableBuilder(
@@ -149,7 +148,7 @@ class _ConfigPageState extends State<ConfigPage> {
   /// 项目封面
   Widget _buildIcon(ThemeData theme) {
     return Center(
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Image.asset(
@@ -158,19 +157,15 @@ class _ConfigPageState extends State<ConfigPage> {
             height: 100, // 设置高度
             fit: BoxFit.cover, // 设置图片的填充模式
           ),
-          const SizedBox(width: 10),
-          Column(
-            children: [
-              Text(
-                'MC Mod Helper',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text('简易的Minecraft模组浏览器', style: theme.textTheme.bodyMedium),
-            ],
+          Text(
+            'MC Mod Helper',
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
+          const SizedBox(height: 5),
+          Text('简易的Minecraft模组浏览器', style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 10),
         ],
       ),
     );

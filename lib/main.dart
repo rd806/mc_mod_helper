@@ -5,6 +5,7 @@ import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/setting/language_settings.dart';
 
 import 'service/agent/history.dart';
+import 'service/saves/history.dart';
 import 'service/saves/likes.dart';
 import 'setting/agent_settings.dart';
 import 'setting/theme_settings.dart';
@@ -12,8 +13,9 @@ import 'setting/theme_settings.dart';
 /// 应用程序入口
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 初始化收藏数据库(SQLite;桌面端自动切换 FFI 实现)
+  // 初始化收藏与浏览历史数据库(SQLite;桌面端自动切换 FFI 实现)
   await FavoritesService.instance.init();
+  await HistoryService.instance.init();
   // 先加载保存的设置再启动应用，避免启动后主题/字体跳变
   await ThemeSettings.instance.load();
   await DisplaySettings.instance.load();

@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/widget/detail/intro/selection_button.dart';
+import 'package:mc_mod_helper/widget/common/selection_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/mcmod.dart';
@@ -11,7 +11,8 @@ import '../../api/modrinth.dart';
 import '../../model/mod/mod_detail.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../service/agent/agent.dart';
-import '../main/agent_sheet.dart';
+import '../../service/saves/history.dart';
+import '../../widget/handler/agent_sheet.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/image_box.dart';
 import '../../widget/handler/scroll_button.dart';
@@ -83,26 +84,26 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   /// 获取详情:按数据来源选择 API;
-  /// 被站点安全验证拦截时弹窗人工输入验证码,通过后自动重试
+  /// 被站点安全验证拦截时弹窗人工输入验证码,通过后自动重试。
+  /// 加载成功即记一条浏览历史(详情页是唯一的"浏览"入口)
   Future<ModDetail> _load() async {
     try {
-      switch (widget.source) {
-        case ModSource.mcmod:
-          return await McmodApi.getDetail(
-            widget.id,
-            fallbackDescription: widget.initialDescription,
-          );
-        case ModSource.modrinth:
-          return await ModrinthApi.getDetail(
-            widget.id,
-            fallbackDescription: widget.initialDescription,
-          );
-        case ModSource.curseforge:
-          return await CurseforgeApi.getDetail(
-            widget.id,
-            fallbackDescription: widget.initialDescription,
-          );
-      }
+      final detail = switch (widget.source) {
+        ModSource.mcmod => await McmodApi.getDetail(
+          widget.id,
+          fallbackDescription: widget.initialDescription,
+        ),
+        ModSource.modrinth => await ModrinthApi.getDetail(
+          widget.id,
+          fallbackDescription: widget.initialDescription,
+        ),
+        ModSource.curseforge => await CurseforgeApi.getDetail(
+          widget.id,
+          fallbackDescription: widget.initialDescription,
+        ),
+      };
+      await HistoryService.instance.record(ModSummary.fromDetail(detail));
+      return detail;
     } on McmodCaptchaException catch (e) {
       if (!mounted) rethrow;
       final ok = await resolveCaptcha(context, e.challenge);
@@ -466,10 +467,13 @@ class _SelectionButtonSliverDelegate extends SliverPersistentHeaderDelegate {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SelectionButton(
-        button: button,
-        selectedIndex: selectedIndex,
-        switchTo: switchTo,
+      child: Align(
+        alignment: AlignmentGeometry.centerLeft,
+        child: SelectionButton(
+          button: button,
+          selectedIndex: selectedIndex,
+          switchTo: switchTo,
+        ),
       ),
     );
   }

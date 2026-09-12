@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/page/discover/search.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 
-import '../../api/mcmod.dart';
-import '../../model/mod/mod_category.dart';
-import '../../setting/display_settings.dart';
-import '../../widget/handler/captcha_dialog.dart';
-import '../../widget/mod/category_card.dart';
-import '../../widget/common/error_view.dart';
+import '../api/mcmod.dart';
+import '../model/mod/mod_category.dart';
+import '../setting/display_settings.dart';
+import '../widget/handler/captcha_dialog.dart';
+import '../widget/mod/category_card.dart';
+import '../widget/common/error_view.dart';
 
 /// 应用主页:展示 mcmod.cn 首页的模组分类与首页推荐模组列表
-class SortPage extends StatefulWidget {
-  const SortPage({super.key});
+class DiscoverPage extends StatefulWidget {
+  const DiscoverPage({super.key});
 
   @override
-  State<SortPage> createState() => _SortPageState();
+  State<DiscoverPage> createState() => _DiscoverPageState();
 }
 
-class _SortPageState extends State<SortPage> {
+class _DiscoverPageState extends State<DiscoverPage> {
   // 分类区状态
   bool _categoriesLoading = true;
   String? _categoriesError;
@@ -104,6 +105,17 @@ class _SortPageState extends State<SortPage> {
       appBar: AppBar(
         title: const Text('MC Mod Helper'),
         actions: [
+          // 搜索
+          IconButton(
+            tooltip: '搜索',
+            icon: const Icon(Icons.search_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SearchPage()),
+              );
+            },
+          ),
           // 刷新
           IconButton(
             tooltip: '刷新',
@@ -117,26 +129,8 @@ class _SortPageState extends State<SortPage> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-          children: [
-            _buildSectionTitle('模组分类', Icons.widgets_rounded),
-            _buildCategoriesSection(),
-          ],
+          children: [_buildCategoriesSection()],
         ),
-      ),
-    );
-  }
-
-  /// 构建标题
-  Widget _buildSectionTitle(String sectionTitle, IconData icon) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
-      child: Row(
-        children: [
-          Icon(icon, color: theme.colorScheme.primary),
-          const SizedBox(width: 10),
-          Text(sectionTitle, style: theme.textTheme.headlineSmall),
-        ],
       ),
     );
   }

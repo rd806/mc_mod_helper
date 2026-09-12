@@ -58,51 +58,55 @@ void main() {
     ModrinthApi.clearCaches();
   });
 
-  testWidgets('启动显示主页:三个版块各加载失败,侧边栏导航可用', (tester) async {
-    // 加高窗口:三个版块要同时在可视区才会被 ListView 构建
-    tester.view.physicalSize = const Size(800, 1800);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
+  testWidgets('启动显示主页:当前版块加载失败,侧边栏导航可用', (tester) async {
     await pumpApp(tester);
 
     expect(find.text('MC Mod Helper'), findsOneWidget);
-    // 首页三个版块(默认排序/最新收录/最新编辑),各带一个「查看更多」
+    // 三个版块名:切换标签一处,当前版块的标题行一处
     for (final title in ['默认排序', '最新收录', '最新编辑']) {
-      expect(find.text(title), findsOneWidget);
+      expect(find.text(title), findsWidgets);
     }
-    expect(find.text('查看更多'), findsNWidgets(3));
-    // 三个版块都请求失败(测试环境 HTTP 400)
-    expect(find.textContaining('加载失败'), findsNWidgets(3));
-    // 分类在独立页签(IndexedStack 只展示当前页签)
-    expect(find.text('模组分类'), findsNothing);
-    // 侧边栏五个页签入口(测试窗口 800x600 走宽屏 NavigationRail;
-    // 设置不再是页签,入口在主页 AppBar)
+    // 只渲染当前版块:一个「查看更多」、一处加载失败(测试环境 HTTP 400)
+    expect(find.text('查看更多'), findsOneWidget);
+    expect(find.textContaining('加载失败'), findsOneWidget);
+    // 侧边栏四个页签入口(测试窗口 800x600 走宽屏 NavigationRail;
+    // 搜索在「探索」页右上角,设置在各页 AppBar)
     expect(find.text('首页'), findsOneWidget);
-    expect(find.text('分类'), findsOneWidget);
-    expect(find.text('搜索'), findsOneWidget);
+    expect(find.text('探索'), findsOneWidget);
     expect(find.text('AI'), findsOneWidget);
-    expect(find.text('收藏'), findsOneWidget);
+    expect(find.text('我的'), findsOneWidget);
     expect(find.text('设置'), findsNothing);
     // 设置入口:主页 AppBar 一个,宽屏侧边栏底部还留了一个
     expect(find.byTooltip('设置'), findsWidgets);
     expect(find.byIcon(Icons.refresh), findsOneWidget); // 主页刷新按钮
   });
 
-  testWidgets('侧边栏切换页签:分类与搜索', (tester) async {
+  testWidgets('首页切换版块标签:换的是当前展示的版块', (tester) async {
     await pumpApp(tester);
 
-    // 切到分类页签
-    await tester.tap(find.text('分类'));
+    // 默认停在「默认排序」:标题行 + 查看更多都属于它
+    expect(find.textContaining('加载失败'), findsOneWidget);
+
+    // 切到「最新收录」标签(标签在页面顶部,取第一个)
+    await tester.tap(find.text('最新收录').first);
+    await tester.pump();
+    expect(find.text('查看更多'), findsOneWidget);
+    expect(find.textContaining('加载失败'), findsOneWidget);
+  });
+
+  testWidgets('侧边栏切换页签:探索里的分类与搜索', (tester) async {
+    await pumpApp(tester);
+
+    // 切到「探索」页签:分类区(测试环境同样请求失败)
+    await tester.tap(find.text('探索'));
     await tester.pump(); // IndexedStack 切换,无路由动画
-    expect(find.text('模组分类'), findsOneWidget);
     expect(find.textContaining('加载失败'), findsWidgets); // 分类区错误
     expect(find.text('默认排序'), findsNothing); // 已离开首页
 
-    // 切到搜索页签(IndexedStack 切换非选中页 offstage,
-    // 设置页的输入框不会干扰 TextField 计数)
-    await tester.tap(find.text('搜索'));
+    // 搜索入口在「探索」页的 AppBar 上
+    await tester.tap(find.byTooltip('搜索'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
     expect(find.text('模组搜索'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
   });
@@ -246,25 +250,20 @@ void main() {
     expect(AgentSettings.instance.baseUrl, AgentSettings.defaultBaseUrl);
   });
 
-  testWidgets('点击刷新按钮:三个版块重新加载', (tester) async {
-    // 加高窗口:三个版块要同时在可视区才会被 ListView 构建
-    tester.view.physicalSize = const Size(800, 1800);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
+  testWidgets('点击刷新按钮:当前版块重新加载', (tester) async {
     await pumpApp(tester);
 
     await tester.tap(find.byIcon(Icons.refresh));
-    await tester.pump(); // 三个版块一起回到加载态
-    expect(find.byType(CircularProgressIndicator), findsNWidgets(3));
+    await tester.pump(); // 版块回到加载态
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.textContaining('加载失败'), findsNothing);
 
-    // 三个请求依次受 1s 节流约束:逐个推进假时钟(不能用 pumpAndSettle)
+    // 三个版块的请求依次受 1s 节流约束:逐个推进假时钟(不能用 pumpAndSettle)
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
       await tester.pump();
     }
-    expect(find.textContaining('加载失败'), findsNWidgets(3));
+    expect(find.textContaining('加载失败'), findsOneWidget);
   });
 
   testWidgets('「查看更多」进入对应版块的列表页', (tester) async {
@@ -284,21 +283,45 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('切换数据来源后首页三个版块重新拉取', (tester) async {
+  testWidgets('切换数据来源后首页当前版块重新拉取', (tester) async {
     await pumpApp(tester);
     expect(find.textContaining('加载失败'), findsWidgets);
 
-    DisplaySettings.instance.setDataSource(ModSource.modrinth);
-    await tester.pump(); // 版块回到加载态
-    expect(find.byType(CircularProgressIndicator), findsWidgets);
+    // 切到 Modrinth:装一个假响应,断言重新拉取后的内容渲染出来
+    ModrinthApi.clientFactory = () => MockClient(
+      (request) async => http.Response.bytes(
+        utf8.encode(
+          jsonEncode({
+            'hits': [
+              {
+                'slug': 'sodium',
+                'title': 'Sodium',
+                'description': '高性能渲染引擎',
+                'icon_url': null,
+                'downloads': 1,
+                'follows': 1,
+              },
+            ],
+            'total_hits': 1,
+          }),
+        ),
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      ),
+    );
+    ModrinthApi.clearCaches(); // 让上面的工厂生效
 
-    // 三个版块依次请求,逐个推过节流计时器
-    for (var i = 0; i < 5; i++) {
+    DisplaySettings.instance.setDataSource(ModSource.modrinth);
+    await tester.pump(); // 当前版块请求发出
+    await tester.pump(); // 响应 → 渲染
+    // 其余两个版块(以及探索页的分类)依次受 1s 节流约束
+    for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
       await tester.pump();
     }
     expect(DisplaySettings.instance.dataSource, ModSource.modrinth);
-    expect(find.textContaining('加载失败'), findsWidgets);
+    expect(find.text('Sodium'), findsOneWidget);
+    expect(find.textContaining('加载失败'), findsNothing);
   });
 
   testWidgets('聚合搜索:来源按钮切换展示,失败来源单独报错', (tester) async {
@@ -331,9 +354,12 @@ void main() {
     ModrinthApi.clearCaches(); // 重置惰性客户端,让上面的工厂生效
 
     await pumpApp(tester);
-    // 搜索入口:侧边栏「搜索」页签
-    await tester.tap(find.text('搜索'));
+    // 搜索入口:「探索」页右上角的搜索按钮
+    await tester.tap(find.text('探索'));
     await tester.pump();
+    await tester.tap(find.byTooltip('搜索'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
 
     await tester.enterText(find.byType(TextField), 'jei');
     await tester.tap(find.byIcon(Icons.arrow_forward));

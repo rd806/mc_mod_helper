@@ -7,10 +7,10 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
-import 'package:mc_mod_helper/page/feature/default_list.dart';
-import 'package:mc_mod_helper/page/feature/feature_list_page.dart';
-import 'package:mc_mod_helper/page/feature/last_edit_list.dart';
-import 'package:mc_mod_helper/page/feature/last_publish_list.dart';
+import 'package:mc_mod_helper/page/recommend/default_list.dart';
+import 'package:mc_mod_helper/page/recommend/feature_list_page.dart';
+import 'package:mc_mod_helper/page/recommend/last_edit_list.dart';
+import 'package:mc_mod_helper/page/recommend/last_publish_list.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 

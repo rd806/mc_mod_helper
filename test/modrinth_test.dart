@@ -16,6 +16,7 @@ import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/page/more/description.dart';
+import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
@@ -138,6 +139,8 @@ void main() {
       'mcmodhelper_sqlite_test',
     );
     await FavoritesService.instance.init(dbPath: '${dir.path}/favorites.db');
+    // 详情页加载成功会记一条浏览历史,同样先建库
+    await HistoryService.instance.init(dbPath: '${dir.path}/history.db');
   });
 
   setUp(() {
@@ -293,14 +296,15 @@ void main() {
     await tester.pump(); // 两个响应 → setState
     await tester.pump();
 
-    // 分类在「分类」页签(IndexedStack 默认停在推荐页签)
-    await tester.tap(find.text('分类'));
+    // 分类在「探索」页签(IndexedStack 默认停在首页)
+    await tester.tap(find.text('探索'));
     await tester.pump();
     expect(find.text('科技'), findsWidgets); // Modrinth 分类卡片已渲染
 
-    // 切到「搜索」页签
-    await tester.tap(find.text('搜索'));
+    // 搜索入口在「探索」页右上角
+    await tester.tap(find.byTooltip('搜索'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
 
     // 搜索:分类请求已占用节流时间戳,搜索请求要等 1s 节流计时器
     await tester.enterText(find.byType(TextField), 'sodium');

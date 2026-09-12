@@ -3,17 +3,18 @@ import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 
-import '../../api/mcmod.dart';
-import '../../model/mod/mod_summary.dart';
-import '../../widget/handler/captcha_dialog.dart';
-import '../../widget/common/error_view.dart';
-import '../feature/default_list.dart';
-import '../feature/last_edit_list.dart';
-import '../feature/last_publish_list.dart';
-import '../more/config.dart';
+import '../api/mcmod.dart';
+import '../model/mod/mod_summary.dart';
+import '../widget/common/selection_button.dart';
+import '../widget/handler/captcha_dialog.dart';
+import '../widget/common/error_view.dart';
+import 'recommend/default_list.dart';
+import 'recommend/last_edit_list.dart';
+import 'recommend/last_publish_list.dart';
+import 'more/config.dart';
 
 /// 首页每个版块展示的条数(更多的点「查看更多」进列表页)
-const int _sectionLimit = 5;
+const int _sectionLimit = 10;
 
 /// 首页:三个版块各展示 [_sectionLimit] 条,
 /// 「查看更多」进入该版块的完整列表页(滚到底自动加载下一页)
@@ -39,6 +40,8 @@ class _FeatureSection {
 }
 
 class _FeaturePageState extends State<FeaturePage> {
+  final List<(String, int)> _button = [('默认排序', 0), ('最新收录', 1), ('最新编辑', 2)];
+
   final List<_FeatureSection> _sections = [
     _FeatureSection(FeatureSource.none, Icons.thumb_up_rounded),
     _FeatureSection(FeatureSource.createTime, Icons.fiber_new_rounded),
@@ -53,6 +56,15 @@ class _FeaturePageState extends State<FeaturePage> {
 
   /// 加载序号:丢弃过期响应(重试/切换来源时旧结果不再覆盖新结果)
   int _seq = 0;
+
+  /// 当前展示的类别
+  int _currentIndex = 0;
+
+  void _switchTo(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   void initState() {
@@ -186,10 +198,23 @@ class _FeaturePageState extends State<FeaturePage> {
       ),
       body: RefreshIndicator(
         onRefresh: () => _loadAll(silent: true),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-          children: [for (final section in _sections) _buildSection(section)],
+        child: Column(
+          children: [
+            Center(
+              child: SelectionButton(
+                button: _button,
+                selectedIndex: _currentIndex,
+                switchTo: _switchTo,
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                children: [_buildSection(_sections[_currentIndex])],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -202,7 +227,7 @@ class _FeaturePageState extends State<FeaturePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 12, 0, 4),
+          padding: const EdgeInsets.fromLTRB(8, 12, 0, 8),
           child: Row(
             children: [
               Icon(section.icon, color: theme.colorScheme.primary),

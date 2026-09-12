@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../model/mod/mod_summary.dart';
-import '../more/description.dart';
+import '../../page/more/description.dart';
 import '../../service/agent/agent.dart';
 import '../../service/agent/history.dart';
 import '../../icon/link_icons.dart';

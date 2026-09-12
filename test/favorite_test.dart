@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/main.dart';
+import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
@@ -81,11 +82,15 @@ Future<void> _pumpApp(WidgetTester tester) async {
   await tester.pump(); // 渲染错误态
 }
 
-/// 在搜索页(侧边栏「搜索」页签)里搜索 jei 并等结果渲染
+/// 在搜索页(「探索」页右上角进入)里搜索 jei 并等结果渲染
 /// (Modrinth 假响应,mcmod 真实 400;mcmod 搜索走 www 节流,请求要等 1s 计时器)
 Future<void> _searchJei(WidgetTester tester) async {
-  await tester.tap(find.text('搜索'));
+  await tester.tap(find.text('探索'));
   await tester.pump();
+  await tester.tap(find.byTooltip('搜索'));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
+  await tester.enterText(find.byType(TextField), 'jei');
   await tester.enterText(find.byType(TextField), 'jei');
   await tester.tap(find.byIcon(Icons.arrow_forward));
   await tester.pump(); // 搜索发起
@@ -101,6 +106,8 @@ void main() {
       'mcmodhelper_sqlite_test',
     );
     await FavoritesService.instance.init(dbPath: '${dir.path}/favorites.db');
+    // 详情页加载成功会记一条浏览历史,同样先建库
+    await HistoryService.instance.init(dbPath: '${dir.path}/history.db');
   });
 
   setUp(() async {
@@ -127,9 +134,13 @@ void main() {
     );
     await _pumpApp(tester);
 
-    // 切到收藏页签:条目出现,次要名称作为副标题显示
-    await tester.tap(find.text('收藏'));
+    // 切到「我的」页签,再进「我的收藏」:条目出现,次要名称作为副标题显示
+    await tester.tap(find.text('我的'));
     await tester.pump();
+    await tester.tap(find.text('我的收藏'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('[JEI] JEI物品管理器'), findsOneWidget);
     expect(find.text('Just Enough Items'), findsOneWidget);
     expect(find.textContaining('还没有收藏'), findsNothing);
