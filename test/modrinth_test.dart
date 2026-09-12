@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:hyper_render/hyper_render.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
@@ -16,7 +17,6 @@ import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/page/more/description.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
-import 'package:mc_mod_helper/setting/settings.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
 http.Response _json(Object data) => http.Response.bytes(
@@ -271,10 +271,10 @@ void main() {
   });
 
   testWidgets('数据来源切到 Modrinth 后搜索与详情走 Modrinth', (tester) async {
-    await SettingsService.instance.load();
+    await DisplaySettings.instance.load();
     // 本用例验证 hyper_render 渲染路径,显式指定渲染方法
     // (默认 'default' 是 HtmlContent,详情页不会出现 HyperViewer)
-    SettingsService.instance.setRenderType(RenderType.hyper);
+    DisplaySettings.instance.setRenderType(RenderType.hyper);
     // 重置 mcmod 节流时间戳:保证启动时的推荐请求立即发出
     McmodApi.clearCaches();
 
@@ -287,7 +287,7 @@ void main() {
 
     // 切来源:推荐页与分类页随之重拉(Modrinth,MockClient)。
     // 推荐请求无节流立即发出,分类请求挂在 1s 节流计时器上
-    SettingsService.instance.setDataSource(ModSource.modrinth);
+    DisplaySettings.instance.setDataSource(ModSource.modrinth);
     await tester.pump(); // 推荐请求发出
     await tester.pump(const Duration(seconds: 1)); // 节流 → 分类请求发出
     await tester.pump(); // 两个响应 → setState

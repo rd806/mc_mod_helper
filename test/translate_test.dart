@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/service/agent/translate.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
-import 'package:mc_mod_helper/setting/settings.dart';
+import 'package:mc_mod_helper/setting/language_settings.dart';
 
 /// OpenAI 兼容 chat/completions 的假响应
 http.Response _json(Object data) => http.Response.bytes(
@@ -29,7 +29,7 @@ void main() {
   setUp(() async {
     TranslateApi.clearCaches();
     SharedPreferences.setMockInitialValues({});
-    await SettingsService.instance.load();
+    await LanguageSettings.instance.load();
     await AgentSettings.instance.load();
     // 默认给一个可用的配置,测试里按需覆盖
     AgentSettings.instance

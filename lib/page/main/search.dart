@@ -3,11 +3,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/widget/common/link_icons.dart';
+import 'package:mc_mod_helper/icon/link_icons.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
 
 import '../../api/mcmod.dart';
 import '../../model/mod/mod_summary.dart';
-import '../../setting/settings.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 
@@ -211,7 +211,7 @@ class _SearchPageState extends State<SearchPage> {
   /// 搜索完成后默认展示的来源:优先设置的数据来源;
   /// 其失败或无结果时,回落到列表顺序里第一个有结果的来源
   ModSource _defaultSource() {
-    final preferred = SettingsService.instance.dataSource;
+    final preferred = DisplaySettings.instance.dataSource;
     final preferredMods = _totalResults[preferred];
     if (preferredMods != null && preferredMods.isNotEmpty) return preferred;
     for (final source in _source) {
@@ -267,13 +267,13 @@ class _SearchPageState extends State<SearchPage> {
       );
     }
     return ListenableBuilder(
-      listenable: SettingsService.instance,
+      listenable: DisplaySettings.instance,
       builder: (context, _) => CustomScrollView(
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.all(8),
             sliver: DisplayManager.buildSliver(
-              SettingsService.instance.displayStyle,
+              DisplaySettings.instance.displayStyle,
               result,
             ),
           ),

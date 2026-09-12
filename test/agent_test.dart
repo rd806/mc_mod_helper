@@ -14,7 +14,7 @@ import 'package:mc_mod_helper/service/agent/agent.dart';
 import 'package:mc_mod_helper/service/agent/history.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
-import 'package:mc_mod_helper/setting/settings.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/widget/agent/agent_sheet.dart';
 
 http.Response _json(Object data) => http.Response.bytes(
@@ -78,7 +78,8 @@ void main() {
     AgentApi.clearCaches();
     McmodApi.clearCaches();
     SharedPreferences.setMockInitialValues({});
-    await SettingsService.instance.load();
+    // 搜索走哪个来源由 DisplaySettings 决定
+    await DisplaySettings.instance.load();
     // 对话记录是单例:空 mock 存储 + load 把它复位(与设置服务同理)
     await AgentHistoryService.instance.load();
     await AgentSettings.instance.load();

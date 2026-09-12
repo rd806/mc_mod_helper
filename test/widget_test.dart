@@ -12,7 +12,9 @@ import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
-import 'package:mc_mod_helper/setting/settings.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
+import 'package:mc_mod_helper/setting/language_settings.dart';
+import 'package:mc_mod_helper/setting/theme_settings.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
@@ -45,7 +47,9 @@ void main() {
     // 单例跨用例共享:重置 mock 存储并 load,
     // load 对缺失键显式赋默认值,单例随之复位
     SharedPreferences.setMockInitialValues({});
-    await SettingsService.instance.load();
+    await ThemeSettings.instance.load();
+    await DisplaySettings.instance.load();
+    await LanguageSettings.instance.load();
     await AgentSettings.instance.load();
     // 重置各 Api 的节流时间戳与缓存:否则上个用例残留的请求时间
     // 会让"第一个请求立即发出"的节流节奏不可预测
@@ -62,7 +66,7 @@ void main() {
     expect(find.text('模组分类'), findsNothing);
     expect(find.textContaining('加载失败'), findsOneWidget);
     // 侧边栏四个页签入口(测试窗口 800x600 走宽屏 NavigationRail;
-    // 设置/关于不再是页签,入口在主页 AppBar)
+    // 设置不再是页签,入口在主页 AppBar)
     expect(find.text('首页'), findsOneWidget);
     expect(find.text('分类'), findsOneWidget);
     expect(find.text('搜索'), findsOneWidget);
@@ -70,7 +74,6 @@ void main() {
     expect(find.text('设置'), findsNothing);
     // 设置入口:主页 AppBar 一个,宽屏侧边栏底部还留了一个
     expect(find.byTooltip('设置'), findsWidgets);
-    expect(find.byTooltip('关于'), findsOneWidget);
     expect(find.byIcon(Icons.refresh), findsOneWidget); // 主页刷新按钮
     // 主页悬浮入口:模组助手(搜索是侧边栏页签)
     expect(find.byIcon(Icons.smart_toy_outlined), findsOneWidget);
@@ -94,10 +97,10 @@ void main() {
     expect(find.byType(TextField), findsOneWidget);
   });
 
-  testWidgets('进入设置页,可修改主题/字体/推荐条数', (tester) async {
-    // 放大测试窗口:设置页列表较长,默认 600 高的窗口下页面下方区块
-    // 未被 ListView 懒构建,推荐条数滑条等控件会找不到
-    tester.view.physicalSize = const Size(800, 2000);
+  testWidgets('进入设置页,可修改主题/显示/语言/AI 设置', (tester) async {
+    // 放大测试窗口:设置页列表较长,默认 600 高的窗口下展开的分组
+    // 会被 ListView 懒构建掉,滑条等控件会找不到
+    tester.view.physicalSize = const Size(800, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -109,35 +112,39 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
     await tester.pump(const Duration(milliseconds: 350));
 
-    // 各设置区块都在(页面标题「设置」)
+    // 五个分组标题都在,且默认全部折叠(子项不渲染)
     expect(find.widgetWithText(AppBar, '设置'), findsOneWidget);
-    expect(find.text('主题设置'), findsOneWidget);
-    expect(find.text('字体大小'), findsOneWidget);
-    expect(find.text('数据设置'), findsOneWidget);
+    for (final title in ['主题', '显示', '语言', 'AI', '关于']) {
+      expect(find.text(title), findsOneWidget);
+    }
+    expect(find.byType(DropdownButton<ThemeMode>), findsNothing);
 
-    // 切换主题模式(下拉框) → 服务值变化(不触发主页重载,无新计时器)
+    // ---- 主题:展开分组后切主题模式、字体与字号 ----
+    await tester.tap(find.text('主题'));
+    await tester.pumpAndSettle(); // 展开动画
+    expect(find.text('字体选择'), findsOneWidget);
+    expect(find.text('字体大小'), findsOneWidget);
+
     await tester.tap(find.byType(DropdownButton<ThemeMode>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('亮色').last);
     await tester.pumpAndSettle(); // 主题过渡动画收尾
-    expect(SettingsService.instance.themeMode, ThemeMode.light);
+    expect(ThemeSettings.instance.themeMode, ThemeMode.light);
 
-    // 拖字体滑条(第一个) → 松手提交,服务值变化
+    // 拖字体滑条(主题分组里唯一一个) → 松手提交,服务值变化
     await tester.drag(find.byType(Slider).first, const Offset(100, 0));
     await tester.pump();
-    expect(SettingsService.instance.fontScale, greaterThan(1.0));
+    expect(ThemeSettings.instance.fontScale, greaterThan(1.0));
 
     // 切换字体(下拉框) → 服务值变化,主题 fontFamily 即时生效
-    // (回归:主题缓存键曾漏掉字体,切换后需重启才生效)
-    // 注意:AI 设置里的「目标语言」也是 DropdownButton<String>,
+    // (回归1:主题缓存键曾漏掉字体;回归2:字体搬到别的服务后顶层不再监听)
+    // 注意:「语言」分组里的「目标语言」也是 DropdownButton<String>,
     // 字体下拉在页面更靠前,用 .first 取它
-    expect(find.text('字体设置'), findsOneWidget);
-    expect(find.text('字体选择'), findsOneWidget);
     await tester.tap(find.byType(DropdownButton<String>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Unifont').last);
     await tester.pumpAndSettle(); // 新 ThemeData → 主题过渡动画收尾
-    expect(SettingsService.instance.fontType, 'Unifont');
+    expect(ThemeSettings.instance.fontType, 'Unifont');
     expect(
       tester
           .widget<MaterialApp>(find.byType(MaterialApp))
@@ -148,12 +155,21 @@ void main() {
       'Unifont',
     );
 
-    // 拖推荐条数滑条(第二个,可能在可视区外,先滚动到可见)
+    // ---- 显示:渲染方法/数据来源/推荐来源/条数/展示方式 ----
+    await tester.tap(find.text('显示'));
+    await tester.pumpAndSettle();
+    expect(find.text('渲染方法'), findsOneWidget);
+    expect(find.text('数据来源'), findsOneWidget);
+    expect(find.text('推荐来源'), findsOneWidget);
+    expect(find.text('最多显示'), findsOneWidget);
+    expect(find.text('展示方式'), findsOneWidget);
+
+    // 拖推荐条数滑条(显示分组里唯一一个,可能在可视区外,先滚动到可见)
     await tester.ensureVisible(find.byType(Slider).last);
     await tester.pump();
     await tester.drag(find.byType(Slider).last, const Offset(400, 0));
     await tester.pump();
-    expect(SettingsService.instance.featuredNum, greaterThan(20));
+    expect(DisplaySettings.instance.featuredNum, greaterThan(20));
 
     // 条数变化触发推荐页(离屏但已挂载)重新拉取:先走节流计时器再发请求,
     // 测试环境请求返回 400;必须显式推进假时钟,不能用 pumpAndSettle
@@ -162,7 +178,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // 切换渲染方法(主题设置里的 RenderType 下拉框) → 服务值变化;
+    // 切换渲染方法(RenderType 下拉框) → 服务值变化;
     // 渲染方法不触发主页重拉,无新计时器
     await tester.ensureVisible(find.byType(DropdownButton<RenderType>));
     await tester.pump();
@@ -170,23 +186,21 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Hyper').last);
     await tester.pumpAndSettle();
-    expect(SettingsService.instance.renderType, RenderType.hyper);
+    expect(DisplaySettings.instance.renderType, RenderType.hyper);
 
-    // 切换推荐来源(数据设置里的 FeatureSource 下拉框) → 服务值变化,
-    // 推荐页再次重拉
+    // 切换推荐来源(FeatureSource 下拉框) → 服务值变化,推荐页再次重拉
     await tester.ensureVisible(find.byType(DropdownButton<FeatureSource>));
     await tester.pump();
     await tester.tap(find.byType(DropdownButton<FeatureSource>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('最新编辑').last);
     await tester.pumpAndSettle();
-    expect(SettingsService.instance.featuredSource, FeatureSource.lastEditTime);
+    expect(DisplaySettings.instance.featuredSource, FeatureSource.lastEditTime);
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     await tester.pump();
 
     // 数据来源下拉框切到 Modrinth(选项文本只在菜单打开后出现)
-    expect(find.text('数据来源'), findsOneWidget);
     await tester.ensureVisible(find.byType(DropdownButton<ModSource>));
     await tester.pump();
     await tester.tap(find.byType(DropdownButton<ModSource>));
@@ -198,20 +212,30 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
     await tester.pump();
-    expect(SettingsService.instance.dataSource, ModSource.modrinth);
+    expect(DisplaySettings.instance.dataSource, ModSource.modrinth);
 
     // 展示方式下拉框(网格/列表/自适应) → 服务值变化;
     // 只换布局不重新拉取,无新计时器
-    expect(find.text('展示方式'), findsOneWidget);
     await tester.tap(find.byType(DropdownButton<DisplayStyle>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('网格').last);
     await tester.pumpAndSettle();
-    expect(SettingsService.instance.displayStyle, DisplayStyle.card);
+    expect(DisplaySettings.instance.displayStyle, DisplayStyle.card);
 
-    // AI 设置:三项都是「点击弹出输入框」,弹窗里「确定」才写回
-    await tester.ensureVisible(find.text('AI 设置'));
+    // ---- 语言:目标语言(详情页翻译按钮使用) ----
+    await tester.tap(find.text('语言'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byType(DropdownButton<String>).last);
     await tester.pump();
+    await tester.tap(find.byType(DropdownButton<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('英语').last);
+    await tester.pumpAndSettle();
+    expect(LanguageSettings.instance.translateLang, 'en');
+
+    // ---- AI:三项都是「点击弹出输入框」,弹窗里「确定」才写回 ----
+    await tester.tap(find.text('AI'));
+    await tester.pumpAndSettle();
     expect(find.text('接口地址'), findsOneWidget);
     expect(find.text('API Key'), findsOneWidget);
     expect(find.text('模型'), findsOneWidget);
@@ -258,7 +282,7 @@ void main() {
     await pumpApp(tester);
     expect(find.textContaining('加载失败'), findsOneWidget);
 
-    SettingsService.instance.setFeaturedMax(30);
+    DisplaySettings.instance.setFeaturedMax(30);
     await tester.pump(); // 触发重载 → 推荐区回到加载态
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.textContaining('加载失败'), findsNothing);

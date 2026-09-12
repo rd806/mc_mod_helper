@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/modrinth.dart';
@@ -14,7 +15,6 @@ import 'package:mc_mod_helper/service/agent/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
-import 'package:mc_mod_helper/setting/settings.dart';
 
 http.Response _json(Object data) => http.Response.bytes(
   utf8.encode(jsonEncode(data)),
@@ -98,7 +98,7 @@ void main() {
     AgentApi.clearCaches();
     ModrinthApi.clearCaches();
     SharedPreferences.setMockInitialValues({});
-    await SettingsService.instance.load();
+    await DisplaySettings.instance.load();
     await AgentSettings.instance.load();
     await AgentHistoryService.instance.load();
     AgentSettings.instance
@@ -106,7 +106,7 @@ void main() {
       ..setBaseUrl('https://api.example.com/v1')
       ..setModel('test-model');
     // 详情与搜索都走 Modrinth:搜索结果里才能出现"当前项目自己"
-    SettingsService.instance.setDataSource(ModSource.modrinth);
+    DisplaySettings.instance.setDataSource(ModSource.modrinth);
     ModrinthApi.clientFactory = () => MockClient((request) async {
       if (request.url.path == '/v2/search') return _search();
       return _modrinth(request);

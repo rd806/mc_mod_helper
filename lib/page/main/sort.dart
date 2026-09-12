@@ -3,7 +3,7 @@ import 'package:mc_mod_helper/service/value/source.dart';
 
 import '../../api/mcmod.dart';
 import '../../model/mod/mod_category.dart';
-import '../../setting/settings.dart';
+import '../../setting/display_settings.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/mod/category_card.dart';
 import '../../widget/common/error_view.dart';
@@ -28,15 +28,15 @@ class _SortPageState extends State<SortPage> {
   @override
   void initState() {
     super.initState();
-    // 推荐条数上限变化时需要重新拉取(其余设置由 MaterialApp 顶层响应)
-    SettingsService.instance.addListener(_onSettingsChanged);
+    // 数据来源变化时需要重新拉取分类
+    DisplaySettings.instance.addListener(_onSettingsChanged);
     // 两个请求共用节流,推荐请求会自动约 1 秒后发出
     _loadCategories();
   }
 
   @override
   void dispose() {
-    SettingsService.instance.removeListener(_onSettingsChanged);
+    DisplaySettings.instance.removeListener(_onSettingsChanged);
     super.dispose();
   }
 
@@ -44,7 +44,7 @@ class _SortPageState extends State<SortPage> {
   /// 推荐条数上限/来源变化重拉推荐。
   /// 主题/字体/强调色变化也会触发本回调,但比较后直接返回
   void _onSettingsChanged() {
-    if (SettingsService.instance.dataSource != _lastDataSource) {
+    if (DisplaySettings.instance.dataSource != _lastDataSource) {
       _loadCategories();
     }
   }
@@ -59,7 +59,7 @@ class _SortPageState extends State<SortPage> {
       });
     }
     // 在发起时记录使用的数据来源:加载期间再变化会再次触发重载
-    final dataSource = SettingsService.instance.dataSource;
+    final dataSource = DisplaySettings.instance.dataSource;
     _lastDataSource = dataSource;
     try {
       // 注意 await:返回值是 Future,未等待会变成未处理的异步错误,

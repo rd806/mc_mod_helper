@@ -4,9 +4,9 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
+import 'package:mc_mod_helper/setting/language_settings.dart';
 
 import '../../setting/agent_settings.dart';
-import '../../setting/settings.dart';
 
 /// AI 翻译服务(OpenAI 兼容的 chat/completions 接口)。
 ///
@@ -62,7 +62,7 @@ class TranslateApi {
     String? model,
     void Function(int done, int total)? onProgress,
   }) async {
-    final settings = SettingsService.instance;
+    final settings = LanguageSettings.instance;
     final agent = AgentSettings.instance;
     final lang = targetLang ?? settings.translateLang;
     final key = '$cacheKey|$lang';
@@ -175,13 +175,13 @@ class TranslateApi {
 
   /// 该缓存是否已有对应译文(用于按钮直接切换原文/译文)
   static String? cachedHtml(String cacheKey, {String? targetLang}) {
-    final lang = targetLang ?? SettingsService.instance.translateLang;
+    final lang = targetLang ?? LanguageSettings.instance.translateLang;
     return _cache['$cacheKey|$lang'];
   }
 
   /// 目标语言代码 → 提示词里的自然语言名
   static String langName(String code) {
-    for (final (label, c) in SettingsService.translateLangs) {
+    for (final (label, c) in LanguageSettings.translateLanguages) {
       if (c == code) return label;
     }
     return code;

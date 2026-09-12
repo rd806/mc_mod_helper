@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
-import 'package:mc_mod_helper/setting/settings.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
+import 'package:mc_mod_helper/setting/theme_settings.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 
 /// 收藏页:展示已收藏的模组。
@@ -18,7 +19,7 @@ class FavoritePage extends StatelessWidget {
       body: ListenableBuilder(
         listenable: Listenable.merge([
           FavoritesService.instance,
-          SettingsService.instance,
+          ThemeSettings.instance,
         ]),
         builder: (context, _) {
           final likes = FavoritesService.instance.list();
@@ -36,7 +37,7 @@ class FavoritePage extends StatelessWidget {
               SliverPadding(
                 padding: const EdgeInsets.all(8),
                 sliver: DisplayManager.buildSliver(
-                  SettingsService.instance.displayStyle,
+                  DisplaySettings.instance.displayStyle,
                   [for (final l in likes) l.toSummary()],
                 ),
               ),

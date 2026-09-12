@@ -7,7 +7,7 @@ import '../../model/mod/mod_category.dart';
 import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
 import '../../model/mod/mod_summary.dart';
-import '../../setting/settings.dart';
+import '../../setting/display_settings.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 
@@ -195,14 +195,14 @@ class _CategoryPageState extends State<CategoryPage> {
     // 模组列表(按设置的展示方式:卡片/列表/自适应);
     // 监听设置,修改展示方式后无需重进页面即时切换
     return ListenableBuilder(
-      listenable: SettingsService.instance,
+      listenable: DisplaySettings.instance,
       builder: (context, _) => CustomScrollView(
         controller: _controller,
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.all(8),
             sliver: DisplayManager.buildSliver(
-              SettingsService.instance.displayStyle,
+              DisplaySettings.instance.displayStyle,
               _mods,
             ),
           ),

@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/page/more/about.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
 
 import '../../api/mcmod.dart';
 import '../../model/mod/mod_summary.dart';
-import '../../setting/settings.dart';
 import '../../widget/agent/agent_sheet.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
-import 'config.dart';
+import '../more/config.dart';
 
 /// 应用主页:展示 mcmod.cn 首页的模组分类与首页推荐模组列表
 class FeaturePage extends StatefulWidget {
@@ -43,15 +42,16 @@ class _FeaturePageState extends State<FeaturePage> {
   @override
   void initState() {
     super.initState();
-    // 推荐条数上限变化时需要重新拉取(其余设置由 MaterialApp 顶层响应)
-    SettingsService.instance.addListener(_onSettingsChanged);
+    // 推荐条数上限/来源/数据来源变化时需要重新拉取
+    // (主题等界面设置由 MaterialApp 顶层响应)
+    DisplaySettings.instance.addListener(_onSettingsChanged);
     // 两个请求共用节流,推荐请求会自动约 1 秒后发出
     _loadFeatured();
   }
 
   @override
   void dispose() {
-    SettingsService.instance.removeListener(_onSettingsChanged);
+    DisplaySettings.instance.removeListener(_onSettingsChanged);
     super.dispose();
   }
 
@@ -60,21 +60,21 @@ class _FeaturePageState extends State<FeaturePage> {
   /// 主题/字体/强调色变化也会触发本回调,但比较后直接返回
   void _onSettingsChanged() {
     // 展示方式变化:只换布局,不重新拉取
-    if (SettingsService.instance.displayStyle != _lastDisplayStyle) {
-      setState(() => _lastDisplayStyle = SettingsService.instance.displayStyle);
+    if (DisplaySettings.instance.displayStyle != _lastDisplayStyle) {
+      setState(() => _lastDisplayStyle = DisplaySettings.instance.displayStyle);
     }
-    if (SettingsService.instance.featuredNum != _lastFeaturedLimit ||
-        SettingsService.instance.featuredSource != _lastFeaturedSource ||
-        SettingsService.instance.dataSource != _lastDataSource) {
+    if (DisplaySettings.instance.featuredNum != _lastFeaturedLimit ||
+        DisplaySettings.instance.featuredSource != _lastFeaturedSource ||
+        DisplaySettings.instance.dataSource != _lastDataSource) {
       _loadFeatured();
     }
   }
 
   /// 加载首页推荐列表。[silent] 为 true 时不显示加载动画(下拉刷新用)
   Future<void> _loadFeatured({bool silent = false}) async {
-    final limit = SettingsService.instance.featuredNum;
-    final dataSource = SettingsService.instance.dataSource;
-    final featureSource = SettingsService.instance.featuredSource;
+    final limit = DisplaySettings.instance.featuredNum;
+    final dataSource = DisplaySettings.instance.dataSource;
+    final featureSource = DisplaySettings.instance.featuredSource;
     final seq = ++_featuredSeq;
     if (!silent) {
       setState(() {
@@ -148,17 +148,6 @@ class _FeaturePageState extends State<FeaturePage> {
               );
             },
           ),
-          // 关于
-          IconButton(
-            tooltip: '关于',
-            icon: const Icon(Icons.info_outline_rounded),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => AboutPage()),
-              );
-            },
-          ),
         ],
       ),
       body: RefreshIndicator(
@@ -172,7 +161,7 @@ class _FeaturePageState extends State<FeaturePage> {
           ],
         ),
       ),
-      // 两个悬浮入口:上方「模组助手」对话面板,下方站内搜索
+      // 悬浮入口:「模组助手」
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -226,7 +215,7 @@ class _FeaturePageState extends State<FeaturePage> {
         SliverPadding(
           padding: const EdgeInsets.only(bottom: 8),
           sliver: DisplayManager.buildSliver(
-            SettingsService.instance.displayStyle,
+            DisplaySettings.instance.displayStyle,
             _featured,
           ),
         ),

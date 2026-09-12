@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/page/more/description.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
-import 'package:mc_mod_helper/setting/settings.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
 
 http.Response _json(Object data) => http.Response.bytes(
   utf8.encode(jsonEncode(data)),
@@ -67,7 +67,7 @@ void main() {
     ModrinthApi.clearCaches();
     ModrinthApi.clientFactory = () => MockClient(_handler);
     SharedPreferences.setMockInitialValues({});
-    await SettingsService.instance.load();
+    await DisplaySettings.instance.load();
   });
 
   testWidgets('窄屏详情:封面+吸顶按钮+两页签各自独立滚动', (tester) async {

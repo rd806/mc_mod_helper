@@ -4,7 +4,7 @@ import '../../model/mod/mod_summary.dart';
 import '../../page/more/description.dart';
 import '../../service/agent/agent.dart';
 import '../../service/agent/history.dart';
-import '../common/link_icons.dart';
+import '../../icon/link_icons.dart';
 
 /// 打开模组助手对话面板(底部弹出)。
 ///

@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
+import 'package:mc_mod_helper/setting/display_settings.dart';
 
 import '../../model/author.dart';
 import '../../model/mod/mod_detail.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../setting/agent_settings.dart';
-import '../../setting/settings.dart';
 import '../value/source.dart';
 
 /// 一轮对话消息(面板持有历史,服务不存状态,便于测试)
@@ -231,7 +231,7 @@ class AgentApi {
     List<String> keywords, {
     String? exclude,
   }) async {
-    final source = SettingsService.instance.dataSource;
+    final source = DisplaySettings.instance.dataSource;
     final mods = <ModSummary>[];
     final seen = <String>{};
     for (final keyword in keywords) {

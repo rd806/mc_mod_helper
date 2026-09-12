@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/page/main/config.dart';
+import 'package:mc_mod_helper/page/more/config.dart';
 import 'package:mc_mod_helper/page/main/favorite.dart';
 import 'package:mc_mod_helper/page/main/feature.dart';
 import 'package:mc_mod_helper/page/main/sort.dart';

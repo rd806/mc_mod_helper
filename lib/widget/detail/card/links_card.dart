@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../model/mod/mod_detail.dart';
 import '../../common/collapsible_widgets.dart';
-import '../../common/link_icons.dart';
+import '../../../icon/link_icons.dart';
 import '../intro/section_title.dart';
 
 /// 相关链接(超出可展开的行数时折叠)

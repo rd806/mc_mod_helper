@@ -9,7 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mc_mod_helper/service/agent/translate.dart';
 import 'package:mc_mod_helper/model/mod/mod_detail.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
-import 'package:mc_mod_helper/setting/settings.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
+import 'package:mc_mod_helper/setting/language_settings.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/widget/detail/card/description_card.dart';
 
@@ -42,7 +43,8 @@ void main() {
   setUp(() async {
     TranslateApi.clearCaches();
     SharedPreferences.setMockInitialValues({});
-    await SettingsService.instance.load();
+    await LanguageSettings.instance.load();
+    await DisplaySettings.instance.load();
     await AgentSettings.instance.load();
   });
 

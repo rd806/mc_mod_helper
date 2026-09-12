@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/widget/common/link_icons.dart';
+import 'package:mc_mod_helper/icon/link_icons.dart';
 
 import '../../../model/mod/mod_detail.dart';
 import '../../common/collapsible_widgets.dart';

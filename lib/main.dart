@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/page/home.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
+import 'package:mc_mod_helper/setting/language_settings.dart';
 
 import 'service/agent/history.dart';
 import 'service/saves/likes.dart';
 import 'setting/agent_settings.dart';
-import 'setting/settings.dart';
+import 'setting/theme_settings.dart';
 
 /// 应用程序入口
 Future<void> main() async {
@@ -13,10 +15,10 @@ Future<void> main() async {
   // 初始化收藏数据库(SQLite;桌面端自动切换 FFI 实现)
   await FavoritesService.instance.init();
   // 先加载保存的设置再启动应用，避免启动后主题/字体跳变
-  await SettingsService.instance.load();
-  // AI 接口配置(翻译与助手共用)
+  await ThemeSettings.instance.load();
+  await DisplaySettings.instance.load();
+  await LanguageSettings.instance.load();
   await AgentSettings.instance.load();
-  // 助手对话记录(关掉面板/重启后接着聊,并作为多轮上下文)
   await AgentHistoryService.instance.load();
   runApp(const McModHelper());
 }
@@ -27,33 +29,33 @@ class McModHelper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 监听全部设置;任意一项变化都重建 MaterialApp 本体。
-    // home 是 const，ThemeData 有缓存（见 _buildTheme）,
+    // 监听主题设置(主题模式/强调色/字体/字号);任意一项变化都重建
+    // MaterialApp 本体。home 是 const，ThemeData 有缓存（见 _buildTheme）,
     // 所以非主题类设置变化不会引发子树重建/主题动画
     return ListenableBuilder(
-      listenable: SettingsService.instance,
+      listenable: ThemeSettings.instance,
       builder: (context, _) {
-        final settings = SettingsService.instance;
         return MaterialApp(
           title: 'Minecraft Mod Helper',
           debugShowCheckedModeBanner: false,
           theme: _buildTheme(
             Brightness.light,
-            settings.seedColor,
-            settings.fontType,
+            ThemeSettings.instance.seedColor,
+            ThemeSettings.instance.fontType,
           ),
           darkTheme: _buildTheme(
             Brightness.dark,
-            settings.seedColor,
-            settings.fontType,
+            ThemeSettings.instance.seedColor,
+            ThemeSettings.instance.fontType,
           ),
-          themeMode: settings.themeMode,
+          themeMode: ThemeSettings.instance.themeMode,
           // 全局字体缩放:覆盖 MediaQuery.textScaler。
           // Navigator 是 builder 的 child,因此路由页面/对话框/SnackBar 全部生效。
           // 注意:这会覆盖系统无障碍字体缩放(用户三档选择优先)。
           builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(textScaler: TextScaler.linear(settings.fontScale)),
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(ThemeSettings.instance.fontScale),
+            ),
             child: child!,
           ),
           home: const HomePage(),

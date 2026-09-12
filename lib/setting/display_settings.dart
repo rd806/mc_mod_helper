@@ -4,35 +4,26 @@ import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 应用设置(主题模式/强调色/字体缩放/推荐列表条数上限):
-/// 单例 ChangeNotifier + shared_preferences 持久化
-class SettingsService extends ChangeNotifier {
-  SettingsService._();
+/// 内容显示设置(渲染方法/数据来源/展示方式/推荐来源与条数):
+/// 单例 ChangeNotifier + shared_preferences 持久化。
+///
+/// 主题模式/强调色/字体/字号属于 [SettingsService](会重建整个应用),
+/// 这里只放切换后不需要重建主题、但页面要跟着刷新的设置。
+class DisplaySettings extends ChangeNotifier {
+  DisplaySettings._();
 
   /// 全局唯一实例
-  static final SettingsService instance = SettingsService._();
+  static final DisplaySettings instance = DisplaySettings._();
 
-  static const String _themeModeKey = 'theme_mode';
-  static const String _seedColorKey = 'seed_color';
-  static const String _fontTypeKey = 'font_type';
-  static const String _fontScaleKey = 'font_scale';
   static const String _featuredMaxKey = 'featured_max';
   static const String _featuredTypeKey = 'featured_source';
   static const String _dataSourceKey = 'data_source';
   static const String _displayStyleKey = 'display_style';
   static const String _renderTypeKey = 'render_type';
-  static const String _translateLangKey = 'translate_lang';
-
-  /// 字体大小
-  static const double fontMin = 0.5;
-  static const double fontMax = 2.0;
 
   /// 推荐列表条数上限的允许范围(与设置页滑条保持一致)
   static const int featuredMin = 5;
   static const int featuredMax = 50;
-
-  /// 切换字体
-  static const List<String> fontTypes = ['NotoSansSC', 'Unifont'];
 
   /// 首页推荐来源的合法取值(与 mcmod.cn 列表页 sort 参数一致)
   static const List<FeatureSource> featuredTypes = [
@@ -61,76 +52,25 @@ class SettingsService extends ChangeNotifier {
     DisplayStyle.auto,
   ];
 
-  /// 翻译目标语言:(显示名, 语言代码)
-  static const List<(String, String)> translateLangs = [
-    ('简体中文', 'zh-Hans'),
-    ('繁体中文', 'zh-Hant'),
-    ('英语', 'en'),
-    ('日语', 'ja'),
-    ('韩语', 'ko'),
-    ('俄语', 'ru'),
-    ('法语', 'fr'),
-    ('德语', 'de'),
-    ('西班牙语', 'es'),
-  ];
-
-  /// 翻译目标语言的默认值(接口地址/Key/模型见 AgentSettings)
-  static const String defaultTranslateLang = 'zh-Hans';
-
-  ThemeMode _themeMode = ThemeMode.system;
-  String _fontType = 'NotoSansSC';
-  Color _seedColor = Colors.blue;
-  double _fontScale = 1.0;
   int _featuredNum = 20;
   FeatureSource _featuredType = FeatureSource.none;
   ModSource _dataSource = ModSource.mcmod;
   DisplayStyle _displayStyle = DisplayStyle.table;
   RenderType _renderType = RenderType.auto;
 
-  // 翻译目标语言(AI 接口地址/Key/模型由 AgentSettings 管理)
-  String _translateLang = defaultTranslateLang;
-
-  ThemeMode get themeMode => _themeMode;
-  Color get seedColor => _seedColor;
-  String get fontType => _fontType;
-  double get fontScale => _fontScale;
   int get featuredNum => _featuredNum;
   FeatureSource get featuredSource => _featuredType;
   ModSource get dataSource => _dataSource;
   DisplayStyle get displayStyle => _displayStyle;
   RenderType get renderType => _renderType;
 
-  /// 翻译目标语言(AI 接口地址/Key/模型见 AgentSettings)
-  String get translateLang => _translateLang;
-
-  /// 目标语言的展示名(未知代码回落到代码本身)
-  String get translateLangLabel {
-    for (final (label, code) in translateLangs) {
-      if (code == _translateLang) return label;
-    }
-    return _translateLang;
-  }
-
-  /// 启动时读取已保存的设置(在 runApp 前调用,避免启动后主题/字体跳变)。
+  /// 启动时读取已保存的设置(在 runApp 前调用)。
   ///
   /// 每个键缺失或解析失败时都显式回落到默认值(而非保持内存现值),
   /// 因此测试里可以用 setMockInitialValues({}) + load() 把单例重置为默认。
   Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // 主题模式
-      _themeMode =
-          ThemeMode.values.asNameMap()[prefs.getString(_themeModeKey)] ??
-          ThemeMode.system;
-      _seedColor = Color(prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32());
-      // 字体样式(未知存储值回落到默认)
-      final ft = prefs.getString(_fontTypeKey);
-      _fontType = (ft != null && fontTypes.contains(ft)) ? ft : 'NotoSansSC';
-      // 字体大小
-      _fontScale = (prefs.getDouble(_fontScaleKey) ?? 1.0).clamp(
-        fontMin,
-        fontMax,
-      );
       // 列表最大长度
       _featuredNum = (prefs.getInt(_featuredMaxKey) ?? 20).clamp(
         featuredMin,
@@ -160,49 +100,10 @@ class SettingsService extends ChangeNotifier {
           ? renderType
           : RenderType.auto;
 
-      // 翻译目标语言(未知语言代码回落到默认)
-      final lang = prefs.getString(_translateLangKey);
-      _translateLang = (lang != null && translateLangs.any((e) => e.$2 == lang))
-          ? lang
-          : defaultTranslateLang;
-
       notifyListeners();
     } catch (_) {
       // 读取失败:保持默认值,不阻塞启动
     }
-  }
-
-  /// 切换主题模式:先同步更新内存值让 UI 立即生效,再异步写盘
-  void setThemeMode(ThemeMode mode) {
-    if (mode == _themeMode) return;
-    _themeMode = mode;
-    notifyListeners();
-    _persist(_themeModeKey, mode.name);
-  }
-
-  /// 设置强调色(亮/暗主题共用的种子色)
-  void setSeedColor(Color color) {
-    if (color.toARGB32() == _seedColor.toARGB32()) return;
-    _seedColor = color;
-    notifyListeners();
-    _persist(_seedColorKey, color.toARGB32());
-  }
-
-  /// 设置字体(未知字体名忽略;同值短路,与其余 setter 一致)
-  void setFontType(String type) {
-    if (!fontTypes.contains(type) || type == _fontType) return;
-    _fontType = type;
-    notifyListeners();
-    _persist(_fontTypeKey, type);
-  }
-
-  /// 设置全局字体缩放(自动截断到允许范围)
-  void setFontScale(double scale) {
-    final clamped = scale.clamp(fontMin, fontMax);
-    if (clamped == _fontScale) return;
-    _fontScale = clamped;
-    notifyListeners();
-    _persist(_fontScaleKey, clamped);
   }
 
   /// 设置首页推荐来源(最新收录/最新编辑),非法值忽略
@@ -250,16 +151,6 @@ class SettingsService extends ChangeNotifier {
     _displayStyle = style;
     notifyListeners();
     _persist(_displayStyleKey, style.name);
-  }
-
-  /// 翻译目标语言(未知语言代码忽略)
-  void setTranslateLang(String lang) {
-    if (!translateLangs.any((e) => e.$2 == lang) || lang == _translateLang) {
-      return;
-    }
-    _translateLang = lang;
-    notifyListeners();
-    _persist(_translateLangKey, lang);
   }
 
   /// 异步写盘;失败不影响本次切换,仅下次启动回到上次成功保存的值
