@@ -16,11 +16,11 @@ import '../../widget/handler/agent_sheet.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/image_box.dart';
 import '../../widget/handler/scroll_button.dart';
-import '../../widget/detail/card/authors_card.dart';
-import '../../widget/detail/intro/cover.dart';
-import '../../widget/detail/card/description_card.dart';
-import '../../widget/detail/card/environment_card.dart';
-import '../../widget/detail/card/links_card.dart';
+import '../../widget/detail/authors_card.dart';
+import '../../widget/detail/cover.dart';
+import '../../widget/detail/description_card.dart';
+import '../../widget/detail/environment_card.dart';
+import '../../widget/detail/links_card.dart';
 import '../../widget/mod/favorite_toggle.dart';
 
 /// 模组详情页

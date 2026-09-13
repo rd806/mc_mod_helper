@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../icon/icon_manager.dart';
-import '../../../model/mod/mod_detail.dart';
-import '../../common/collapsible_widgets.dart';
-import '../intro/section_title.dart';
+import '../../icon/icon_manager.dart';
+import '../../model/mod/mod_detail.dart';
+import '../common/collapsible_widgets.dart';
+import '../common/section_title.dart';
 
 /// 相关链接(超出可展开的行数时折叠)
 class LinksCard extends StatelessWidget {
@@ -26,10 +26,7 @@ class LinksCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const DetailSectionTitle(
-              title: '相关链接',
-              icon: Icons.insert_link_rounded,
-            ),
+            const SectionTitle(title: '相关链接', icon: Icons.insert_link_rounded),
             CollapsibleWidgets(
               widget: [
                 for (final link in mod.links)

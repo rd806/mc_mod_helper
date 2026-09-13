@@ -7,10 +7,10 @@ import 'package:mc_mod_helper/setting/agent_settings.dart';
 import 'package:mc_mod_helper/setting/language_settings.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 
-import '../../../service/agent/translate.dart';
-import '../../../model/mod/mod_detail.dart';
-import '../../../setting/display_settings.dart';
-import '../intro/section_title.dart';
+import '../../service/agent/translate.dart';
+import '../../model/mod/mod_detail.dart';
+import '../../setting/display_settings.dart';
+import '../common/section_title.dart';
 
 /// 模组介绍:渲染清洗后的 HTML 正文(两种来源的描述都是清洗后的 HTML)。
 ///
@@ -278,16 +278,10 @@ class _DescriptionCardState extends State<DescriptionCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: DetailSectionTitle(
-                    title: '模组介绍',
-                    icon: Icons.article_rounded,
-                  ),
-                ),
-                _buildTranslateButton(context),
-              ],
+            SectionTitle(
+              title: '模组介绍',
+              icon: Icons.article_rounded,
+              children: [_buildTranslateButton(context)],
             ),
             if (_autoError != null && !_translatedActive)
               _buildAutoError(context),

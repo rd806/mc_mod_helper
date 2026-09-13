@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/page/discover/search.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/widget/handler/search_bar.dart';
 
 import '../api/mcmod.dart';
 import '../model/mod/mod_category.dart';
@@ -103,19 +103,8 @@ class _DiscoverPageState extends State<DiscoverPage> {
     return Scaffold(
       // 顶部栏
       appBar: AppBar(
-        title: const Text('MC Mod Helper'),
+        title: FakeSearchBar(),
         actions: [
-          // 搜索
-          IconButton(
-            tooltip: '搜索',
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SearchPage()),
-              );
-            },
-          ),
           // 刷新
           IconButton(
             tooltip: '刷新',
@@ -135,7 +124,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
     );
   }
 
-  // ---------- 分类区 ----------
   Widget _buildCategoriesSection() {
     // 加载动画
     if (_categoriesLoading) {

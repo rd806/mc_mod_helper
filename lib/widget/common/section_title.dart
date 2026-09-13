@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 
 /// 详情页区块标题:图标 + titleLarge 加粗标题,配合 ... 展开使用。
 ///
-/// 右栏较窄时标题可能超宽,Expanded + 省略号兜底,避免溢出报错
-class DetailSectionTitle extends StatelessWidget {
-  const DetailSectionTitle({
+/// 允许后接一些组件，例如翻译、更多等。
+class SectionTitle extends StatelessWidget {
+  const SectionTitle({
     super.key,
     required this.title,
     required this.icon,
+    this.children,
   });
 
   final String title;
   final IconData icon;
+  final List<Widget>? children;
 
   @override
   Widget build(BuildContext context) {
@@ -23,16 +25,16 @@ class DetailSectionTitle extends StatelessWidget {
         children: [
           Icon(icon, color: theme.colorScheme.primary),
           const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
             ),
           ),
+          const Spacer(),
+          if (children != null) ...[for (final child in children!) child],
         ],
       ),
     );

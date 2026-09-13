@@ -18,6 +18,7 @@ import 'package:mc_mod_helper/setting/theme_settings.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/widget/handler/search_bar.dart';
 
 /// 启动应用并推进到首页三个版块与分类页都完成失败渲染。
 ///
@@ -61,7 +62,8 @@ void main() {
   testWidgets('启动显示主页:当前版块加载失败,侧边栏导航可用', (tester) async {
     await pumpApp(tester);
 
-    expect(find.text('MC Mod Helper'), findsOneWidget);
+    // 首页 AppBar 现在是「数据来源」胶囊(带来源图标),不再是应用名
+    expect(find.widgetWithText(AppBar, 'MC百科'), findsOneWidget);
     // 三个版块名:切换标签一处,当前版块的标题行一处
     for (final title in ['默认排序', '最新收录', '最新编辑']) {
       expect(find.text(title), findsWidgets);
@@ -103,8 +105,8 @@ void main() {
     expect(find.textContaining('加载失败'), findsWidgets); // 分类区错误
     expect(find.text('默认排序'), findsNothing); // 已离开首页
 
-    // 搜索入口在「探索」页的 AppBar 上
-    await tester.tap(find.byTooltip('搜索'));
+    // 搜索入口在「探索」页的 AppBar 上(伪搜索栏:整条可点,点开进搜索页)
+    await tester.tap(find.byType(FakeSearchBar));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
     expect(find.text('模组搜索'), findsOneWidget);
@@ -354,10 +356,10 @@ void main() {
     ModrinthApi.clearCaches(); // 重置惰性客户端,让上面的工厂生效
 
     await pumpApp(tester);
-    // 搜索入口:「探索」页右上角的搜索按钮
+    // 搜索入口:「探索」页 AppBar 上的伪搜索栏
     await tester.tap(find.text('探索'));
     await tester.pump();
-    await tester.tap(find.byTooltip('搜索'));
+    await tester.tap(find.byType(FakeSearchBar));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
 

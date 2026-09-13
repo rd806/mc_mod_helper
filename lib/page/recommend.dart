@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/icon/icon_manager.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
+import 'package:mc_mod_helper/widget/common/section_title.dart';
 
 import '../api/mcmod.dart';
 import '../model/mod/mod_summary.dart';
@@ -175,7 +177,14 @@ class _FeaturePageState extends State<FeaturePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MC Mod Helper'),
+        title: Chip(
+          avatar: IconManager.getIconForDataSource(
+            DisplaySettings.instance.dataSource,
+          ),
+          label: Text(
+            SourceManager.getSourceString(DisplaySettings.instance.dataSource),
+          ),
+        ),
         actions: [
           // 刷新
           IconButton(
@@ -222,7 +231,6 @@ class _FeaturePageState extends State<FeaturePage> {
 
   /// 一个版块:标题行(图标 + 名称 + 查看更多) + 模组列表
   Widget _buildSection(_FeatureSection section) {
-    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -230,20 +238,22 @@ class _FeaturePageState extends State<FeaturePage> {
           padding: const EdgeInsets.fromLTRB(8, 12, 0, 8),
           child: Row(
             children: [
-              Icon(section.icon, color: theme.colorScheme.primary),
-              const SizedBox(width: 10),
               Expanded(
-                child: Text(section.title, style: theme.textTheme.titleLarge),
-              ),
-              TextButton(
-                onPressed: () => _openMore(section),
-                child: const Text('查看更多'),
+                child: SectionTitle(
+                  title: section.title,
+                  icon: section.icon,
+                  children: [
+                    TextButton(
+                      onPressed: () => _openMore(section),
+                      child: const Text('查看更多'),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
         _buildSectionBody(section),
-        const Divider(height: 16),
       ],
     );
   }

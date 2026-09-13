@@ -185,10 +185,16 @@ class _AgentSheetState extends State<AgentSheet> {
     });
   }
 
-  /// 候选卡片点击:关闭面板并在应用内打开详情页
+  /// 候选卡片点击:在应用内打开详情页。
+  ///
+  /// 本组件有两种用法:详情页里的**弹出面板**(showAgentSheet,弹出层路由),
+  /// 和底栏的**助手页**(AgentPage,直接在根路由里)。面板形态下要先把自己
+  /// 收起来,否则返回详情页时会发现面板还盖在上面;而页面形态下没有面板可收,
+  /// 无条件 pop 会把整个首页路由弹掉 —— 详情页被推到空栈上,返回时无处可去
+  /// (表现为"进得去、回不来")。故按"当前路由是不是弹出层"来区分。
   void _openMod(ModSummary mod) {
     final navigator = Navigator.of(context);
-    navigator.pop(); // 先收起面板
+    if (ModalRoute.of(context) is PopupRoute) navigator.pop(); // 收起面板
     navigator.push(
       MaterialPageRoute(
         builder: (_) => DetailPage(

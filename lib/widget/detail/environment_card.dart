@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../icon/icon_manager.dart';
-import '../../../model/mod/mod_detail.dart';
-import '../../common/collapsible_widgets.dart';
-import '../../common/label.dart';
-import '../intro/section_title.dart';
+import '../../icon/icon_manager.dart';
+import '../../model/mod/mod_detail.dart';
+import '../common/collapsible_widgets.dart';
+import '../common/label.dart';
+import '../common/section_title.dart';
 
 /// 加载环境:environment 为 [客户端需求, 服务端需求] 的枚举值列表,
 /// 有时只有一侧(mcmod),按实际元素数量显示
@@ -49,10 +49,7 @@ class EnvironmentCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const DetailSectionTitle(
-              title: '加载环境',
-              icon: Icons.construction_rounded,
-            ),
+            const SectionTitle(title: '加载环境', icon: Icons.construction_rounded),
             _buildSide(theme),
             const SizedBox(height: 15),
             _buildVersion(theme),
@@ -138,7 +135,7 @@ class EnvironmentCard extends StatelessWidget {
 
   /// 模组加载器的图标文字
   Widget _getPlatform(ThemeData theme, String key) {
-    String text = '';
+    String text = key;
     Color color = theme.colorScheme.primaryContainer;
     switch (key.toLowerCase()) {
       case 'forge':

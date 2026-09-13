@@ -10,6 +10,7 @@ import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/model/author.dart';
 import 'package:mc_mod_helper/model/mod/mod_detail.dart';
 import 'package:mc_mod_helper/model/mod/mod_summary.dart';
+import 'package:mc_mod_helper/page/agent.dart';
 import 'package:mc_mod_helper/service/agent/agent.dart';
 import 'package:mc_mod_helper/service/agent/history.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
@@ -416,6 +417,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('模组助手'), findsNothing);
     expect(find.text('[JEI] JEI物品管理器'), findsWidgets); // 详情页 AppBar 标题
+  });
+
+  testWidgets('助手页(底栏形态):点候选卡片进详情后还能返回助手页', (tester) async {
+    AgentApi.clientFactory = () => MockClient(
+      (request) async => _chat('{"reply": "推荐 JEI", "search": ["JEI"]}'),
+    );
+    McmodApi.clientFactory = () =>
+        MockClient((request) async => _mcmodSearch('JEI'));
+
+    // 底栏形态:助手直接位于根路由,没有可以收起的"面板"
+    await tester.pumpWidget(const MaterialApp(home: AgentPage()));
+    await tester.enterText(find.byType(TextField), '能看合成配方的模组');
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(find.text('[JEI] JEI物品管理器'), findsOneWidget);
+
+    await tester.tap(find.text('[JEI] JEI物品管理器'));
+    await tester.pumpAndSettle();
+    expect(find.text('[JEI] JEI物品管理器'), findsWidgets); // 详情页 AppBar 标题
+
+    // 关键:详情页有返回入口(回归:曾把根路由一起 pop 掉,详情页被推到空栈上,
+    // AppBar 不会出现返回按钮,用户也回不到助手页)
+    expect(find.byType(BackButton), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AgentPage), findsOneWidget);
+    expect(find.text('推荐 JEI'), findsOneWidget); // 会话内容还在
   });
 
   testWidgets('重开面板:新开一个对话,可从历史对话切回', (tester) async {
