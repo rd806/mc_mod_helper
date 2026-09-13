@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../model/mod/mod_summary.dart';
-import '../../page/more/description.dart';
+import '../../page/mod/description.dart';
 import 'favorite_toggle.dart';
 
 /// 分类页模组卡片的公共基类:

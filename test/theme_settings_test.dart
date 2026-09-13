@@ -16,7 +16,9 @@ void main() {
     expect(ThemeSettings.instance.themeMode, ThemeMode.system);
     expect(ThemeSettings.instance.seedColor.toARGB32(), Colors.blue.toARGB32());
     expect(ThemeSettings.instance.fontScale, 1.0);
-    expect(ThemeSettings.instance.fontType, 'NotoSansSC');
+    expect(ThemeSettings.instance.fontType, ThemeSettings.systemFont);
+    // 系统字体不给 ThemeData 指定字体族,由引擎回退
+    expect(ThemeSettings.instance.fontFamily, isNull);
   });
 
   test('setter 写入持久化存储', () async {
@@ -60,10 +62,24 @@ void main() {
   test('fontType 非法存储值与非法 setter 都忽略', () async {
     SharedPreferences.setMockInitialValues({'font_type': 'bogus'});
     await ThemeSettings.instance.load();
-    expect(ThemeSettings.instance.fontType, 'NotoSansSC');
+    expect(ThemeSettings.instance.fontType, ThemeSettings.systemFont);
 
     ThemeSettings.instance.setFontType('bogus');
-    expect(ThemeSettings.instance.fontType, 'NotoSansSC');
+    expect(ThemeSettings.instance.fontType, ThemeSettings.systemFont);
+  });
+
+  test('旧版本存的 NotoSansSC 已不再打包,加载时回落到系统字体', () async {
+    SharedPreferences.setMockInitialValues({'font_type': 'NotoSansSC'});
+    await ThemeSettings.instance.load();
+    expect(ThemeSettings.instance.fontType, ThemeSettings.systemFont);
+    expect(ThemeSettings.instance.fontFamily, isNull);
+  });
+
+  test('fontFamily 把系统字体映射成 null,其余原样交给 ThemeData', () async {
+    await ThemeSettings.instance.load();
+    ThemeSettings.instance.setFontType('Unifont');
+    expect(ThemeSettings.instance.fontType, 'Unifont');
+    expect(ThemeSettings.instance.fontFamily, 'Unifont');
   });
 
   test('fontScale 超出范围时被截断', () async {

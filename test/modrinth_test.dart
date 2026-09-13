@@ -15,7 +15,7 @@ import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/main.dart';
-import 'package:mc_mod_helper/page/more/description.dart';
+import 'package:mc_mod_helper/page/mod/description.dart';
 import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 

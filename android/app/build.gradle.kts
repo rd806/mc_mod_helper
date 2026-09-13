@@ -38,6 +38,12 @@ extensions.configure<ApplicationExtension> {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // 注意:这里不要用 Gradle 的 splits.abi 来拆包。Flutter 插件已经按
+    // target-platform 设了 ndk.abiFilters,两者同时存在会直接构建失败
+    // ("Conflicting configuration : ... ndk abiFilters cannot be present
+    // when splits abi filters are set")。拆包请用命令行参数
+    // --split-per-abi(见 README 的「安装包体积」)
 }
 
 kotlin {

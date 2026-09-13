@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/icon/link_icons.dart';
 
+import '../../../icon/icon_manager.dart';
 import '../../../model/mod/mod_detail.dart';
 import '../../common/collapsible_widgets.dart';
 import '../../common/label.dart';
@@ -157,7 +157,7 @@ class EnvironmentCard extends StatelessWidget {
 
     return Row(
       children: [
-        LinkIcons.getLinkIcon(key),
+        IconManager.getLinkIcon(key),
         const SizedBox(width: 5),
         Text(
           text,

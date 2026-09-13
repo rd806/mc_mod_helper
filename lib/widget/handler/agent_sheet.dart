@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../icon/icon_manager.dart';
 import '../../model/mod/mod_summary.dart';
-import '../../page/more/description.dart';
+import '../../page/mod/description.dart';
 import '../../service/agent/agent.dart';
 import '../../service/agent/history.dart';
-import '../../icon/link_icons.dart';
 
 /// 打开模组助手对话面板(底部弹出)。
 ///
@@ -433,7 +433,7 @@ class _AgentSheetState extends State<AgentSheet> {
         margin: EdgeInsets.zero,
         child: ListTile(
           dense: true,
-          leading: LinkIcons.getIconForDataSource(mod.source),
+          leading: IconManager.getIconForDataSource(mod.source),
           title: Text(mod.title, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: mod.description.isEmpty
               ? null

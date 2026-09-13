@@ -152,33 +152,8 @@ class _DiscoverPageState extends State<DiscoverPage> {
       );
     }
     // 正确内容
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // 窄屏：每个分类卡片占一行,纵向排列
-        if (constraints.maxWidth < 480) {
-          return Column(
-            children: [
-              for (final cat in _categories) CategoryCard(category: cat),
-            ],
-          );
-        }
-        // 宽屏
-        return GridView(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          // 固定高度的卡片
-          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 300,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            // 卡片高度 = 宽度 / 纵横比
-            childAspectRatio: 3.0,
-          ),
-          children: [
-            for (final cat in _categories) CategoryCard(category: cat),
-          ],
-        );
-      },
+    return Column(
+      children: [for (final cat in _categories) CategoryCard(category: cat)],
     );
   }
 }

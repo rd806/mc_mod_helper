@@ -11,7 +11,7 @@ import '../widget/common/error_view.dart';
 import 'recommend/default_list.dart';
 import 'recommend/last_edit_list.dart';
 import 'recommend/last_publish_list.dart';
-import 'more/config.dart';
+import 'config/config.dart';
 
 /// 首页每个版块展示的条数(更多的点「查看更多」进列表页)
 const int _sectionLimit = 10;

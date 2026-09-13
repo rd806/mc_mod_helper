@@ -3,10 +3,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/icon/link_icons.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 
 import '../../api/mcmod.dart';
+import '../../icon/icon_manager.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../widget/handler/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
@@ -226,7 +226,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget _buildSourceButton(ModSource source) {
     final theme = Theme.of(context);
     final selected = source == _selectedSource;
-    final icon = LinkIcons.getIconForDataSource(source);
+    final icon = IconManager.getIconForDataSource(source);
     final label = _sourceErrors.containsKey(source)
         ? '${SourceManager.getSourceString(source)} · 失败'
         : '${SourceManager.getSourceString(source)} (${_totalResults[source]?.length ?? 0})';

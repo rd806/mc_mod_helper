@@ -31,9 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  # 注意:这里不放 cupertino_icons —— 代码里没有用过 CupertinoIcons,
+  # 它只会白白往包里塞一份 257KB 的字体
   http: ^1.6.0
   html: ^0.15.6
   url_launcher: ^6.3.2
@@ -74,12 +73,14 @@ flutter:
 
   assets:
     - assets/icon/
+    - assets/launcher/
 
   fonts:
-    # 思源黑体（Noto Sans SC,可变字重）
-    - family: NotoSansSC
-      fonts:
-        - asset: assets/fonts/NotoSansSC-VF.ttf
+    # 中文不再随包分发字体:思源黑体全字集 17.8MB(可变字重),占单架构
+    # 安装包近四成。Android 自带思源黑体、Windows 自带微软雅黑,系统字体
+    # 已能满足阅读;想全平台字形一致请先做子集化再放回这里
+    # (assets/fonts/NotoSansSC-VF.ttf 仍在仓库里,仅未打包)
+
     # Unifont：像素风格字体
     - family: Unifont
       fonts:
@@ -122,10 +123,12 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 # 应用图标生成配置(运行: dart run flutter_launcher_icons)
+# 用未打包的高清原图:assets/icon/ 下的同名图是 320px 的运行时副本
+# (设置页只按 100x100 显示),高清原图放 assets/launcher/ 不参与打包
 flutter_launcher_icons:
-  image_path: "assets/icon/app_icon.png"
+  image_path: "assets/launcher/app_icon.png"
   android: true
   windows:
     generate: true
-    image_path: "assets/icon/app_icon.png"
+    image_path: "assets/launcher/app_icon.png"
     icon_size: 256

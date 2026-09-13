@@ -22,17 +22,30 @@ class ThemeSettings extends ChangeNotifier {
   static const double fontMin = 0.5;
   static const double fontMax = 2.0;
 
+  /// 系统字体:不随包分发任何中文字体,交给系统(Android 自带思源黑体、
+  /// Windows 自带微软雅黑)。
+  ///
+  /// 打包思源黑体全字集要 17.8MB,占单架构安装包近四成,故不再内置;
+  /// 想要全平台字形一致再考虑做子集化(见 README 的包体说明)
+  static const String systemFont = 'system';
+
   /// 可选字体
-  static const List<String> fontTypes = ['NotoSansSC', 'Unifont'];
+  static const List<String> fontTypes = [systemFont, 'Unifont'];
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.blue;
-  String _fontType = 'NotoSansSC';
+  String _fontType = systemFont;
   double _fontScale = 1.0;
 
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
   String get fontType => _fontType;
+
+  /// 供 ThemeData 使用的字体名:系统字体返回 null,让引擎回退到系统字体。
+  ///
+  /// 旧版本存过 'NotoSansSC'(已不再打包),load() 会当作未知值回落到
+  /// [systemFont],老用户升级后不会指向一个不存在的字体族
+  String? get fontFamily => _fontType == systemFont ? null : _fontType;
   double get fontScale => _fontScale;
 
   /// 启动时读取已保存的设置(在 runApp 前调用,避免启动后主题/字体跳变)。
@@ -49,7 +62,7 @@ class ThemeSettings extends ChangeNotifier {
       _seedColor = Color(prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32());
       // 字体样式(未知存储值回落到默认)
       final ft = prefs.getString(_fontTypeKey);
-      _fontType = (ft != null && fontTypes.contains(ft)) ? ft : 'NotoSansSC';
+      _fontType = (ft != null && fontTypes.contains(ft)) ? ft : systemFont;
       // 字体大小
       _fontScale = (prefs.getDouble(_fontScaleKey) ?? 1.0).clamp(
         fontMin,

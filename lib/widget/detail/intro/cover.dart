@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/icon/link_icons.dart';
 
+import '../../../icon/icon_manager.dart';
 import '../../../model/mod/mod_detail.dart';
 import '../../common/image_box.dart';
 
@@ -87,7 +87,7 @@ abstract class ModCover extends StatelessWidget {
   // 显示来源
   Widget _buildSource(ModDetail mod, ThemeData theme) {
     return Chip(
-      avatar: LinkIcons.getIconForDataSource(mod.source),
+      avatar: IconManager.getIconForDataSource(mod.source),
       backgroundColor: Colors.transparent,
       label: Text(
         SourceManager.getSourceString(mod.source),
@@ -119,7 +119,7 @@ abstract class ModCover extends StatelessWidget {
     if (statistic == null || statistic.isEmpty) return const SizedBox.shrink();
 
     for (final entry in statistic) {
-      widget.add(LinkIcons.buildStatisticLabel(entry, theme));
+      widget.add(IconManager.buildStatisticLabel(entry, theme));
     }
 
     return SingleChildScrollView(

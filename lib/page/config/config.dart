@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/icon/icon_manager.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
@@ -6,7 +7,6 @@ import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/setting/language_settings.dart';
 import 'package:mc_mod_helper/widget/common/dropdown_box.dart';
 import 'package:mc_mod_helper/widget/handler/input_box.dart';
-import 'package:mc_mod_helper/icon/link_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../setting/agent_settings.dart';
@@ -45,7 +45,7 @@ class _ConfigPageState extends State<ConfigPage> {
   ];
 
   static const List<(String, String)> _fontTypes = [
-    ('思源黑体', 'NotoSansSC'),
+    ('系统字体', ThemeSettings.systemFont),
     ('Unifont', 'Unifont'),
   ];
 
@@ -152,7 +152,7 @@ class _ConfigPageState extends State<ConfigPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Image.asset(
-            'assets/icon/app_icon.png',
+            'assets/launcher/app_icon.png',
             width: 100, // 设置宽度
             height: 100, // 设置高度
             fit: BoxFit.cover, // 设置图片的填充模式
@@ -197,22 +197,14 @@ class _ConfigPageState extends State<ConfigPage> {
       value: s.themeMode,
       options: [
         for (final (label, mode) in _themeMode)
-          DropdownOption(label, mode, icon: Icon(_getIconForThemeMode(mode))),
+          DropdownOption(
+            label,
+            mode,
+            icon: IconManager.getIconForThemeMode(mode),
+          ),
       ],
       onChanged: ThemeSettings.instance.setThemeMode,
     );
-  }
-
-  // 获取图标
-  IconData _getIconForThemeMode(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.system:
-        return Icons.settings_suggest;
-      case ThemeMode.light:
-        return Icons.light_mode;
-      case ThemeMode.dark:
-        return Icons.dark_mode;
-    }
   }
 
   /// 强调色:一行色块,选中项画外圈 + 对勾
@@ -295,7 +287,14 @@ class _ConfigPageState extends State<ConfigPage> {
       value: s.fontType,
       options: [
         for (final (label, font) in _fontTypes)
-          DropdownOption(label, font, textStyle: TextStyle(fontFamily: font)),
+          DropdownOption(
+            label,
+            font,
+            // 系统字体(哨兵值 'system')不是真实字体族,置空用默认字体渲染
+            textStyle: TextStyle(
+              fontFamily: font == ThemeSettings.systemFont ? null : font,
+            ),
+          ),
       ],
       onChanged: ThemeSettings.instance.setFontType,
     );
@@ -345,7 +344,7 @@ class _ConfigPageState extends State<ConfigPage> {
           DropdownOption(
             label,
             source,
-            icon: LinkIcons.getIconForDataSource(source),
+            icon: IconManager.getIconForDataSource(source),
           ),
       ],
       onChanged: DisplaySettings.instance.setDataSource,

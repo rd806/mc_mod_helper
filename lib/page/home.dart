@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/page/agent.dart';
-import 'package:mc_mod_helper/page/more/config.dart';
+import 'package:mc_mod_helper/page/config/config.dart';
 import 'package:mc_mod_helper/page/custom.dart';
 import 'package:mc_mod_helper/page/recommend.dart';
 import 'package:mc_mod_helper/page/discover.dart';

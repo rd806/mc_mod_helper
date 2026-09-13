@@ -59,9 +59,16 @@
 # 构建 Windows 端应用
 flutter build windows
 
-# 构建 Android 应用
-flutter build apk
+# 构建 Android 应用（单个 arm64 包，现代手机装这个）
+flutter build apk --target-platform android-arm64
+
+# 或者按 CPU 架构分别出包（arm64-v8a / armeabi-v7a / x86_64 三个文件）
+flutter build apk --split-per-abi
 ```
+
+> **请勿使用裸的 `flutter build apk`**：
+> Android 的默认行为是打「胖 APK」，把 arm64-v8a/armeabi-v7a/x86_64 三种架构的原生库全塞进同一个包，
+> 请按上面的命令加上`--target-platform` 或 `--split-per-abi`。
 
 构建应用。
 
