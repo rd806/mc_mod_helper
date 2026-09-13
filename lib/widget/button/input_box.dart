@@ -49,7 +49,7 @@ class InputBox extends StatelessWidget {
     // 未配置时展示占位提示(灰色),已配置的敏感值只显示圆点
     final display = value.isEmpty
         ? hint
-        : (obscure ? '•' * value.length.clamp(6, 16) : value);
+        : (obscure ? '•' * value.length.clamp(3, 8) : value);
     return InkWell(
       onTap: () => _showInputBox(context),
       child: Padding(

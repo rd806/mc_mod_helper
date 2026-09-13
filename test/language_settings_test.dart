@@ -45,4 +45,44 @@ void main() {
     await LanguageSettings.instance.load();
     expect(LanguageSettings.instance.translateLangLabel, '简体中文');
   });
+
+  test('自动翻译:默认关闭,缺失键回落到默认', () async {
+    await LanguageSettings.instance.load();
+    expect(
+      LanguageSettings.instance.autoTranslate,
+      LanguageSettings.defaultAutoTranslate,
+    );
+  });
+
+  test('自动翻译:setter 写盘并可恢复(回归:bool 曾存不下来)', () async {
+    await LanguageSettings.instance.load();
+    LanguageSettings.instance.setAutoTranslate(true);
+
+    // 曾经 _persist 的 switch 没有 bool 分支,会走 `value as String`
+    // 抛异常被 catch 吞掉 —— 表现为开关切了但永远存不下来
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('auto_translate'), isTrue);
+
+    // 模拟重启:开关状态必须能读回来,否则功能重启即失效
+    SharedPreferences.setMockInitialValues({'auto_translate': true});
+    await LanguageSettings.instance.load();
+    expect(LanguageSettings.instance.autoTranslate, isTrue);
+  });
+
+  test('自动翻译:同值 setter 不通知', () async {
+    await LanguageSettings.instance.load();
+    var notifications = 0;
+    void listener() => notifications++;
+    LanguageSettings.instance.addListener(listener);
+    addTearDown(() => LanguageSettings.instance.removeListener(listener));
+
+    // 已经是关闭状态,再设一次关闭不应该通知
+    LanguageSettings.instance.setAutoTranslate(
+      LanguageSettings.defaultAutoTranslate,
+    );
+    expect(notifications, 0);
+
+    LanguageSettings.instance.setAutoTranslate(true);
+    expect(notifications, 1);
+  });
 }

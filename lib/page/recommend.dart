@@ -5,7 +5,7 @@ import 'package:mc_mod_helper/setting/display_settings.dart';
 
 import '../api/mcmod.dart';
 import '../model/mod/mod_summary.dart';
-import '../widget/common/selection_button.dart';
+import '../widget/button/selection_button.dart';
 import '../widget/handler/captcha_dialog.dart';
 import '../widget/common/error_view.dart';
 import 'recommend/default_list.dart';

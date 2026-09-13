@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mc_mod_helper/widget/common/dropdown_box.dart';
+import 'package:mc_mod_helper/widget/button/dropdown_box.dart';
 
 const _options = [
   DropdownOption('默认', 'a'),

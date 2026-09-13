@@ -102,19 +102,18 @@ class FavoritesService extends ChangeNotifier {
   /// 内存缓存(与数据库同步;UI 读走缓存,不查库)
   List<Likes> _cache = [];
 
-  /// 初始化:按平台切换数据库工厂、打开(或创建)数据库并加载缓存。
+  /// 初始化:按平台选择数据库工厂、打开(或创建)数据库并加载缓存。
   ///
-  /// - 桌面(Windows/Linux)与测试环境:切换 FFI 实现(见 [_ensureDesktopFactory]);
-  /// - 移动端(Android/iOS):使用 sqflite 插件工厂(默认工厂,无需配置)。
+  /// - 桌面(Windows/Linux)与测试环境:用 FFI 实现(见 [_factory]);
+  /// - 移动端(Android/iOS):用 sqflite 插件工厂(默认工厂,无需配置)。
   ///
   /// [dbPath] 供测试传入临时目录;不传时用平台默认数据库目录。
   /// 重复调用安全(数据库已打开时直接复用)
   Future<void> init({String? dbPath}) async {
-    _ensureDesktopFactory();
+    final factory = _factory;
     final path =
-        dbPath ??
-        p.join(await databaseFactory.getDatabasesPath(), 'favorites.db');
-    _db = await databaseFactory.openDatabase(
+        dbPath ?? p.join(await factory.getDatabasesPath(), 'favorites.db');
+    _db = await factory.openDatabase(
       path,
       options: OpenDatabaseOptions(
         version: 2,
@@ -208,19 +207,34 @@ class FavoritesService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 桌面平台(Windows/Linux)与测试环境没有 sqflite 平台通道,
-  /// 切换到 FFI 实现(NoIsolate 版本:同 isolate 内同步 FFI 调用)。
+  /// 本次要用的数据库工厂。
   ///
-  /// 收藏表的写入很小,不需要后台 isolate;后台 isolate 的响应是
-  /// 真实异步,在 widget 测试的假时钟里永远等不到完成,
-  /// 其写事务的超时计时器会残留成 pending Timer。
-  /// Windows 上 sqlite3 包优先加载 sqlite3.dll,
-  /// 缺失时自动回退系统自带的 winsqlite3.dll
-  void _ensureDesktopFactory() {
-    if (kIsWeb || (!Platform.isWindows && !Platform.isLinux)) return;
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfiNoIsolate;
+  /// 桌面平台(Windows/Linux)与测试环境没有 sqflite 平台通道,用 FFI 实现
+  /// (NoIsolate 版本:同 isolate 内同步 FFI 调用)。收藏表的写入很小,
+  /// 不需要后台 isolate;后台 isolate 的响应是真实异步,在 widget 测试的
+  /// 假时钟里永远等不到完成,其写事务的超时计时器会残留成 pending Timer。
+  /// Windows 上 sqlite3 包优先加载 sqlite3.dll,缺失时回退 winsqlite3.dll。
+  ///
+  /// 刻意**不**改写全局的 `databaseFactory`:那个 setter 的文档要求
+  /// "只调用一次,且在任何 sqflite 调用之前",一旦已有工厂再赋值,sqflite
+  /// 就会打印 "You are changing sqflite default factory" 警告(测试里每个
+  /// 用例都 init 一次,警告会刷满输出),注释里还写明未来可能直接抛错。
+  /// 按调用传入工厂是等价的,且没有任何全局副作用。
+  DatabaseFactory get _factory {
+    if (!_isDesktop) return databaseFactory;
+    if (!_ffiReady) {
+      sqfliteFfiInit();
+      _ffiReady = true;
+    }
+    return databaseFactoryFfiNoIsolate;
   }
+
+  /// 桌面/测试环境(web 上不碰 Platform,避免 dart:io 报错)
+  static bool get _isDesktop =>
+      !kIsWeb && (Platform.isWindows || Platform.isLinux);
+
+  /// FFI 只需装一次(sqlite3FfiInit 负责装好本地库的加载方式)
+  static bool _ffiReady = false;
 
   static Likes _fromRow(Map<String, Object?> row) => Likes(
     id: row['id']! as String,

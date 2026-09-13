@@ -40,17 +40,26 @@ class TranslateApi {
   /// 会话内缓存:key = '来源id|目标语言' → 译文 HTML
   static final Map<String, String> _cache = {};
 
+  /// 进行中的请求:key 同上 → 该次翻译的 Future。
+  ///
+  /// 自动翻译(进页面即触发)与手动按钮可能几乎同时发起同一篇正文,
+  /// 快速进出详情页也会重建 State 再次发起;共用同一个 Future 可以避免
+  /// 对同一篇正文重复请求、重复计费。失败时从表中移除,重试仍能发出。
+  static final Map<String, Future<String>> _pending = {};
+
   @visibleForTesting
   static void clearCaches() {
     _cache.clear();
+    _pending.clear();
     _clientInstance = null;
   }
 
-  /// 翻译正文 HTML;命中缓存直接返回。
+  /// 翻译正文 HTML;命中缓存或已有同一篇正文的请求在途时直接复用。
   ///
   /// 长正文按 HTML 顶层节点切成多块分别翻译再拼接(不截断内容):
   /// 每个块由完整的顶层节点组成,标签成对,不会被切开。
-  /// [onProgress] 会在每块完成后回调 (已完成块数, 总块数),供 UI 显示进度。
+  /// [onProgress] 会在每块完成后回调 (已完成块数, 总块数),供 UI 显示进度
+  /// (复用他人请求时不会收到回调)。
   /// [cacheKey] 用于区分不同模组/来源(如 'mcmod:123')。
   /// 未配置 API Key 时抛 [TranslateNotConfiguredException]。
   static Future<String> translateHtml(
@@ -61,14 +70,69 @@ class TranslateApi {
     String? apiKey,
     String? model,
     void Function(int done, int total)? onProgress,
-  }) async {
-    final settings = LanguageSettings.instance;
-    final agent = AgentSettings.instance;
-    final lang = targetLang ?? settings.translateLang;
+  }) {
+    final lang = targetLang ?? LanguageSettings.instance.translateLang;
     final key = '$cacheKey|$lang';
     final cached = _cache[key];
-    if (cached != null) return cached;
+    if (cached != null) return Future.value(cached);
+    return _pending[key] ??=
+        _request(
+          html,
+          key: key,
+          lang: lang,
+          baseUrl: baseUrl,
+          apiKey: apiKey,
+          model: model,
+          onProgress: onProgress,
+        ).whenComplete(() {
+          // 必须用块体:写成箭头函数时回调的返回值是 Map.remove 摘下来的那个
+          // Future —— 也就是这里正在包装的它自己,whenComplete 会等它完成,
+          // 变成自己等自己,请求永不返回
+          _pending.remove(key);
+        });
+  }
 
+  /// 正文是否已是目标语言(自动翻译前的省钱判断)。
+  ///
+  /// 只认中文目标:mcmod 等来源的正文本身就是中文,再交给模型翻一遍中文
+  /// 纯属白花 token。判据是纯文本里 CJK 字符占比超过 [cjkRatio] —— 宁可
+  /// 漏判(漏判只是多翻一次,用户拿到译文)也不误判(误判会让用户以为
+  /// 自动翻译坏了)。手动点「翻译」不受此判断限制。
+  static bool alreadyInTargetLang(String html, String lang) {
+    if (lang != 'zh-Hans' && lang != 'zh-Hant') return false;
+    final text = html_parser.parseFragment(html).text ?? '';
+    var total = 0;
+    var cjk = 0;
+    for (final rune in text.runes) {
+      if (rune == 0x20 || rune == 0x0a || rune == 0x0d || rune == 0x09) {
+        continue;
+      }
+      total++;
+      if (_isCjk(rune)) cjk++;
+    }
+    return total > 0 && cjk / total > cjkRatio;
+  }
+
+  /// 判定阈值:CJK 字符占非空白字符的比例
+  static const double cjkRatio = 0.3;
+
+  /// CJK 统一表意文字(含扩展 A)与中日韩标点
+  static bool _isCjk(int rune) =>
+      (rune >= 0x4e00 && rune <= 0x9fff) ||
+      (rune >= 0x3400 && rune <= 0x4dbf) ||
+      (rune >= 0x3000 && rune <= 0x303f);
+
+  /// 实际发起翻译(调用方已确认缓存未命中且没有同一篇正文的请求在途)
+  static Future<String> _request(
+    String html, {
+    required String key,
+    required String lang,
+    String? baseUrl,
+    String? apiKey,
+    String? model,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    final agent = AgentSettings.instance;
     final token = (apiKey ?? agent.apiKey).trim();
     if (token.isEmpty) throw const TranslateNotConfiguredException();
     final endpoint = (baseUrl ?? agent.baseUrl).trim();

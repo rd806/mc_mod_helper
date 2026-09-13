@@ -20,6 +20,9 @@ import '../intro/section_title.dart';
 ///
 /// 标题行右侧提供「翻译/原文」按钮:由用户手动决定是否用 AI 翻译正文
 /// (译文按 模组+语言 缓存在会话内,再次切换不再重复请求)。
+///
+/// 设置里打开「自动翻译」后,本卡片会在挂载时自行发起翻译,不再需要点按钮:
+/// 未配置 AI Key 时静默用原文,失败则在标题行下方给一条可点重试的提示。
 class DescriptionCard extends StatefulWidget {
   const DescriptionCard({
     super.key,
@@ -51,6 +54,26 @@ class _DescriptionCardState extends State<DescriptionCard> {
   String? _translatedHtml;
   String? _translatedLang;
 
+  /// 自动翻译失败的原因(行内提示;手动失败仍走 SnackBar)
+  String? _autoError;
+
+  /// 已经为哪个目标语言自动发起过请求。
+  ///
+  /// 失败后不再自动重试(否则一进页面就对着坏 Key 反复请求),由用户点
+  /// 「重试」;也用于避免开关/Key 的无关变化再次触发同一篇正文的翻译。
+  String? _autoStartedFor;
+
+  /// 用户在自动模式下手动切回了原文(否决自动翻译)。
+  ///
+  /// 不记这个标记的话,任何一次设置通知(哪怕只是改了模型名)都会把用户
+  /// 主动选择的原文顶回译文;只有「重新打开开关」或「换了目标语言」才算
+  /// 新的意图,那时才清除。
+  bool _autoSuppressed = false;
+
+  /// 上次判定时见到的开关与目标语言,用来识别"设置真的变了"
+  bool _seenAuto = false;
+  String? _seenLang;
+
   /// 缓存/请求用的键:区分来源与模组
   String get _cacheKey => '${widget.mod.source.name}:${widget.mod.id}';
 
@@ -69,6 +92,101 @@ class _DescriptionCardState extends State<DescriptionCard> {
       _translatedHtml != null &&
       _translatedLang == LanguageSettings.instance.translateLang;
 
+  @override
+  void initState() {
+    super.initState();
+    // 开关、目标语言变化要跟着变;Key 可能是用户刚去设置页填上的
+    LanguageSettings.instance.addListener(_onSettingsChanged);
+    AgentSettings.instance.addListener(_onSettingsChanged);
+    // 首帧后再判定:翻译一旦命中缓存会同步 setState,不能在 initState 里做
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _considerAutoTranslate(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(DescriptionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 详情页刷新/换模组时 element 相同、State 会被复用,不重置就会把上一个
+    // 模组的译文渲染到新模组的正文位置上
+    if (_cacheKey == '${oldWidget.mod.source.name}:${oldWidget.mod.id}') return;
+    _translatedHtml = null;
+    _translatedLang = null;
+    _autoStartedFor = null;
+    _autoSuppressed = false;
+    _autoError = null;
+    _showTranslated = false;
+    _loading = false;
+    // 此刻正处于构建阶段,不能同步 setState:推到帧后再判定
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _considerAutoTranslate(),
+    );
+  }
+
+  @override
+  void dispose() {
+    LanguageSettings.instance.removeListener(_onSettingsChanged);
+    AgentSettings.instance.removeListener(_onSettingsChanged);
+    super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    if (!mounted) return;
+    // 无条件重建:目标语言变化后,按钮提示与"当前译文是否仍有效"都要重算
+    setState(() {});
+    _considerAutoTranslate();
+  }
+
+  /// 自动翻译的判定入口:开关、目标语言、AI 配置任一变化都走这里。
+  ///
+  /// 保证幂等 —— 没有新情况时什么都不做,用户手动切到「原文」也不会被
+  /// 无关的设置变化拉回译文。
+  Future<void> _considerAutoTranslate() async {
+    final settings = LanguageSettings.instance;
+    final lang = settings.translateLang;
+    // 只有"设置真的变了"才解除用户的否决:同一个开关的重复通知不该把用户
+    // 主动选的「原文」顶掉,而重开开关 / 换语言都是新的意图
+    if (settings.autoTranslate != _seenAuto || lang != _seenLang) {
+      _autoSuppressed = false;
+    }
+    _seenAuto = settings.autoTranslate;
+    _seenLang = lang;
+
+    // 开关关掉:回原文(译文留在 State 里,再打开可立即切回,不重新请求)
+    if (!settings.autoTranslate) {
+      if (_showTranslated && mounted) {
+        setState(() => _showTranslated = false);
+      }
+      return;
+    }
+    if (_autoSuppressed || _loading) return;
+    // 正文可能为空(此时整卡都不渲染),不能让下面的 ! 崩掉
+    final body = widget.mod.body;
+    if (body == null || body.isEmpty) return;
+    // 已有该语言译文(本页刚翻的,或会话内缓存的别的页面翻的):直接切过去
+    final ready =
+        (_translatedLang == lang ? _translatedHtml : null) ??
+        TranslateApi.cachedHtml(_cacheKey, targetLang: lang);
+    if (ready != null) {
+      if (!mounted) return;
+      setState(() {
+        _translatedHtml = ready;
+        _translatedLang = lang;
+        _showTranslated = true;
+        _autoError = null;
+      });
+      return;
+    }
+    if (_autoStartedFor == lang) return;
+    // 未配置 Key:安静地用原文,不弹提示(用户没主动操作);
+    // 手动按钮仍在,点了才给「去设置页填写」的引导
+    if (!AgentSettings.instance.configured) return;
+    // 正文本来就是目标语言:翻一遍纯属白花 token(仅拦自动,手动照翻)
+    if (TranslateApi.alreadyInTargetLang(body, lang)) return;
+    _autoStartedFor = lang;
+    await _translate(lang, auto: true);
+  }
+
   Future<void> _toggleTranslate() async {
     if (_loading) return;
     final lang = LanguageSettings.instance.translateLang;
@@ -81,6 +199,9 @@ class _DescriptionCardState extends State<DescriptionCard> {
         _translatedHtml = cached;
         _translatedLang = lang;
         _showTranslated = !_translatedActive;
+        // 切回原文 = 否决自动翻译;切到译文 = 用户明确要译文,解除否决
+        _autoSuppressed = !_showTranslated;
+        _autoError = null;
       });
       return;
     }
@@ -88,15 +209,28 @@ class _DescriptionCardState extends State<DescriptionCard> {
       _showMessage('尚未配置 AI 接口 Key,请到「设置 → AI 设置」填写');
       return;
     }
+    _autoSuppressed = false;
+    await _translate(lang);
+  }
+
+  /// 发起翻译。[auto] 为 true 表示由自动翻译触发 —— 失败时写进行内提示,
+  /// 而不是弹一个用户没主动操作就冒出来的 SnackBar。
+  Future<void> _translate(String lang, {bool auto = false}) async {
+    if (_loading) return;
+    final previous = _autoError;
+    // 记下发起时的模组:请求返回时若已换模组,结果必须丢弃
+    final key = _cacheKey;
     setState(() {
       _loading = true;
       _chunkDone = 0;
       _chunkTotal = 0;
+      _autoError = null;
     });
     try {
       final html = await TranslateApi.translateHtml(
         widget.mod.body!,
-        cacheKey: _cacheKey,
+        cacheKey: key,
+        targetLang: lang,
         // 长正文分块翻译,进度反馈到按钮(翻译中 2/5)
         onProgress: (done, total) {
           if (!mounted) return;
@@ -106,17 +240,25 @@ class _DescriptionCardState extends State<DescriptionCard> {
           });
         },
       );
-      if (!mounted) return;
+      if (!mounted || key != _cacheKey) return;
       setState(() {
         _translatedHtml = html;
         _translatedLang = lang;
         _showTranslated = true;
         _loading = false;
+        _autoError = null;
       });
+      // 请求期间目标语言又变了:本次结果按语言已失效,补一次判定
+      if (LanguageSettings.instance.translateLang != lang) {
+        await _considerAutoTranslate();
+      }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
-      _showMessage('$e');
+      setState(() {
+        _loading = false;
+        _autoError = auto ? '$e' : previous;
+      });
+      if (!auto) _showMessage('$e');
     }
   }
 
@@ -147,6 +289,8 @@ class _DescriptionCardState extends State<DescriptionCard> {
                 _buildTranslateButton(context),
               ],
             ),
+            if (_autoError != null && !_translatedActive)
+              _buildAutoError(context),
             _buildHTML(context),
           ],
         ),
@@ -178,6 +322,43 @@ class _DescriptionCardState extends State<DescriptionCard> {
             style: theme.textTheme.labelLarge,
           ),
         ),
+      ),
+    );
+  }
+
+  /// 自动翻译失败的提示条。
+  ///
+  /// 不用 SnackBar:自动路径是用户没主动操作的,而且用户很可能正待在设置页
+  /// 填 Key(详情页此时仍活着),弹窗会落在与当前操作无关的页面上。
+  Widget _buildAutoError(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, size: 18, color: theme.colorScheme.error),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '自动翻译失败：$_autoError',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          TextButton(
+            onPressed: _loading
+                ? null
+                : () => _translate(
+                    LanguageSettings.instance.translateLang,
+                    auto: true,
+                  ),
+            child: const Text('重试'),
+          ),
+        ],
       ),
     );
   }

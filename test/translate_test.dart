@@ -279,4 +279,108 @@ void main() {
     expect(htmlPart, contains('<table>'));
     expect(htmlPart, contains('</table>'));
   });
+
+  group('并发去重', () {
+    test('同一篇正文的并发请求只发一次', () async {
+      var calls = 0;
+      TranslateApi.clientFactory = () => MockClient((request) async {
+        calls++;
+        // 让响应慢一拍,保证两个调用真的重叠
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return _chat('<p>译文</p>');
+      });
+
+      final results = await Future.wait([
+        TranslateApi.translateHtml('<p>x</p>', cacheKey: 'mcmod:1'),
+        TranslateApi.translateHtml('<p>x</p>', cacheKey: 'mcmod:1'),
+      ]);
+      expect(results, ['<p>译文</p>', '<p>译文</p>']);
+      expect(calls, 1);
+    });
+
+    test('不同目标语言的并发请求各自发出', () async {
+      var calls = 0;
+      TranslateApi.clientFactory = () => MockClient((request) async {
+        calls++;
+        return _chat('<p>译文</p>');
+      });
+
+      await Future.wait([
+        TranslateApi.translateHtml('<p>x</p>', cacheKey: 'mcmod:1'),
+        TranslateApi.translateHtml(
+          '<p>x</p>',
+          cacheKey: 'mcmod:1',
+          targetLang: 'en',
+        ),
+      ]);
+      expect(calls, 2);
+    });
+
+    test('失败的请求不占用登记:之后重试能重新发出', () async {
+      var calls = 0;
+      TranslateApi.clientFactory = () => MockClient((request) async {
+        calls++;
+        // 第一次失败,第二次成功
+        return calls == 1 ? http.Response('bad', 401) : _chat('<p>译文</p>');
+      });
+
+      await expectLater(
+        TranslateApi.translateHtml('<p>x</p>', cacheKey: 'k'),
+        throwsA(predicate((e) => e.toString().contains('HTTP 401'))),
+      );
+      // 若失败后没摘掉登记,这里会拿到那个已失败的 Future 而永远拿不到译文
+      final out = await TranslateApi.translateHtml('<p>x</p>', cacheKey: 'k');
+      expect(out, '<p>译文</p>');
+      expect(calls, 2);
+    });
+
+    test('clearCaches 会清掉进行中的登记', () async {
+      var calls = 0;
+      TranslateApi.clientFactory = () => MockClient((request) async {
+        calls++;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return _chat('<p>译文</p>');
+      });
+
+      final first = TranslateApi.translateHtml('<p>x</p>', cacheKey: 'k');
+      TranslateApi.clearCaches();
+      final second = TranslateApi.translateHtml('<p>x</p>', cacheKey: 'k');
+      await Future.wait([first, second]);
+      expect(calls, 2);
+    });
+  });
+
+  group('alreadyInTargetLang', () {
+    test('中文目标 + 中文正文:判定为已是目标语言', () {
+      expect(
+        TranslateApi.alreadyInTargetLang('<p>这是一个模组介绍,用于测试判断。</p>', 'zh-Hans'),
+        isTrue,
+      );
+      expect(
+        TranslateApi.alreadyInTargetLang('<p>繁體中文的模組介紹內容。</p>', 'zh-Hant'),
+        isTrue,
+      );
+    });
+
+    test('中文目标 + 英文正文:需要翻译', () {
+      expect(
+        TranslateApi.alreadyInTargetLang(
+          '<p>This mod adds a lot of new items to the game.</p>',
+          'zh-Hans',
+        ),
+        isFalse,
+      );
+    });
+
+    test('非中文目标不判断(避免误判成"不用翻")', () {
+      expect(TranslateApi.alreadyInTargetLang('<p>这是中文正文</p>', 'en'), isFalse);
+    });
+
+    test('只有标签没有文字时不算已是目标语言', () {
+      expect(
+        TranslateApi.alreadyInTargetLang('<p></p><br/>', 'zh-Hans'),
+        isFalse,
+      );
+    });
+  });
 }

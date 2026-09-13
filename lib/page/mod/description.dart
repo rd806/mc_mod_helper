@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/widget/common/selection_button.dart';
+import 'package:mc_mod_helper/widget/button/selection_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/mcmod.dart';

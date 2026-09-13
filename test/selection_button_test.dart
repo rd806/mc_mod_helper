@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mc_mod_helper/widget/common/selection_button.dart';
+import 'package:mc_mod_helper/widget/button/selection_button.dart';
 
 /// 应用在 main.dart 里给整棵树注入 MediaQuery.textScaler(全局字体缩放),
 /// 这里用同样方式包一层。

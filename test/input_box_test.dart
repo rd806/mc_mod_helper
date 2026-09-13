@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mc_mod_helper/widget/handler/input_box.dart';
+import 'package:mc_mod_helper/widget/button/input_box.dart';
 
 /// 把 InputBox 放进最小页面,用 [onSaved] 接住回写值
 Widget _wrap({
@@ -89,9 +89,10 @@ void main() {
     await tester.pumpWidget(
       _wrap(value: 'sk-123456', obscure: true, onSaved: (_) {}),
     );
-    // 行内不出现明文,按长度显示圆点
+    // 行内不出现明文,只按长度显示圆点(长度被 clamp 到 3~8:
+    // 太短藏不住长度,太长会把行内布局撑开,9 个字符的 Key 显示 8 个圆点)
     expect(find.text('sk-123456'), findsNothing);
-    expect(find.text('•' * 9), findsOneWidget);
+    expect(find.text('•' * 8), findsOneWidget);
 
     await tester.tap(find.text('接口地址'));
     await tester.pumpAndSettle();

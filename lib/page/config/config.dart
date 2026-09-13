@@ -5,8 +5,9 @@ import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/setting/language_settings.dart';
-import 'package:mc_mod_helper/widget/common/dropdown_box.dart';
-import 'package:mc_mod_helper/widget/handler/input_box.dart';
+import 'package:mc_mod_helper/widget/button/dropdown_box.dart';
+import 'package:mc_mod_helper/widget/button/input_box.dart';
+import 'package:mc_mod_helper/widget/button/switch_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../setting/agent_settings.dart';
@@ -107,7 +108,10 @@ class _ConfigPageState extends State<ConfigPage> {
             builder: (context, _) => SettingsGroup(
               icon: Icons.language_rounded,
               title: '语言',
-              children: [_buildTranslateLang(LanguageSettings.instance)],
+              children: [
+                _buildTranslateLang(LanguageSettings.instance),
+                _buildAutoTranslate(LanguageSettings.instance),
+              ],
             ),
           ),
 
@@ -365,23 +369,11 @@ class _ConfigPageState extends State<ConfigPage> {
           DropdownOption(
             label,
             style,
-            icon: Icon(_getIconForDisplayStyle(style)),
+            icon: IconManager.getIconForDisplayStyle(style),
           ),
       ],
       onChanged: DisplaySettings.instance.setDisplayStyle,
     );
-  }
-
-  /// 获取图标
-  IconData _getIconForDisplayStyle(DisplayStyle style) {
-    switch (style) {
-      case DisplayStyle.card:
-        return Icons.view_module_rounded;
-      case DisplayStyle.table:
-        return Icons.table_rows_rounded;
-      case DisplayStyle.auto:
-        return Icons.hdr_auto_rounded;
-    }
   }
 
   /// AI 接口地址(OpenAI 兼容,如 https://api.openai.com/v1)
@@ -426,6 +418,16 @@ class _ConfigPageState extends State<ConfigPage> {
           DropdownOption(label, code),
       ],
       onChanged: LanguageSettings.instance.setTranslateLang,
+    );
+  }
+
+  /// 自动翻译开关
+  Widget _buildAutoTranslate(LanguageSettings s) {
+    return SwitchTile(
+      title: '自动翻译',
+      subtitle: '打开模组详情页时自动翻译正文',
+      initialValue: s.autoTranslate,
+      onChanged: LanguageSettings.instance.setAutoTranslate,
     );
   }
 }

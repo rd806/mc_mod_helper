@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../service/value/display.dart';
 import '../service/value/source.dart';
 import 'link_icons.dart';
 
 /// 管理图标
+/// 包括“相关链接”、设置界面等的图标
 class IconManager {
   /// 获取链接图标
   static Widget getLinkIcon(String name) {
@@ -13,24 +15,28 @@ class IconManager {
     if (n == 'neoforge') return Icon(LinkIcons.neoforge, color: Colors.orange);
     if (n == 'quilt') return Icon(LinkIcons.quilt, color: Colors.blueAccent);
 
-    if (n.contains('github'))
+    if (n.contains('github')) {
       return Icon(LinkIcons.github, color: Colors.black);
+    }
     if (n.contains('gitlab')) return Icon(LinkIcons.gitlab, color: Colors.red);
     if (n.contains('gitee') || n.contains('码云')) {
       return Icon(LinkIcons.gitee, color: Colors.red);
     }
 
-    if (n.contains('curseforge'))
+    if (n.contains('curseforge')) {
       return Icon(LinkIcons.curseforge, color: Colors.black);
-    if (n.contains('modrinth'))
+    }
+    if (n.contains('modrinth')) {
       return Icon(LinkIcons.modrinth, color: Colors.green);
+    }
 
     if (n.contains('wiki')) return Icon(LinkIcons.wiki);
     if (n.contains('discord')) return Icon(LinkIcons.discord);
     if (n.contains('patreon')) return Icon(LinkIcons.patreon);
     if (n.contains('mc') || n.contains('minecraft')) return Icon(LinkIcons.mc);
-    if (n.contains('crowdin'))
+    if (n.contains('crowdin')) {
       return Icon(LinkIcons.crowdin, color: Colors.green);
+    }
 
     if (n.contains('youtube')) return Icon(LinkIcons.youtube);
     if (n.contains('b站')) return Icon(LinkIcons.bilibili, color: Colors.pink);
@@ -55,7 +61,19 @@ class IconManager {
     }
   }
 
-  /// 获取来源图标
+  /// 获取展示方式图标
+  static Widget getIconForDisplayStyle(DisplayStyle style) {
+    switch (style) {
+      case DisplayStyle.card:
+        return Icon(Icons.view_module_rounded);
+      case DisplayStyle.table:
+        return Icon(Icons.table_rows_rounded);
+      case DisplayStyle.auto:
+        return Icon(Icons.hdr_auto_rounded);
+    }
+  }
+
+  /// 获取数据来源图标
   static Widget getIconForDataSource(ModSource source) {
     switch (source) {
       case ModSource.mcmod:
