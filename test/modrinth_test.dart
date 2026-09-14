@@ -18,7 +18,7 @@ import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/page/mod/description.dart';
 import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
-import 'package:mc_mod_helper/widget/handler/search_bar.dart';
+import 'package:mc_mod_helper/widget/button/search_bar.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
 http.Response _json(Object data) => http.Response.bytes(

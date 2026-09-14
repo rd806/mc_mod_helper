@@ -12,10 +12,10 @@ import '../../model/mod/mod_detail.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../service/agent/agent.dart';
 import '../../service/saves/history.dart';
-import '../../widget/handler/agent_sheet.dart';
-import '../../widget/handler/captcha_dialog.dart';
+import '../../widget/dialog/agent_sheet.dart';
+import '../../widget/dialog/captcha_dialog.dart';
 import '../../widget/common/image_box.dart';
-import '../../widget/handler/scroll_button.dart';
+import '../../widget/detail/scroll_button.dart';
 import '../../widget/detail/authors_card.dart';
 import '../../widget/detail/cover.dart';
 import '../../widget/detail/description_card.dart';
@@ -469,10 +469,13 @@ class _SelectionButtonSliverDelegate extends SliverPersistentHeaderDelegate {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Align(
         alignment: AlignmentGeometry.centerLeft,
-        child: SelectionButton(
-          button: button,
-          selectedIndex: selectedIndex,
-          switchTo: switchTo,
+        child: Card(
+          margin: const EdgeInsets.all(4),
+          child: SelectionButton(
+            button: button,
+            selectedIndex: selectedIndex,
+            switchTo: switchTo,
+          ),
         ),
       ),
     );

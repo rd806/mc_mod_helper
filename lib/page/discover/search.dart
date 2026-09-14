@@ -8,7 +8,7 @@ import 'package:mc_mod_helper/setting/display_settings.dart';
 import '../../api/mcmod.dart';
 import '../../icon/icon_manager.dart';
 import '../../model/mod/mod_summary.dart';
-import '../../widget/handler/captcha_dialog.dart';
+import '../../widget/dialog/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 
 /// 搜索页：按关键词搜索模组，点击结果进入详情页

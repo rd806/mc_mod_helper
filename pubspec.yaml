@@ -1,5 +1,5 @@
 name: mc_mod_helper
-description: "A new Flutter project."
+description: "An app for viewing Minecraft mods."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.1+1
+version: 1.1.0+1
 
 environment:
   sdk: ^3.13.0
@@ -76,10 +76,10 @@ flutter:
     - assets/launcher/
 
   fonts:
-    # 中文不再随包分发字体:思源黑体全字集 17.8MB(可变字重),占单架构
-    # 安装包近四成。Android 自带思源黑体、Windows 自带微软雅黑,系统字体
-    # 已能满足阅读;想全平台字形一致请先做子集化再放回这里
-    # (assets/fonts/NotoSansSC-VF.ttf 仍在仓库里,仅未打包)
+    # HarmonyOS Sans
+    - family: HarmonyOS_Sans
+      fonts:
+        - asset: assets/fonts/HarmonyOS_Sans_SC_Regular.ttf
 
     # Unifont：像素风格字体
     - family: Unifont

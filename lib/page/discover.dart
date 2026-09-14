@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/widget/handler/search_bar.dart';
+import 'package:mc_mod_helper/widget/button/search_bar.dart';
 
 import '../api/mcmod.dart';
 import '../model/mod/mod_category.dart';
 import '../setting/display_settings.dart';
-import '../widget/handler/captcha_dialog.dart';
+import '../widget/dialog/captcha_dialog.dart';
 import '../widget/mod/category_card.dart';
 import '../widget/common/error_view.dart';
 

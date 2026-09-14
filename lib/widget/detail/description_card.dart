@@ -296,25 +296,22 @@ class _DescriptionCardState extends State<DescriptionCard> {
   Widget _buildTranslateButton(BuildContext context) {
     final theme = Theme.of(context);
     final langLabel = LanguageSettings.instance.translateLangLabel;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Tooltip(
-        message: _translatedActive ? '显示原文' : '翻译为$langLabel',
-        child: TextButton.icon(
-          onPressed: _toggleTranslate,
-          icon: _loading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.translate, size: 18),
-          label: Text(
-            _loading
-                ? (_chunkTotal > 1 ? '翻译中 $_chunkDone/$_chunkTotal' : '翻译中…')
-                : (_translatedActive ? '原文' : '翻译'),
-            style: theme.textTheme.labelLarge,
-          ),
+    return Tooltip(
+      message: _translatedActive ? '显示原文' : '翻译为$langLabel',
+      child: TextButton.icon(
+        onPressed: _toggleTranslate,
+        icon: _loading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.translate, size: 18),
+        label: Text(
+          _loading
+              ? (_chunkTotal > 1 ? '翻译中 $_chunkDone/$_chunkTotal' : '翻译中…')
+              : (_translatedActive ? '原文' : '翻译'),
+          style: theme.textTheme.labelLarge,
         ),
       ),
     );

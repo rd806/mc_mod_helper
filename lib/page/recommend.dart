@@ -4,11 +4,12 @@ import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/widget/common/section_title.dart';
+import 'package:mc_mod_helper/widget/dialog/switch_dialog.dart';
 
 import '../api/mcmod.dart';
 import '../model/mod/mod_summary.dart';
 import '../widget/button/selection_button.dart';
-import '../widget/handler/captcha_dialog.dart';
+import '../widget/dialog/captcha_dialog.dart';
 import '../widget/common/error_view.dart';
 import 'recommend/default_list.dart';
 import 'recommend/last_edit_list.dart';
@@ -177,13 +178,16 @@ class _FeaturePageState extends State<FeaturePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Chip(
+        title: ActionChip(
           avatar: IconManager.getIconForDataSource(
             DisplaySettings.instance.dataSource,
           ),
           label: Text(
             SourceManager.getSourceString(DisplaySettings.instance.dataSource),
           ),
+          // 切来源是轻量操作:弹窗选择即可(切换后本页监听 DisplaySettings
+          // 会自动重新拉取,胶囊文案也跟着变)
+          onPressed: () => showSwitchSourceDialog(context),
         ),
         actions: [
           // 刷新
@@ -210,10 +214,13 @@ class _FeaturePageState extends State<FeaturePage> {
         child: Column(
           children: [
             Center(
-              child: SelectionButton(
-                button: _button,
-                selectedIndex: _currentIndex,
-                switchTo: _switchTo,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: SelectionButton(
+                  button: _button,
+                  selectedIndex: _currentIndex,
+                  switchTo: _switchTo,
+                ),
               ),
             ),
             Expanded(

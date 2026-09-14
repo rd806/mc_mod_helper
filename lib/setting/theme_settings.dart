@@ -30,7 +30,11 @@ class ThemeSettings extends ChangeNotifier {
   static const String systemFont = 'system';
 
   /// 可选字体
-  static const List<String> fontTypes = [systemFont, 'Unifont'];
+  static const List<String> fontTypes = [
+    systemFont,
+    'HarmonyOS_Sans',
+    'Unifont',
+  ];
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.blue;

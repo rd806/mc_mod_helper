@@ -47,6 +47,7 @@ class _ConfigPageState extends State<ConfigPage> {
 
   static const List<(String, String)> _fontTypes = [
     ('系统字体', ThemeSettings.systemFont),
+    ('HarmonyOS Sans', 'HarmonyOS_Sans'),
     ('Unifont', 'Unifont'),
   ];
 

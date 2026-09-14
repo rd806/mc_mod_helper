@@ -26,13 +26,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 组件整体含 Card 外边距,以 SelectionButton 子树里的 Card 作为实际高度
-    final card = find.descendant(
-      of: find.byType(SelectionButton),
-      matching: find.byType(Card),
-    );
-    final actual = tester.getSize(card).height;
-    final expected = SelectionButton.preferredHeight(tester.element(card));
+    // 量组件自身(外层 Padding 的渲染对象):公式必须等于它的自然高度,
+    // 吸顶条才不空带、不裁剪
+    final button = find.byType(SelectionButton);
+    final actual = tester.getSize(button).height;
+    final expected = SelectionButton.preferredHeight(tester.element(button));
     expect(actual, closeTo(expected, 1));
   });
 
@@ -54,12 +52,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final card = find.descendant(
-        of: find.byType(SelectionButton),
-        matching: find.byType(Card),
-      );
-      final actual = tester.getSize(card).height;
-      final expected = SelectionButton.preferredHeight(tester.element(card));
+      final button = find.byType(SelectionButton);
+      final actual = tester.getSize(button).height;
+      final expected = SelectionButton.preferredHeight(tester.element(button));
       expect(actual, closeTo(expected, 1), reason: '$scale 倍字号下公式应与实际高度一致');
       heights[scale] = expected;
     }

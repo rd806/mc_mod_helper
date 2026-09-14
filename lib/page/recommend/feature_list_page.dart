@@ -5,7 +5,7 @@ import 'package:mc_mod_helper/service/value/source.dart';
 import '../../api/mcmod.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../setting/display_settings.dart';
-import '../../widget/handler/captcha_dialog.dart';
+import '../../widget/dialog/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 
 /// 版块模组列表页(默认排序 / 最新收录 / 最新编辑):

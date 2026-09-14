@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/widget/handler/agent_sheet.dart';
+import 'package:mc_mod_helper/widget/dialog/agent_sheet.dart';
 
 /// 模组助手
 class AgentPage extends StatelessWidget {

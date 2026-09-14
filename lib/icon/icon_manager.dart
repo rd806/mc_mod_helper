@@ -24,7 +24,7 @@ class IconManager {
     }
 
     if (n.contains('curseforge')) {
-      return Icon(LinkIcons.curseforge, color: Colors.black);
+      return Icon(LinkIcons.curseforge, color: Colors.orange);
     }
     if (n.contains('modrinth')) {
       return Icon(LinkIcons.modrinth, color: Colors.green);

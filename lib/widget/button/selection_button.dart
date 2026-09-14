@@ -30,7 +30,7 @@ class SelectionButton extends StatefulWidget {
   /// 公式给的高度与实际布局对不上,吸顶会拉起空带或裁掉文字)
   static TextStyle? _labelStyle(ThemeData theme) => theme.textTheme.bodyMedium;
 
-  /// 组件总高(含 Card 外边距),按当前主题字号精确计算。
+  /// 组件总高,按当前主题字号精确计算。
   ///
   /// 吸顶用的 SliverPersistentHeader 需要数值型 extent,高度写死会造成
   /// 组件被拉高悬浮(空带)或放不下被裁剪;统一由本方法给出与 build
@@ -43,8 +43,8 @@ class SelectionButton extends StatefulWidget {
     final textH = (style?.height ?? 1.4) * scaler.scale(style?.fontSize ?? 14);
     // 按钮高 = max(M3 最小高 40, 文字 + 上下内边距 5*2)
     final btnH = textH + 10 > 40 ? textH + 10 : 40;
-    // Card 内边距 4*2 + Card 外边距 4*2
-    return btnH + 16;
+    // 外层 Padding 4*2(build 里没有 Card 了:过去的内边距/外边距已去掉)
+    return btnH + 8;
   }
 
   @override
@@ -118,34 +118,30 @@ class _SelectionButtonState extends State<SelectionButton> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      // 显式固定外边距(M3 默认随版本变化,公式按 4 计算)
-      margin: const EdgeInsets.all(4),
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Stack(
-          key: _stackKey,
-          children: [
-            // 高亮滑块:铺在按钮行下层,随选中滑动(Row 决定 Stack 尺寸)
-            if (_target != null)
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                left: _target!.left,
-                top: _target!.top,
-                width: _target!.width,
-                height: _target!.height,
-                child: _buildHighlight(theme),
-              ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: _buildButtons(theme),
-              ),
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Stack(
+        key: _stackKey,
+        children: [
+          // 高亮滑块:铺在按钮行下层,随选中滑动(Row 决定 Stack 尺寸)
+          if (_target != null)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              left: _target!.left,
+              top: _target!.top,
+              width: _target!.width,
+              height: _target!.height,
+              child: _buildHighlight(theme),
             ),
-          ],
-        ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: _buildButtons(theme),
+            ),
+          ),
+        ],
       ),
     );
   }

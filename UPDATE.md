@@ -5,7 +5,7 @@
 > [!Warning]
 > Windows端的默认文件存储位置已更改：`com.example/MCModHelper` -> `com.github.rd806/MCModHelper`
 > 
-> Android 安装包体积精简：不再打包思源黑体（改用系统字体），并在构建时按 CPU 架构出包。
+> Android 安装包体积精简，并在构建时按 CPU 架构出包。
 
 添加：
 * 模组详情页增加“开发团队”卡片和“返回顶部”按钮。

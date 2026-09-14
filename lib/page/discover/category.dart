@@ -8,7 +8,7 @@ import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../setting/display_settings.dart';
-import '../../widget/handler/captcha_dialog.dart';
+import '../../widget/dialog/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 
 /// 分类模组列表页：网格卡片展示，滚动到底自动加载下一页

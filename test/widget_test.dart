@@ -18,7 +18,7 @@ import 'package:mc_mod_helper/setting/theme_settings.dart';
 import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/widget/handler/search_bar.dart';
+import 'package:mc_mod_helper/widget/button/search_bar.dart';
 
 /// 启动应用并推进到首页三个版块与分类页都完成失败渲染。
 ///
@@ -34,6 +34,27 @@ Future<void> pumpApp(WidgetTester tester) async {
   }
   await tester.pump(); // 渲染最终错误态
 }
+
+/// Modrinth 搜索的假响应(单条 Sodium):用于断言切换来源后确实重新拉取了
+http.Response _modrinthSearchHits() => http.Response.bytes(
+  utf8.encode(
+    jsonEncode({
+      'hits': [
+        {
+          'slug': 'sodium',
+          'title': 'Sodium',
+          'description': '高性能渲染引擎',
+          'icon_url': null,
+          'downloads': 1,
+          'follows': 1,
+        },
+      ],
+      'total_hits': 1,
+    }),
+  ),
+  200,
+  headers: {'content-type': 'application/json; charset=utf-8'},
+);
 
 void main() {
   setUpAll(() async {
@@ -290,27 +311,8 @@ void main() {
     expect(find.textContaining('加载失败'), findsWidgets);
 
     // 切到 Modrinth:装一个假响应,断言重新拉取后的内容渲染出来
-    ModrinthApi.clientFactory = () => MockClient(
-      (request) async => http.Response.bytes(
-        utf8.encode(
-          jsonEncode({
-            'hits': [
-              {
-                'slug': 'sodium',
-                'title': 'Sodium',
-                'description': '高性能渲染引擎',
-                'icon_url': null,
-                'downloads': 1,
-                'follows': 1,
-              },
-            ],
-            'total_hits': 1,
-          }),
-        ),
-        200,
-        headers: {'content-type': 'application/json; charset=utf-8'},
-      ),
-    );
+    ModrinthApi.clientFactory = () =>
+        MockClient((request) async => _modrinthSearchHits());
     ModrinthApi.clearCaches(); // 让上面的工厂生效
 
     DisplaySettings.instance.setDataSource(ModSource.modrinth);
@@ -324,6 +326,45 @@ void main() {
     expect(DisplaySettings.instance.dataSource, ModSource.modrinth);
     expect(find.text('Sodium'), findsOneWidget);
     expect(find.textContaining('加载失败'), findsNothing);
+  });
+
+  testWidgets('点首页数据源胶囊:弹窗选择并切换来源', (tester) async {
+    await pumpApp(tester);
+    expect(find.textContaining('加载失败'), findsWidgets);
+
+    ModrinthApi.clientFactory = () =>
+        MockClient((request) async => _modrinthSearchHits());
+    ModrinthApi.clearCaches();
+
+    // 点 AppBar 上的来源胶囊 → 弹出选择框
+    await tester.tap(find.widgetWithText(ActionChip, 'MC百科'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200)); // 弹窗过渡
+    expect(find.text('请选择数据源'), findsOneWidget);
+
+    // 点弹窗外可关闭(推整页的旧写法没有这种关法),且不改动设置
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('请选择数据源'), findsNothing);
+    expect(DisplaySettings.instance.dataSource, ModSource.mcmod);
+
+    // 重新打开并选 Modrinth:弹窗关闭、来源切换、首页自动重拉
+    await tester.tap(find.widgetWithText(ActionChip, 'MC百科'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Modrinth'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200)); // 关闭过渡
+    expect(find.text('请选择数据源'), findsNothing);
+    expect(DisplaySettings.instance.dataSource, ModSource.modrinth);
+
+    await tester.pump();
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+    }
+    expect(find.text('Sodium'), findsOneWidget);
   });
 
   testWidgets('聚合搜索:来源按钮切换展示,失败来源单独报错', (tester) async {
