@@ -22,6 +22,10 @@ Future<void> main() async {
   await LanguageSettings.instance.load();
   await AgentSettings.instance.load();
   await AgentHistoryService.instance.load();
+  // 启动即开一个新对话(旧的仍在历史里可切回)。放在这里而不是助手的
+  // initState:那个 State 常驻 IndexedStack,它的 initState 跑在构建阶段,
+  // 在那里切换对话会通知到正在构建的界面,直接报 setState during build
+  AgentHistoryService.instance.startNew();
   runApp(const McModHelper());
 }
 

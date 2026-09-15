@@ -53,7 +53,7 @@ class InputBox extends StatelessWidget {
     return InkWell(
       onTap: () => _showInputBox(context),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
         child: Row(
           children: [
             Text(title, style: theme.textTheme.bodyMedium),
@@ -115,23 +115,27 @@ class _InputDialogState extends State<_InputDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.title),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        obscureText: _obscured,
-        textInputAction: TextInputAction.done,
-        onSubmitted: (_) => _submit(),
-        decoration: InputDecoration(
-          hintText: widget.hint,
-          suffixIcon: widget.obscure
-              ? IconButton(
-                  tooltip: _obscured ? '显示' : '隐藏',
-                  icon: Icon(
-                    _obscured ? Icons.visibility_off : Icons.visibility,
-                  ),
-                  onPressed: () => setState(() => _obscured = !_obscured),
-                )
-              : null,
+      // 弹窗的宽度限制在300
+      content: SizedBox(
+        width: 300,
+        child: TextField(
+          controller: _controller,
+          autofocus: true,
+          obscureText: _obscured,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _submit(),
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            suffixIcon: widget.obscure
+                ? IconButton(
+                    tooltip: _obscured ? '显示' : '隐藏',
+                    icon: Icon(
+                      _obscured ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed: () => setState(() => _obscured = !_obscured),
+                  )
+                : null,
+          ),
         ),
       ),
       actions: [

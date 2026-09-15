@@ -61,7 +61,7 @@ class DropdownBox<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 4, 24, 4),
+      padding: const EdgeInsets.fromLTRB(24, 2, 24, 2),
       child: Row(
         children: [
           Text(title, style: theme.textTheme.bodyMedium),

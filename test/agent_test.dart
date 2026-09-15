@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -278,6 +279,27 @@ void main() {
     expect(service.conversations, hasLength(1));
   });
 
+  test('startNew:列表里还有别的空对话时切过去复用,不新建', () async {
+    final service = AgentHistoryService.instance;
+    // 先聊出一个非空对话,再开一个还没聊的空对话(当前)
+    final talked = service.startNew();
+    await service.add(AgentChatItem.user('聊过的对话'));
+    final draft = service.startNew();
+    expect(draft.id, isNot(talked.id));
+
+    // 翻历史切回聊过的那个:空对话 draft 就留在列表里了
+    service.select(talked.id);
+    expect(service.items, isNotEmpty);
+    final before = service.conversations.length;
+
+    // 再开助手:应当切回那个空对话,而不是又新建一个
+    final reused = service.startNew();
+    expect(reused.id, draft.id);
+    expect(service.currentId, draft.id);
+    expect(service.conversations, hasLength(before));
+    expect(service.items, isEmpty);
+  });
+
   test('多对话:select 切换,delete 删除后落到最近一个', () async {
     final service = AgentHistoryService.instance;
     await service.add(AgentChatItem.user('第一段对话'));
@@ -499,6 +521,31 @@ void main() {
     expect(find.text('历史对话'), findsNothing); // 回到消息列表
     expect(find.text('推荐 JEI'), findsOneWidget);
     expect(find.text('[JEI] JEI物品管理器'), findsOneWidget);
+  });
+
+  testWidgets('底栏助手页开着时,从别处再打开助手不会在构建期报错', (tester) async {
+    // 回归:开新对话曾在面板的 initState 里做,而 initState 跑在构建阶段。
+    // 底栏「AI」页常驻 IndexedStack、同样监听着 AgentHistoryService,
+    // 于是它的 setState 撞在构建阶段上:
+    // "setState() or markNeedsBuild() called during build"。
+    // 只在当前对话非空时才触发(startNew 对空对话会短路复用、不通知)
+    await tester.pumpWidget(const MaterialApp(home: AgentPage()));
+    await AgentHistoryService.instance.add(AgentChatItem.user('之前的对话'));
+    await tester.pump();
+    final conversations = AgentHistoryService.instance.conversations.length;
+
+    // 再从别处打开一个面板(详情页里的助手入口就是这条路径)
+    unawaited(showAgentSheet(tester.element(find.byType(AgentSheet))));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300)); // 面板入场
+
+    expect(tester.takeException(), isNull);
+    // 开新对话的行为不变:多了一个对话,且当前是空的新对话
+    expect(
+      AgentHistoryService.instance.conversations,
+      hasLength(conversations + 1),
+    );
+    expect(AgentHistoryService.instance.items, isEmpty);
   });
 
   testWidgets('历史对话:可删除某个对话,当前对话可清空', (tester) async {

@@ -136,7 +136,7 @@ class EnvironmentCard extends StatelessWidget {
   /// 模组加载器的图标文字
   Widget _getPlatform(ThemeData theme, String key) {
     String text = key;
-    Color color = theme.colorScheme.primaryContainer;
+    Color color = theme.colorScheme.onSurfaceVariant;
     switch (key.toLowerCase()) {
       case 'forge':
         text = 'Forge';

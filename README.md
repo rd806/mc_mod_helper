@@ -87,4 +87,5 @@ flutter test
 * `mc_mod_helper.json` 是来自 [Ico moon](https://icomoon.io/new-app/) 的图标文件集合。
 * `UPDATE.md` 存放更新描述。
 * 模组加载器的图标来源于 Modrinth。
+* 字体使用了 [HarmonyOS Sans](https://developer.huawei.com/consumer/cn/doc/design-guides/font-0000001828772001) 的 Regular 子集。
 

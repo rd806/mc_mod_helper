@@ -204,10 +204,20 @@ class AgentHistoryService extends ChangeNotifier {
 
   /// 开启一个新对话并切过去。
   ///
-  /// 当前对话已经是空的时候直接复用:反复开关面板不该堆一串空对话
+  /// 不新建的两种情况(否则一开助手就往历史里堆一个「新对话」):
+  /// - 当前对话已经是空的:反复开关面板没有意义;
+  /// - 列表里还有别的空对话:上次开了没聊就去翻历史了,再开应当接着用它。
+  ///   空对话没有任何内容,复用哪个都一样,取最近的那个(_conversations
+  ///   按最近使用倒序)
   AgentConversation startNew() {
     final existing = current;
     if (existing != null && existing.isEmpty) return existing;
+    for (final conversation in _conversations) {
+      if (conversation.isEmpty) {
+        select(conversation.id);
+        return conversation;
+      }
+    }
     final now = DateTime.now();
     final conversation = AgentConversation(
       id: _createId(now),

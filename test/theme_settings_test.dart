@@ -25,7 +25,7 @@ void main() {
     await ThemeSettings.instance.load();
     ThemeSettings.instance
       ..setThemeMode(ThemeMode.dark)
-      ..setSeedColor(Colors.orange)
+      ..setSeedColor(Colors.orange.toARGB32())
       ..setFontScale(1.15)
       ..setFontType('Unifont');
 

@@ -11,6 +11,10 @@ import '../../service/agent/history.dart';
 /// [mod] 由详情页传入:带上它面板会多出「总结这个模组」「推荐相似模组」
 /// 两个快捷指令,并把该模组资料一并交给模型。
 Future<void> showAgentSheet(BuildContext context, {AgentModContext? mod}) {
+  // 每次打开助手开一个新对话(当前对话已是空的则复用,不堆空对话)。
+  // 放在这里而不是面板的 initState:这里是点击事件,不在构建阶段,
+  // 服务通知不会砸在正在构建的界面上(详见 AgentSheet.initState 的注释)
+  AgentHistoryService.instance.startNew();
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -55,8 +59,11 @@ class _AgentSheetState extends State<AgentSheet> {
   void initState() {
     super.initState();
     _history.addListener(_onHistoryChanged);
-    // 每次打开助手都开一个新对话(当前已是空对话时复用,不堆空对话)
-    _history.startNew();
+    // 注意:这里**不要**改对话(不要 startNew)。initState 跑在构建阶段,
+    // 而本服务是所有面板共享的:改它会通知到另一个还挂着的面板(底栏「AI」
+    // 页常驻 IndexedStack),对方在通知回调里 setState 就会撞上
+    // "setState() called during build"。开新对话由打开面板的动作负责
+    // (见 showAgentSheet);启动时的那次由 main() 负责
     // 有历史消息时,打开面板直接停在最新一条
     _scrollToBottom(animate: false);
   }
@@ -216,7 +223,7 @@ class _AgentSheetState extends State<AgentSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: MediaQuery.of(context).size.height * 0.85,
         child: Column(
           children: [
             _buildHeader(theme),

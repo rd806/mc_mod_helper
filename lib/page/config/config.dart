@@ -5,6 +5,7 @@ import 'package:mc_mod_helper/service/value/display.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/setting/language_settings.dart';
+import 'package:mc_mod_helper/widget/button/color_box.dart';
 import 'package:mc_mod_helper/widget/button/dropdown_box.dart';
 import 'package:mc_mod_helper/widget/button/input_box.dart';
 import 'package:mc_mod_helper/widget/button/switch_button.dart';
@@ -34,15 +35,6 @@ class _ConfigPageState extends State<ConfigPage> {
     ('跟随系统', ThemeMode.system),
     ('亮色', ThemeMode.light),
     ('暗色', ThemeMode.dark),
-  ];
-
-  /// 可选强调色：名称 + 色值
-  static const List<(String, Color)> _seedColors = [
-    ('蓝色', Colors.blue),
-    ('绿色', Colors.green),
-    ('紫色', Colors.deepPurple),
-    ('橙色', Colors.orange),
-    ('红色', Colors.red),
   ];
 
   static const List<(String, String)> _fontTypes = [
@@ -83,10 +75,10 @@ class _ConfigPageState extends State<ConfigPage> {
               icon: Icons.light_mode_rounded,
               title: '主题',
               children: [
-                _buildThemeModeSection(ThemeSettings.instance),
-                _buildSeedColorSection(theme, ThemeSettings.instance),
+                _buildThemeMode(ThemeSettings.instance),
+                _buildSeedColor(ThemeSettings.instance),
                 _buildFontType(ThemeSettings.instance),
-                _buildFontScaleSection(context, ThemeSettings.instance),
+                _buildFontScale(context, ThemeSettings.instance),
               ],
             ),
           ),
@@ -98,7 +90,7 @@ class _ConfigPageState extends State<ConfigPage> {
               title: '显示',
               children: [
                 _buildRenderType(DisplaySettings.instance),
-                _buildDataSourceSection(DisplaySettings.instance),
+                _buildDataSource(DisplaySettings.instance),
                 _buildDisplayStyle(DisplaySettings.instance),
               ],
             ),
@@ -196,7 +188,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 主题模式；跟随系统 / 亮色 / 暗色。
-  Widget _buildThemeModeSection(ThemeSettings s) {
+  Widget _buildThemeMode(ThemeSettings s) {
     return DropdownBox<ThemeMode>(
       title: '主题选择',
       value: s.themeMode,
@@ -212,64 +204,12 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
-  /// 强调色:一行色块,选中项画外圈 + 对勾
-  Widget _buildSeedColorSection(ThemeData theme, ThemeSettings s) {
-    final selectedArgb = s.seedColor.toARGB32();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Row(
-        children: [
-          Text('颜色种子', style: theme.textTheme.bodyMedium),
-          Spacer(),
-          for (final (label, color) in _seedColors)
-            _buildColor(label, color, selectedArgb, theme),
-        ],
-      ),
-    );
-  }
-
-  // 颜色按钮
-  Widget _buildColor(
-    String label,
-    Color color,
-    int selectedArgb,
-    ThemeData theme,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
-      child: Tooltip(
-        message: label,
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: () => ThemeSettings.instance.setSeedColor(color),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: selectedArgb == color.toARGB32()
-                    ? theme.colorScheme.onSurface
-                    : Colors.transparent,
-                width: 2,
-              ),
-            ),
-            child: selectedArgb == color.toARGB32()
-                ? Icon(
-                    Icons.check,
-                    size: 20,
-                    // 按色块明暗选白/黑对勾
-                    color:
-                        ThemeData.estimateBrightnessForColor(color) ==
-                            Brightness.dark
-                        ? Colors.white
-                        : Colors.black87,
-                  )
-                : null,
-          ),
-        ),
-      ),
+  /// 强调色(种子色):行内是圆形色块 + 当前色号,点击弹窗输入十六进制
+  Widget _buildSeedColor(ThemeSettings s) {
+    return ColorBox(
+      title: '颜色种子',
+      value: s.seedColor,
+      onSaved: (color) => ThemeSettings.instance.setSeedColor(color.toARGB32()),
     );
   }
 
@@ -306,7 +246,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 字体大小滑块
-  Widget _buildFontScaleSection(BuildContext context, ThemeSettings s) {
+  Widget _buildFontScale(BuildContext context, ThemeSettings s) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
@@ -340,7 +280,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   /// 搜索/详情数据来源(MC百科/Modrinth),修改后持久化
-  Widget _buildDataSourceSection(DisplaySettings s) {
+  Widget _buildDataSource(DisplaySettings s) {
     return DropdownBox<ModSource>(
       title: '数据来源',
       value: s.dataSource,

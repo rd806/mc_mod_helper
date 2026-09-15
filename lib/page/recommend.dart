@@ -220,6 +220,7 @@ class _FeaturePageState extends State<FeaturePage> {
                   button: _button,
                   selectedIndex: _currentIndex,
                   switchTo: _switchTo,
+                  spacing: 20,
                 ),
               ),
             ),

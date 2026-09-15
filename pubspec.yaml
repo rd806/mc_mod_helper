@@ -79,7 +79,7 @@ flutter:
     # HarmonyOS Sans
     - family: HarmonyOS_Sans
       fonts:
-        - asset: assets/fonts/HarmonyOS_Sans_SC_Regular.ttf
+        - asset: assets/fonts/HarmonyOS_Sans_SC-Regular.ttf
 
     # Unifont：像素风格字体
     - family: Unifont

@@ -37,12 +37,14 @@ class ThemeSettings extends ChangeNotifier {
   ];
 
   ThemeMode _themeMode = ThemeMode.system;
-  Color _seedColor = Colors.blue;
+  // 默认蓝色(要带不透明的 alpha 字节:少了它 Color 是全透明的,
+  // 一旦 load() 抛异常走了 catch,种子色就会透明,主题整个变样)
+  int _seedColor = 0xFF0000FF;
   String _fontType = systemFont;
   double _fontScale = 1.0;
 
   ThemeMode get themeMode => _themeMode;
-  Color get seedColor => _seedColor;
+  Color get seedColor => Color(_seedColor);
   String get fontType => _fontType;
 
   /// 供 ThemeData 使用的字体名:系统字体返回 null,让引擎回退到系统字体。
@@ -63,7 +65,7 @@ class ThemeSettings extends ChangeNotifier {
       _themeMode =
           ThemeMode.values.asNameMap()[prefs.getString(_themeModeKey)] ??
           ThemeMode.system;
-      _seedColor = Color(prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32());
+      _seedColor = prefs.getInt(_seedColorKey) ?? Colors.blue.toARGB32();
       // 字体样式(未知存储值回落到默认)
       final ft = prefs.getString(_fontTypeKey);
       _fontType = (ft != null && fontTypes.contains(ft)) ? ft : systemFont;
@@ -105,11 +107,11 @@ class ThemeSettings extends ChangeNotifier {
   }
 
   /// 设置强调色(亮/暗主题共用的种子色)
-  void setSeedColor(Color color) {
-    if (color.toARGB32() == _seedColor.toARGB32()) return;
+  void setSeedColor(int color) {
+    if (color == _seedColor) return;
     _seedColor = color;
     notifyListeners();
-    _persist(_seedColorKey, color.toARGB32());
+    _persist(_seedColorKey, color);
   }
 
   /// 异步写盘;失败不影响本次切换,仅下次启动回到上次成功保存的值
