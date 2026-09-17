@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../icon/icon_manager.dart';
 import '../../model/mod/mod_detail.dart';
 import '../common/collapsible_widgets.dart';
 import '../common/section_title.dart';
@@ -31,7 +30,7 @@ class LinksCard extends StatelessWidget {
               widget: [
                 for (final link in mod.links)
                   ActionChip(
-                    avatar: IconManager.getLinkIcon(link.name),
+                    avatar: link.icon,
                     backgroundColor: theme.colorScheme.onPrimary.withAlpha(100),
                     label: Text(link.name, style: theme.textTheme.labelMedium),
                     onPressed: () => onOpenUrl(link.url),

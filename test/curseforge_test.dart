@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/mod/mod_category.dart';
+import 'package:mc_mod_helper/model/mod/mod_loader.dart';
 import 'package:mc_mod_helper/model/mod/mod_version.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
@@ -148,10 +149,16 @@ void main() {
     expect(d.coverUrl, 'https://media.forgecdn.net/avatars/sodium.png');
     // 版本按加载器分组(加载器名与版本号混在 gameVersions 里)
     expect(d.mcVersions, {
-      'fabric': ['1.21.1'],
-      'forge': ['1.20.4'],
-      'neoforge': ['1.20.4'],
+      modLoaders['fabric']!: ['1.21.1'],
+      modLoaders['forge']!: ['1.20.4'],
+      modLoaders['neoforge']!: ['1.20.4'],
     });
+    // 键换成 ModLoader 后,名称已是规范写法(CurseForge 本来就给这个写法)
+    expect(d.mcVersions.keys.map((l) => l.name), [
+      'Fabric',
+      'Forge',
+      'NeoForge',
+    ]);
     expect(d.platform, 'Fabric / Forge / NeoForge');
     // 链接:源码命中 GitHub 品牌名,官网在列
     expect(d.links.map((l) => l.name), contains('GitHub'));

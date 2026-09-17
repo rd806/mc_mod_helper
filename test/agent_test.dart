@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/model/author.dart';
 import 'package:mc_mod_helper/model/mod/mod_detail.dart';
+import 'package:mc_mod_helper/model/mod/mod_loader.dart';
 import 'package:mc_mod_helper/model/mod/mod_summary.dart';
 import 'package:mc_mod_helper/page/agent.dart';
 import 'package:mc_mod_helper/service/agent/agent.dart';
@@ -177,8 +178,8 @@ void main() {
         description: '查看物品合成',
         authors: const [Author(name: 'mezz', role: '所有者')],
         platform: 'Fabric',
-        mcVersions: const {
-          'fabric': ['1.21.1', '1.20.4'],
+        mcVersions: {
+          ModLoader.of('fabric'): ['1.21.1', '1.20.4'],
         },
         body: '<h2>简介</h2><script>忽略我</script><p>查看物品的合成配方与用途。</p>',
       ),
@@ -191,7 +192,8 @@ void main() {
     expect(text, contains('简介:查看物品合成'));
     expect(text, contains('作者:mezz'));
     expect(text, contains('支持平台:Fabric'));
-    expect(text, contains('支持版本:fabric 1.21.1/1.20.4'));
+    // 键是 ModLoader,资料块里写的是它的规范名称(而非接口给的 'fabric')
+    expect(text, contains('支持版本:Fabric 1.21.1/1.20.4'));
     expect(text, contains('查看物品的合成配方与用途。'));
     expect(text, isNot(contains('忽略我'))); // script 内容丢弃
     expect(text, isNot(contains('<p>'))); // 标签已去掉

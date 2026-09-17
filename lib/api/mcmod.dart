@@ -12,6 +12,7 @@ import '../model/author.dart';
 import '../model/filter/filter.dart';
 import '../model/mod/mod_category.dart';
 import '../model/mod/mod_detail.dart';
+import '../model/mod/mod_loader.dart';
 import '../model/mod/mod_version.dart';
 import '../model/link.dart';
 import '../model/mod/mod_summary.dart';
@@ -585,14 +586,14 @@ class McmodApi {
         }
       }
       if (name.isNotEmpty && href.isNotEmpty) {
-        links.add(Link(name: name, url: href));
+        links.add(Link(icon: Link.getIcon(name), name: name, url: href));
       }
     }
 
     // 支持的 MC 版本:按加载器分组(去重,保持页面顺序)。
     // 页面结构:li.mcver > ul > ul,每个内层 ul 的首个 li 是加载器标签
     // (如 'Forge: '),其余 li 的链接为版本号
-    final mcVersions = <String, List<String>>{};
+    final mcVersions = <ModLoader, List<String>>{};
     for (final group in doc.querySelectorAll('li.mcver > ul > ul')) {
       final label = group.querySelector('li')?.text.trim() ?? '';
       final loader = label.replaceFirst(RegExp(r'[:：]\s*$'), '');
@@ -601,7 +602,7 @@ class McmodApi {
         final v = a.text.trim();
         if (v.isNotEmpty && !versions.contains(v)) versions.add(v);
       }
-      if (loader.isNotEmpty) mcVersions[loader] = versions;
+      if (loader.isNotEmpty) mcVersions[ModLoader.of(loader)] = versions;
     }
 
     String? field(String label) {

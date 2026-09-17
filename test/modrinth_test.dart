@@ -16,6 +16,7 @@ import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/mod/mod_category.dart';
+import 'package:mc_mod_helper/model/mod/mod_loader.dart';
 import 'package:mc_mod_helper/model/mod/mod_version.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/main.dart';
@@ -204,11 +205,13 @@ void main() {
       // 环境为 [客户端, 服务端] 枚举值列表(client_side=required,
       // server_side=unsupported → 仅客户端)
       expect(d.sides, ['required', 'unsupported']);
-      // 版本按加载器分组(版本列表接口聚合,去重保序)
+      // 版本按加载器分组(版本列表接口聚合,去重保序);
+      // 键是 ModLoader:接口给的小写标识会被认出来并换成规范名称
       expect(d.mcVersions, {
-        'fabric': ['1.21.1', '1.20.4'],
-        'forge': ['1.20.4'],
+        modLoaders['fabric']!: ['1.21.1', '1.20.4'],
+        modLoaders['forge']!: ['1.20.4'],
       });
+      expect(d.mcVersions.keys.map((l) => l.name), ['Fabric', 'Forge']);
       expect(d.links.map((l) => l.name), contains('GitHub'));
       expect(d.links.map((l) => l.name), contains('Discord'));
       expect(d.pageUrl, 'https://modrinth.com/mod/sodium');

@@ -10,6 +10,7 @@ import '../model/filter/filter.dart';
 import '../model/filter/sort_method.dart';
 import '../model/mod/mod_category.dart';
 import '../model/mod/mod_detail.dart';
+import '../model/mod/mod_loader.dart';
 import '../model/mod/mod_version.dart';
 import '../model/link.dart';
 import '../model/mod/mod_summary.dart';
@@ -405,16 +406,18 @@ class ModrinthApi {
   ///
   /// /v2/project/{id}/version 返回全部版本条目,每个条目带 loaders[]
   /// 与 game_versions[];按加载器聚合并去重(保持接口返回顺序)
-  static Map<String, List<String>> _parseVersionsByLoader(String body) {
+  static Map<ModLoader, List<String>> _parseVersionsByLoader(String body) {
     final data = jsonDecode(body) as List<dynamic>;
-    final map = <String, List<String>>{};
+    final map = <ModLoader, List<String>>{};
     for (final v in data.cast<Map<String, dynamic>>()) {
       final loaders = (v['loaders'] as List<dynamic>? ?? const [])
           .cast<String>();
       final versions = (v['game_versions'] as List<dynamic>? ?? const [])
           .cast<String>();
       for (final loader in loaders) {
-        final list = map.putIfAbsent(loader, () => []);
+        // 接口给的是小写标识(datapack、liteloader 之类也在内),
+        // 交给 ModLoader 统一认名字
+        final list = map.putIfAbsent(ModLoader.of(loader), () => []);
         for (final gv in versions) {
           if (!list.contains(gv)) list.add(gv);
         }
@@ -452,7 +455,7 @@ class ModrinthApi {
     final links = <Link>[];
     void add(String name, String? url) {
       if (url != null && url.isNotEmpty) {
-        links.add(Link(name: name, url: url));
+        links.add(Link(icon: Link.getIcon(name), name: name, url: url));
       }
     }
 

@@ -5,50 +5,8 @@ import '../setting/value/source.dart';
 import 'link_icons.dart';
 
 /// 管理图标
-/// 包括“相关链接”、设置界面等的图标
+/// 包括设置界面等的图标
 class IconManager {
-  /// 获取链接图标
-  static Widget getLinkIcon(String name) {
-    final n = name.toLowerCase();
-    if (n == 'forge') return Icon(LinkIcons.forge, color: Colors.blue);
-    if (n == 'fabric') return Icon(LinkIcons.fabric, color: Colors.green);
-    if (n == 'neoforge') return Icon(LinkIcons.neoforge, color: Colors.orange);
-    if (n == 'quilt') return Icon(LinkIcons.quilt, color: Colors.blueAccent);
-
-    if (n.contains('github')) {
-      return Icon(LinkIcons.github, color: Colors.black);
-    }
-    if (n.contains('gitlab')) return Icon(LinkIcons.gitlab, color: Colors.red);
-    if (n.contains('gitee') || n.contains('码云')) {
-      return Icon(LinkIcons.gitee, color: Colors.red);
-    }
-
-    if (n.contains('curseforge')) {
-      return Icon(LinkIcons.curseforge, color: Colors.orange);
-    }
-    if (n.contains('modrinth')) {
-      return Icon(LinkIcons.modrinth, color: Colors.green);
-    }
-
-    if (n.contains('wiki')) return Icon(LinkIcons.wiki);
-    if (n.contains('discord')) return Icon(LinkIcons.discord);
-    if (n.contains('patreon')) return Icon(LinkIcons.patreon);
-    if (n.contains('mc') || n.contains('minecraft')) return Icon(LinkIcons.mc);
-    if (n.contains('crowdin')) {
-      return Icon(LinkIcons.crowdin, color: Colors.green);
-    }
-
-    if (n.contains('youtube')) return Icon(LinkIcons.youtube);
-    if (n.contains('b站')) return Icon(LinkIcons.bilibili, color: Colors.pink);
-
-    if (n.contains('qq')) return Icon(LinkIcons.qq, color: Colors.blue);
-    if (n.contains('网盘') || n.contains('云盘') || n.contains('蓝奏云')) {
-      return Icon(Icons.cloud);
-    }
-    if (n.contains('maven')) return Icon(Icons.code_rounded);
-    return Icon(Icons.link);
-  }
-
   /// 获取主题图标
   static Widget getIconForThemeMode(ThemeMode mode) {
     switch (mode) {

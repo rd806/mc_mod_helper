@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../icon/icon_manager.dart';
 import '../../model/mod/mod_detail.dart';
+import '../../model/mod/mod_loader.dart';
 import '../common/collapsible_widgets.dart';
 import '../common/label.dart';
 import '../common/section_title.dart';
@@ -133,33 +133,17 @@ class EnvironmentCard extends StatelessWidget {
     );
   }
 
-  /// 模组加载器的图标文字
-  Widget _getPlatform(ThemeData theme, String key) {
-    String text = key;
-    Color color = theme.colorScheme.onSurfaceVariant;
-    switch (key.toLowerCase()) {
-      case 'forge':
-        text = 'Forge';
-        color = Colors.blue;
-      case 'fabric':
-        text = 'Fabric';
-        color = Colors.green;
-      case 'neoforge':
-        text = 'NeoForge';
-        color = Colors.orange;
-      case 'quilt':
-        text = 'Quilt';
-        color = Colors.blueAccent;
-    }
-
+  /// 模组加载器:图标与名称都来自 [ModLoader],
+  /// 名称与图标同色(颜色定义在图标上,表里没有的加载器用主题色)
+  Widget _getPlatform(ThemeData theme, ModLoader loader) {
     return Row(
       children: [
-        IconManager.getLinkIcon(key),
+        loader.icon,
         const SizedBox(width: 5),
         Text(
-          text,
+          loader.name,
           style: theme.textTheme.labelLarge?.copyWith(
-            color: color,
+            color: loader.color ?? theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
           ),
         ),

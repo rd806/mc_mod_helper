@@ -1,4 +1,5 @@
 import 'package:mc_mod_helper/model/author.dart';
+import 'package:mc_mod_helper/model/mod/mod_loader.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
 import '../link.dart';
@@ -56,7 +57,7 @@ class ModDetail {
   /// 支持的 MC 版本,按加载器分组:
   /// key 为加载器名(Forge/NeoForge/Fabric 等,与数据源原始写法一致),
   /// value 为该加载器支持的 MC 版本列表
-  final Map<String, List<String>> mcVersions;
+  final Map<ModLoader, List<String>> mcVersions;
 
   /// 支持平台(如 Java版)
   final String? platform;

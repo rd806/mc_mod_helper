@@ -7,6 +7,7 @@ import 'package:mc_mod_helper/setting/display_settings.dart';
 
 import '../../model/author.dart';
 import '../../model/mod/mod_detail.dart';
+import '../../model/mod/mod_loader.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../setting/agent_settings.dart';
 import '../../setting/value/source.dart';
@@ -73,7 +74,7 @@ class AgentModContext {
 
   final List<String> authors;
   final String? platform;
-  final Map<String, List<String>> mcVersions;
+  final Map<ModLoader, List<String>> mcVersions;
 
   /// 正文最多交给模型多少字符
   static const int maxBodyChars = 6000;
@@ -100,7 +101,8 @@ class AgentModContext {
     if (mcVersions.isNotEmpty) {
       final versions = [
         for (final entry in mcVersions.entries)
-          '${entry.key} ${entry.value.take(maxVersionsPerLoader).join('/')}',
+          '${entry.key.name} '
+              '${entry.value.take(maxVersionsPerLoader).join('/')}',
       ];
       buffer.writeln('支持版本:${versions.join(';')}');
     }

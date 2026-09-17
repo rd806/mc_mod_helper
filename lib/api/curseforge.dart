@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
+import 'package:mc_mod_helper/model/mod/mod_loader.dart';
 
 import '../model/author.dart';
 import '../model/filter/filter.dart';
@@ -388,38 +389,38 @@ class CurseforgeApi {
     return authors.isEmpty ? null : authors;
   }
 
+  /// CurseForge 的加载器名:大小写敏感,写法固定
+  static const List<String> _cfLoaders = [
+    'Fabric',
+    'Forge',
+    'NeoForge',
+    'Quilt',
+  ];
+
   /// 文件列表 → 加载器 → 版本号 的分组映射。
   ///
   /// CurseForge 文件的 gameVersions 把版本号与加载器名混在同一列表
   /// (如 ['1.21.1', 'Fabric']):含加载器名的按加载器分组,
   /// 版本号(含 '.')收集进对应组;无加载器信息的进 'default'。
-  static Map<String, List<String>> _parseVersionsFromFiles(String body) {
+  static Map<ModLoader, List<String>> _parseVersionsFromFiles(String body) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final files = (data['data'] as List<dynamic>? ?? const []);
-    final map = <String, List<String>>{};
+    final map = <ModLoader, List<String>>{};
 
     for (final file in files.cast<Map<String, dynamic>>()) {
       final gameVersions = (file['gameVersions'] as List<dynamic>? ?? const [])
           .cast<String>();
 
-      // 加载器名(大小写敏感,CurseForge 的写法固定)
-      final loaders = <String>[];
-      for (final v in gameVersions) {
-        if (v == 'Fabric') {
-          loaders.add('fabric');
-        } else if (v == 'Forge') {
-          loaders.add('forge');
-        } else if (v == 'NeoForge') {
-          loaders.add('neoforge');
-        } else if (v == 'Quilt') {
-          loaders.add('quilt');
-        }
-      }
+      final loaders = [
+        for (final v in gameVersions)
+          if (_cfLoaders.contains(v)) ModLoader.of(v),
+      ];
 
       // 版本号:含 '.' 的条目(加载器名不带点)
       final mcVersions = gameVersions.where((v) => v.contains('.')).toList();
 
-      final targets = loaders.isEmpty ? const ['default'] : loaders;
+      // 文件没标加载器时归到 'default'(ModLoader 会保留这个名字并给通用图标)
+      final targets = loaders.isEmpty ? [ModLoader.of('default')] : loaders;
       for (final loader in targets) {
         final list = map.putIfAbsent(loader, () => []);
         for (final v in mcVersions) {
@@ -437,9 +438,7 @@ class CurseforgeApi {
     final loaders = <String>[];
     for (final file in files.cast<Map<String, dynamic>>()) {
       for (final v in (file['gameVersions'] as List<dynamic>? ?? const [])) {
-        if (v == 'Fabric' || v == 'Forge' || v == 'NeoForge' || v == 'Quilt') {
-          if (!loaders.contains(v)) loaders.add(v);
-        }
+        if (_cfLoaders.contains(v) && !loaders.contains(v)) loaders.add(v);
       }
     }
     return loaders.isEmpty ? null : loaders.join(' / ');
@@ -465,7 +464,7 @@ class CurseforgeApi {
     final links = <Link>[];
     void add(String name, String? url) {
       if (url != null && url.isNotEmpty) {
-        links.add(Link(name: name, url: url));
+        links.add(Link(icon: Link.getIcon(name), name: name, url: url));
       }
     }
 
