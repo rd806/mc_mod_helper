@@ -9,7 +9,7 @@ import '../../model/author.dart';
 import '../../model/mod/mod_detail.dart';
 import '../../model/mod/mod_summary.dart';
 import '../../setting/agent_settings.dart';
-import '../value/source.dart';
+import '../../setting/value/source.dart';
 
 /// 一轮对话消息(面板持有历史,服务不存状态,便于测试)
 class AgentMessage {

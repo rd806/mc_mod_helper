@@ -5,13 +5,14 @@ import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
 
 import '../model/author.dart';
-import '../model/filter.dart';
+import '../model/filter/filter.dart';
+import '../model/filter/sort_method.dart';
 import '../model/mod/mod_category.dart';
 import '../model/mod/mod_detail.dart';
 import '../model/mod/mod_version.dart';
 import '../model/link.dart';
 import '../model/mod/mod_summary.dart';
-import '../service/value/source.dart';
+import '../setting/value/source.dart';
 
 /// CurseForge(curseforge.com)数据获取服务。
 ///
@@ -224,7 +225,7 @@ class CurseforgeApi {
         if (filter.version != null) 'gameVersion': filter.version!.version,
         'pageSize': '20',
         'index': '${(page - 1) * 20}',
-        'sortField': _featuredSortField(filter.featureSource),
+        'sortField': _featuredSortField(filter.sortMethod),
         'sortOrder': 'desc',
       },
     );
@@ -234,11 +235,11 @@ class CurseforgeApi {
     return result;
   }
 
-  /// [FeatureSource] → ModsSearchSortField 的 sortField
-  static String _featuredSortField(FeatureSource sort) => switch (sort) {
-    FeatureSource.none => '1', // Featured(站内精选)
-    FeatureSource.createTime => '11', // ReleasedDate
-    FeatureSource.lastEditTime => '3', // LastUpdated
+  /// [SortMethod] → ModsSearchSortField 的 sortField
+  static String _featuredSortField(SortMethod sort) => switch (sort) {
+    SortMethod.none => '1', // Featured(站内精选)
+    SortMethod.createTime => '11', // ReleasedDate
+    SortMethod.lastEditTime => '3', // LastUpdated
   };
 
   // ---------- 请求基础 ----------

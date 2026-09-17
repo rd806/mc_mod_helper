@@ -1,5 +1,5 @@
 import 'package:mc_mod_helper/api/curseforge.dart';
-import 'package:mc_mod_helper/model/filter.dart';
+import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/mod/mod_category.dart';
 import 'package:mc_mod_helper/model/mod/mod_summary.dart';
 import 'package:mc_mod_helper/model/mod/mod_version.dart';
@@ -10,9 +10,6 @@ import '../../api/modrinth.dart';
 /// 模组信息来源
 enum ModSource { mcmod, modrinth, curseforge }
 
-/// 搜索信息来源
-enum FeatureSource { none, createTime, lastEditTime }
-
 /// 管理信息来源
 class SourceManager {
   /// 字符串转 ModSource
@@ -20,14 +17,6 @@ class SourceManager {
     return ModSource.values.firstWhere(
       (e) => e.name == value,
       orElse: () => ModSource.mcmod,
-    );
-  }
-
-  /// 字符串转 FeatherSource
-  static FeatureSource featureToString(String? value) {
-    return FeatureSource.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => FeatureSource.none,
     );
   }
 
@@ -49,21 +38,6 @@ class SourceManager {
         return await CurseforgeApi.getFilteredMods(filter, page: page);
     }
   }
-
-  /// [FeatureSource] → mcmod 列表页的 sort 参数
-  /// (空串即默认排序,站内推荐序)
-  static String mcmodFeatureSort(FeatureSource source) => switch (source) {
-    FeatureSource.none => '',
-    FeatureSource.createTime => 'createtime',
-    FeatureSource.lastEditTime => 'lastedittime',
-  };
-
-  /// 排序方式的显示名(筛选栏的选项与摘要条都用它)
-  static String getFeatureTitle(FeatureSource source) => switch (source) {
-    FeatureSource.none => '默认排序',
-    FeatureSource.createTime => '最新收录',
-    FeatureSource.lastEditTime => '最新编辑',
-  };
 
   /// 获取主页分类
   static Future<List<ModCategory>> getCategory(ModSource source) async {

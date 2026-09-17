@@ -7,21 +7,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:hyper_render/hyper_render.dart';
-import 'package:mc_mod_helper/service/value/render.dart';
+import 'package:mc_mod_helper/model/filter/sort_method.dart';
+import 'package:mc_mod_helper/setting/value/render.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
-import 'package:mc_mod_helper/model/filter.dart';
+import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/mod/mod_category.dart';
 import 'package:mc_mod_helper/model/mod/mod_version.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/page/mod/description.dart';
 import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
-import 'package:mc_mod_helper/widget/button/search_bar.dart';
+import 'package:mc_mod_helper/widget/filter/search_bar.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
 http.Response _json(Object data) => http.Response.bytes(
@@ -260,7 +261,7 @@ void main() {
       final byCategory = await ModrinthApi.getFilteredMods(
         const Filter(
           modSource: ModSource.modrinth,
-          featureSource: FeatureSource.none,
+          sortMethod: SortMethod.none,
           category: ModCategory(
             id: 'technology',
             name: '科技',
@@ -281,7 +282,7 @@ void main() {
       await ModrinthApi.getFilteredMods(
         const Filter(
           modSource: ModSource.modrinth,
-          featureSource: FeatureSource.lastEditTime,
+          sortMethod: SortMethod.lastEditTime,
           category: ModCategory(
             id: 'technology',
             name: '科技',

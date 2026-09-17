@@ -5,10 +5,11 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/model/filter/sort_method.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 
 import '../model/author.dart';
-import '../model/filter.dart';
+import '../model/filter/filter.dart';
 import '../model/mod/mod_category.dart';
 import '../model/mod/mod_detail.dart';
 import '../model/mod/mod_version.dart';
@@ -258,7 +259,7 @@ class McmodApi {
       queryParameters: {
         if (filter.category != null) 'category': filter.category!.id,
         if (filter.version != null) 'mcver': filter.version!.version,
-        'sort': SourceManager.mcmodFeatureSort(filter.featureSource),
+        'sort': SortManager.mcmodSort(filter.sortMethod),
         if (page > 1) 'page': '$page',
       },
     );

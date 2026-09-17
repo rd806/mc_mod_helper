@@ -14,7 +14,7 @@ import 'package:mc_mod_helper/page/custom/history.dart';
 import 'package:mc_mod_helper/page/mod/description.dart';
 import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 
 http.Response _json(Object data) => http.Response.bytes(

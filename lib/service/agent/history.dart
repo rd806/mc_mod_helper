@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../model/mod/mod_summary.dart';
-import '../value/source.dart';
+import '../../setting/value/source.dart';
 
 /// 助手对话里的一条消息(用户文本,或助手文本 + 候选模组)。
 ///

@@ -11,7 +11,7 @@ import 'package:mc_mod_helper/model/mod/mod_detail.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/setting/language_settings.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/widget/detail/description_card.dart';
 
 http.Response _chat(String content) => http.Response.bytes(

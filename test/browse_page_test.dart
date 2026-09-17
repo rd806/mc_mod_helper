@@ -4,14 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mc_mod_helper/model/filter/sort_method.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
-import 'package:mc_mod_helper/model/filter.dart';
+import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/mod/mod_version.dart';
 import 'package:mc_mod_helper/page/browse.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 
 /// 首页假 HTML:分类卡片(筛选栏的分类选项)
@@ -292,7 +293,7 @@ void main() {
     expect(uris.last.queryParameters['category'], '1');
 
     // 重置后与首屏的条件相同 → 会话缓存命中(不再请求),界面立刻回到无筛选
-    await tester.tap(find.text('重置筛选'));
+    await tester.tap(find.text('重置'));
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
@@ -396,7 +397,7 @@ void main() {
         home: BrowsePage(
           initialFilter: const Filter(
             modSource: ModSource.mcmod,
-            featureSource: FeatureSource.none,
+            sortMethod: SortMethod.none,
             version: ModVersion(version: '1.20.1', source: ModSource.mcmod),
           ),
         ),

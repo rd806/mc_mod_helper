@@ -98,12 +98,19 @@ class _CollapsibleWidgetsState extends State<CollapsibleWidgets> {
   }
 
   // 测量层
+  //
+  // 用 Offstage 而非 Opacity(0):Offstage 同样会把子树照常布局(测量照旧)、
+  // 不占高度、不绘制,但它还会被 find 与无障碍遍历跳过 —— 否则这份「影子副本」
+  // 里的 chip 会让 find.byType(ChoiceChip) 之类的查询每个都命中两次,
+  // 读屏也会把每个选项念两遍。
   Widget _buildMeasureLayer(BoxConstraints constraints) {
-    return SizedBox(
-      height: 0,
-      width: constraints.maxWidth,
-      child: Opacity(
-        opacity: 0,
+    return Offstage(
+      offstage: true,
+      child: SizedBox(
+        // height 0:测量层不占高度(OverflowBox 是 sizedByParent,
+        // 高度无界时它会直接拿无限高度而断言)
+        height: 0,
+        width: constraints.maxWidth,
         child: OverflowBox(
           alignment: Alignment.topLeft,
           maxWidth: constraints.maxWidth,

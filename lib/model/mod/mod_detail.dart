@@ -1,5 +1,5 @@
 import 'package:mc_mod_helper/model/author.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 
 import '../link.dart';
 

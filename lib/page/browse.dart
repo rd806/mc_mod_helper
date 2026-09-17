@@ -1,14 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/model/filter.dart';
-import 'package:mc_mod_helper/service/value/display.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/model/filter/filter.dart';
+import 'package:mc_mod_helper/setting/value/display.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
-import 'package:mc_mod_helper/widget/button/search_bar.dart';
+import 'package:mc_mod_helper/widget/filter/search_bar.dart';
 import 'package:mc_mod_helper/widget/filter/filter_bar.dart';
 
 import '../api/mcmod.dart';
+import '../model/filter/sort_method.dart';
 import '../model/mod/mod_category.dart';
 import '../model/mod/mod_summary.dart';
 import '../model/mod/mod_version.dart';
@@ -69,7 +70,7 @@ class _BrowsePageState extends State<BrowsePage> {
         widget.initialFilter ??
         Filter(
           modSource: DisplaySettings.instance.dataSource,
-          featureSource: FeatureSource.none,
+          sortMethod: SortMethod.none,
         );
     _lastDataSource = _filter.modSource;
     _controller.addListener(() {
@@ -105,7 +106,7 @@ class _BrowsePageState extends State<BrowsePage> {
     setState(() {
       _filter = Filter(
         modSource: source,
-        featureSource: _filter.featureSource,
+        sortMethod: _filter.sortMethod,
         category: null,
         version: null,
       );
@@ -161,11 +162,11 @@ class _BrowsePageState extends State<BrowsePage> {
   void _onFilterChanged(
     ModCategory? category,
     ModVersion? version,
-    FeatureSource sort,
+    SortMethod sort,
   ) {
     final next = Filter(
       modSource: DisplaySettings.instance.dataSource,
-      featureSource: sort,
+      sortMethod: sort,
       category: category,
       version: version,
     );

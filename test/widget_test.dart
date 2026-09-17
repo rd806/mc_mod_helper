@@ -16,10 +16,10 @@ import 'package:mc_mod_helper/setting/agent_settings.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/setting/language_settings.dart';
 import 'package:mc_mod_helper/setting/theme_settings.dart';
-import 'package:mc_mod_helper/service/value/display.dart';
-import 'package:mc_mod_helper/service/value/render.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
-import 'package:mc_mod_helper/widget/button/search_bar.dart';
+import 'package:mc_mod_helper/setting/value/display.dart';
+import 'package:mc_mod_helper/setting/value/render.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
+import 'package:mc_mod_helper/widget/filter/search_bar.dart';
 
 /// 启动应用并推进到浏览页完成失败渲染。
 ///
@@ -106,8 +106,9 @@ void main() {
   testWidgets('筛选栏默认收起:展开后才有选项内容', (tester) async {
     await pumpApp(tester);
 
-    // 收起状态:只有摘要条,面板里的内容一律不渲染
-    expect(find.text('重置筛选'), findsNothing);
+    // 收起状态:只有摘要条。面板是常驻在树上的(Offstage,保留测量结果),
+    // 所以这里断言的是"面板里的内容查找不到"而不是"没有构建"
+    expect(find.text('重置'), findsNothing);
     expect(find.textContaining('筛选项加载失败'), findsNothing);
 
     await tester.tap(find.byTooltip('展开筛选'));

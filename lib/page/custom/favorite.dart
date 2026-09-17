@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/setting/theme_settings.dart';
-import 'package:mc_mod_helper/service/value/display.dart';
+import 'package:mc_mod_helper/setting/value/display.dart';
 
 /// 收藏页:展示已收藏的模组。
 ///

@@ -1,4 +1,4 @@
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 
 class ModVersion {
   const ModVersion({required this.version, required this.source});

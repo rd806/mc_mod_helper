@@ -1,4 +1,4 @@
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 
 /// 模组分类(mcmod.cn 首页 / Modrinth categories)
 class ModCategory {

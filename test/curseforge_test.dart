@@ -3,13 +3,14 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mc_mod_helper/model/filter/sort_method.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/curseforge.dart';
-import 'package:mc_mod_helper/model/filter.dart';
+import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/mod/mod_category.dart';
 import 'package:mc_mod_helper/model/mod/mod_version.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
 http.Response _json(Object data) => http.Response.bytes(
@@ -188,7 +189,7 @@ void main() {
     final r1 = await CurseforgeApi.getFilteredMods(
       const Filter(
         modSource: ModSource.curseforge,
-        featureSource: FeatureSource.lastEditTime,
+        sortMethod: SortMethod.lastEditTime,
         category: ModCategory(
           id: '416',
           name: '科技',
@@ -210,7 +211,7 @@ void main() {
     final r2 = await CurseforgeApi.getFilteredMods(
       const Filter(
         modSource: ModSource.curseforge,
-        featureSource: FeatureSource.lastEditTime,
+        sortMethod: SortMethod.lastEditTime,
         category: ModCategory(
           id: '416',
           name: '科技',
@@ -230,7 +231,7 @@ void main() {
     final bad = await CurseforgeApi.getFilteredMods(
       const Filter(
         modSource: ModSource.curseforge,
-        featureSource: FeatureSource.none,
+        sortMethod: SortMethod.none,
         category: ModCategory(
           id: 'not-a-number',
           name: '?',
@@ -253,7 +254,7 @@ void main() {
     await CurseforgeApi.getFilteredMods(
       const Filter(
         modSource: ModSource.curseforge,
-        featureSource: FeatureSource.none,
+        sortMethod: SortMethod.none,
       ),
     );
     expect(uris.single.queryParameters['sortField'], '1');

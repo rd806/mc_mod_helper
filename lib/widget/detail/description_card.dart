@@ -5,7 +5,7 @@ import 'package:mc_mod_helper/render/default_render/html_content.dart';
 import 'package:mc_mod_helper/render/hyper_render/hyper.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
 import 'package:mc_mod_helper/setting/language_settings.dart';
-import 'package:mc_mod_helper/service/value/render.dart';
+import 'package:mc_mod_helper/setting/value/render.dart';
 
 import '../../service/agent/translate.dart';
 import '../../model/mod/mod_detail.dart';

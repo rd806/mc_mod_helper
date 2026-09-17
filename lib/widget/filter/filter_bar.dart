@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/icon/icon_manager.dart';
-import 'package:mc_mod_helper/model/filter.dart';
+import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/mod/mod_category.dart';
 import 'package:mc_mod_helper/model/mod/mod_version.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
+import 'package:mc_mod_helper/widget/common/collapsible_widgets.dart';
 import 'package:mc_mod_helper/widget/dialog/switch_dialog.dart';
+
+import '../../model/filter/sort_method.dart';
 
 /// 浏览页顶部的筛选栏:一条摘要 + 可展开的三组选项。
 ///
@@ -44,7 +47,7 @@ class FilterBar extends StatefulWidget {
   final void Function(
     ModCategory? category,
     ModVersion? version,
-    FeatureSource sort,
+    SortMethod sort,
   )
   onChanged;
 
@@ -60,7 +63,7 @@ class _FilterBarState extends State<FilterBar> {
     final parts = [
       widget.filter.category?.name ?? '全部分类',
       widget.filter.version?.version ?? '全部版本',
-      SourceManager.getFeatureTitle(widget.filter.featureSource),
+      SortManager.getSortTitle(widget.filter.sortMethod),
     ];
     return parts.join(' · ');
   }
@@ -74,13 +77,18 @@ class _FilterBarState extends State<FilterBar> {
         _buildSummaryBar(theme),
         // 展开/收起用 AnimatedSize 过渡;高度不设限的话,版本组上百项会把
         // 列表挤没,所以面板内部自己滚动
+        //
+        // 面板常驻在树上,收起时用 Offstage 藏起来(照常布局,但不占高度、
+        // 不绘制、不可点):CollapsibleWidgets 是「首帧先测量、下一帧才显示
+        // chips」的,若面板随展开才挂载,高度就会在动画途中再长一截,而
+        // RenderAnimatedSize 一旦发现动画中尺寸又变了会把动画跳到终值
+        // (_layoutChanged → unstable),表现就是展开完全没有过渡。
+        // 常驻后首帧即完整高度,只有一次 0 → 面板高度 的变化,动画才成立。
         AnimatedSize(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
           alignment: Alignment.topCenter,
-          child: _expanded
-              ? _buildPanel(theme)
-              : const SizedBox(width: double.infinity),
+          child: Offstage(offstage: !_expanded, child: _buildPanel(theme)),
         ),
       ],
     );
@@ -196,10 +204,10 @@ class _FilterBarState extends State<FilterBar> {
             const SizedBox(height: 12),
             // 排序没有「全部」:FeatureSource.none 本身就是站点的默认排序
             _buildGroup(theme, '排序', [
-              for (final sort in FeatureSource.values)
+              for (final sort in SortMethod.values)
                 (
-                  SourceManager.getFeatureTitle(sort),
-                  widget.filter.featureSource == sort,
+                  SortManager.getSortTitle(sort),
+                  widget.filter.sortMethod == sort,
                   () => widget.onChanged(
                     widget.filter.category,
                     widget.filter.version,
@@ -209,7 +217,7 @@ class _FilterBarState extends State<FilterBar> {
             ]),
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton(onPressed: _reset, child: const Text('重置筛选')),
+              child: TextButton(onPressed: _reset, child: const Text('重置')),
             ),
           ],
         ),
@@ -217,7 +225,7 @@ class _FilterBarState extends State<FilterBar> {
     );
   }
 
-  FeatureSource get _sort => widget.filter.featureSource;
+  SortMethod get _sort => widget.filter.sortMethod;
 
   /// 一组选项:标题 + 单选的 chip 墙
   Widget _buildGroup(
@@ -235,10 +243,8 @@ class _FilterBarState extends State<FilterBar> {
           ),
         ),
         const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
+        CollapsibleWidgets(
+          widget: [
             for (final (label, selected, onTap) in options)
               // 单选语义:每个维度只会命中一个(分类/版本可含「全部」)
               ChoiceChip(
@@ -253,6 +259,6 @@ class _FilterBarState extends State<FilterBar> {
   }
 
   void _reset() {
-    widget.onChanged(null, null, FeatureSource.none);
+    widget.onChanged(null, null, SortMethod.none);
   }
 }

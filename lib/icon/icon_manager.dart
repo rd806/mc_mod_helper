@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../service/value/display.dart';
-import '../service/value/source.dart';
+import '../setting/value/display.dart';
+import '../setting/value/source.dart';
 import 'link_icons.dart';
 
 /// 管理图标

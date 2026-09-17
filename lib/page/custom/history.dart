@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/service/saves/history.dart';
-import 'package:mc_mod_helper/service/value/display.dart';
+import 'package:mc_mod_helper/setting/value/display.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/setting/theme_settings.dart';
 

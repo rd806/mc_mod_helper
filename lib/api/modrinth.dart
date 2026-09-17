@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 
 import '../model/author.dart';
-import '../model/filter.dart';
+import '../model/filter/filter.dart';
+import '../model/filter/sort_method.dart';
 import '../model/mod/mod_category.dart';
 import '../model/mod/mod_detail.dart';
 import '../model/mod/mod_version.dart';
@@ -182,7 +183,7 @@ class ModrinthApi {
       queryParameters: {
         'limit': '20',
         'offset': '${(page - 1) * 20}',
-        'index': _featuredIndex(filter.featureSource),
+        'index': _featuredIndex(filter.sortMethod),
         'facets': facets,
       },
     );
@@ -205,15 +206,15 @@ class ModrinthApi {
     return versions;
   }
 
-  /// [FeatureSource] → search 接口的 index 排序参数
+  /// [SortMethod] → search 接口的 index 排序参数
   ///
   /// - none → downloads(按下载量,站内“热门”语义)
   /// - createTime → newest(最新发布)
   /// - lastEditTime → updated(最近更新)
-  static String _featuredIndex(FeatureSource sort) => switch (sort) {
-    FeatureSource.none => 'downloads',
-    FeatureSource.createTime => 'newest',
-    FeatureSource.lastEditTime => 'updated',
+  static String _featuredIndex(SortMethod sort) => switch (sort) {
+    SortMethod.none => 'downloads',
+    SortMethod.createTime => 'newest',
+    SortMethod.lastEditTime => 'updated',
   };
 
   // ---------- 请求基础 ----------

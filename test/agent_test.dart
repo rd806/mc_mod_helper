@@ -14,7 +14,7 @@ import 'package:mc_mod_helper/model/mod/mod_summary.dart';
 import 'package:mc_mod_helper/page/agent.dart';
 import 'package:mc_mod_helper/service/agent/agent.dart';
 import 'package:mc_mod_helper/service/agent/history.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/widget/dialog/agent_sheet.dart';

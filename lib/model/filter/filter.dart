@@ -1,6 +1,7 @@
+import 'package:mc_mod_helper/model/filter/sort_method.dart';
 import 'package:mc_mod_helper/model/mod/mod_category.dart';
 import 'package:mc_mod_helper/model/mod/mod_version.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 
 /// 筛选器:浏览页的全部筛选条件。
 ///
@@ -10,7 +11,7 @@ import 'package:mc_mod_helper/service/value/source.dart';
 class Filter {
   const Filter({
     required this.modSource,
-    required this.featureSource,
+    required this.sortMethod,
     this.category,
     this.version,
   });
@@ -19,7 +20,7 @@ class Filter {
   final ModSource modSource;
 
   /// 排序方法（必需）
-  final FeatureSource featureSource;
+  final SortMethod sortMethod;
 
   /// 模组分类
   final ModCategory? category;
@@ -32,7 +33,7 @@ class Filter {
   /// 分类与版本取各自的标识(而非展示名):改个显示名不该换一份缓存,
   /// 而 id 一样就一定是同一批结果。
   String get signature =>
-      '${modSource.name}|${featureSource.name}'
+      '${modSource.name}|${sortMethod.name}'
       '|${category?.id ?? ''}|${version?.version ?? ''}';
 
   /// 筛选条件是否相同(按 [signature] 比,与其对应的字段一致)。

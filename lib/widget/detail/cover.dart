@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 
 import '../../icon/icon_manager.dart';
 import '../../model/mod/mod_detail.dart';

@@ -5,10 +5,11 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
-import 'package:mc_mod_helper/model/filter.dart';
+import 'package:mc_mod_helper/model/filter/filter.dart';
+import 'package:mc_mod_helper/model/filter/sort_method.dart';
 import 'package:mc_mod_helper/model/mod/mod_category.dart';
 import 'package:mc_mod_helper/model/mod/mod_version.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
+import 'package:mc_mod_helper/setting/value/source.dart';
 
 void main() {
   setUp(() => McmodApi.clearCaches());
@@ -230,7 +231,7 @@ void main() {
       final r1 = await McmodApi.getFilteredMods(
         const Filter(
           modSource: ModSource.mcmod,
-          featureSource: FeatureSource.lastEditTime,
+          sortMethod: SortMethod.lastEditTime,
           category: ModCategory(id: '1', name: '科技', source: ModSource.mcmod),
           version: ModVersion(version: '1.20.1', source: ModSource.mcmod),
         ),
@@ -247,7 +248,7 @@ void main() {
       await McmodApi.getFilteredMods(
         const Filter(
           modSource: ModSource.mcmod,
-          featureSource: FeatureSource.lastEditTime,
+          sortMethod: SortMethod.lastEditTime,
           category: ModCategory(id: '1', name: '科技', source: ModSource.mcmod),
           version: ModVersion(version: '1.20.1', source: ModSource.mcmod),
         ),

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/model/filter.dart';
+import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/mod/mod_version.dart';
 import 'package:mc_mod_helper/page/browse.dart';
-import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
+
+import '../../model/filter/sort_method.dart';
 
 /// 版本胶囊:点击进入「按该版本筛选」的浏览页。
 ///
@@ -27,7 +28,7 @@ class VersionChip extends StatelessWidget {
                 builder: (_) => BrowsePage(
                   initialFilter: Filter(
                     modSource: version.source,
-                    featureSource: FeatureSource.none,
+                    sortMethod: SortMethod.none,
                     version: version,
                   ),
                 ),
