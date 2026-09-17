@@ -1,6 +1,8 @@
 import 'package:mc_mod_helper/api/curseforge.dart';
+import 'package:mc_mod_helper/model/filter.dart';
 import 'package:mc_mod_helper/model/mod/mod_category.dart';
 import 'package:mc_mod_helper/model/mod/mod_summary.dart';
+import 'package:mc_mod_helper/model/mod/mod_version.dart';
 
 import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
@@ -29,58 +31,22 @@ class SourceManager {
     );
   }
 
-  /// 获取主页推荐，需要三个参数：
-  /// - 来源，
-  /// - 排序方法，
-  /// - 数量限制
+  /// 组合筛选分页查询:按 [filter] 的资料来源分发,返回该页模组与总页数,
+  /// 由浏览页滚到底时增量请求。
   ///
-  /// mcmod 用列表页 sort 参数；modrinth/curseforge 各自由
-  /// [ModrinthApi.getFeaturedMods] / [CurseforgeApi.getFeaturedMods]
-  /// 把 [featureSource] 映射成平台自己的排序参数
-  static Future<List<ModSummary>> getFeature(
-    ModSource modSource,
-    FeatureSource featureSource,
-    int limit,
-  ) async {
-    switch (modSource) {
+  /// 各来源自己把 [Filter] 翻译成平台的参数(分类/版本/排序的拼法互不相同,
+  /// 能否组合由各站点决定);浏览页只负责「显示的就是筛选栏里选的」。
+  static Future<({List<ModSummary> mods, int totalPages})> getFilteredMods(
+    Filter filter, {
+    int page = 1,
+  }) async {
+    switch (filter.modSource) {
       case ModSource.mcmod:
-        return await McmodApi.getFeaturedMods(
-          sort: mcmodFeatureSort(featureSource),
-          limit: limit,
-        );
+        return await McmodApi.getFilteredMods(filter, page: page);
       case ModSource.modrinth:
-        return await ModrinthApi.getFeaturedMods(
-          sort: featureSource,
-          limit: limit,
-        );
+        return await ModrinthApi.getFilteredMods(filter, page: page);
       case ModSource.curseforge:
-        return await CurseforgeApi.getFeaturedMods(
-          sort: featureSource,
-          limit: limit,
-        );
-    }
-  }
-
-  /// 分页获取推荐列表(首页各版块「查看更多」进入的列表页用):
-  /// 返回该页模组与总页数,由页面滚到底时增量请求
-  static Future<({List<ModSummary> mods, int totalPages})> getFeaturePage(
-    ModSource modSource,
-    FeatureSource featureSource,
-    int page,
-  ) async {
-    switch (modSource) {
-      case ModSource.mcmod:
-        return await McmodApi.getFeaturedModsPage(
-          mcmodFeatureSort(featureSource),
-          page: page,
-        );
-      case ModSource.modrinth:
-        return await ModrinthApi.getFeaturedModsPage(featureSource, page: page);
-      case ModSource.curseforge:
-        return await CurseforgeApi.getFeaturedModsPage(
-          featureSource,
-          page: page,
-        );
+        return await CurseforgeApi.getFilteredMods(filter, page: page);
     }
   }
 
@@ -92,7 +58,7 @@ class SourceManager {
     FeatureSource.lastEditTime => 'lastedittime',
   };
 
-  /// 首页版块的标题
+  /// 排序方式的显示名(筛选栏的选项与摘要条都用它)
   static String getFeatureTitle(FeatureSource source) => switch (source) {
     FeatureSource.none => '默认排序',
     FeatureSource.createTime => '最新收录',
@@ -108,6 +74,18 @@ class SourceManager {
         return await ModrinthApi.getCategories();
       case ModSource.curseforge:
         return await CurseforgeApi.getCategories();
+    }
+  }
+
+  /// 获取游戏版本列表(浏览页筛选栏的版本选项)
+  static Future<List<ModVersion>> getVersions(ModSource source) async {
+    switch (source) {
+      case ModSource.mcmod:
+        return await McmodApi.getVersions();
+      case ModSource.modrinth:
+        return await ModrinthApi.getVersions();
+      case ModSource.curseforge:
+        return await CurseforgeApi.getVersions();
     }
   }
 

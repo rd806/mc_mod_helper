@@ -57,16 +57,20 @@ class InputBox extends StatelessWidget {
         child: Row(
           children: [
             Text(title, style: theme.textTheme.bodyMedium),
-            const Spacer(),
-            Text(
-              display,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.right,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: value.isEmpty
-                    ? theme.colorScheme.onSurfaceVariant
-                    : theme.colorScheme.onSurface,
+            const SizedBox(width: 16),
+            // 值用 Expanded 占住剩余宽度:Spacer 只是把文字顶到右边,
+            // 长的值仍按自身宽度参与布局,窗口一窄就把这一行挤爆(省略号收不住)
+            Expanded(
+              child: Text(
+                display,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: value.isEmpty
+                      ? theme.colorScheme.onSurfaceVariant
+                      : theme.colorScheme.onSurface,
+                ),
               ),
             ),
           ],

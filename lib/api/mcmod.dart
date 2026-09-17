@@ -8,8 +8,10 @@ import 'package:http/http.dart' as http;
 import 'package:mc_mod_helper/service/value/source.dart';
 
 import '../model/author.dart';
+import '../model/filter.dart';
 import '../model/mod/mod_category.dart';
 import '../model/mod/mod_detail.dart';
+import '../model/mod/mod_version.dart';
 import '../model/link.dart';
 import '../model/mod/mod_summary.dart';
 
@@ -97,26 +99,39 @@ class McmodApi {
   static final Map<String, List<ModSummary>> _searchCache = {};
   static final Map<String, ModDetail> _detailCache = {};
   static List<ModCategory>? _categoryCache;
-  static final Map<String, ({List<ModSummary> mods, int totalPages})>
-  _categoryModsCache = {};
 
-  /// 推荐列表的分页缓存
-  /// key='$sort-$page'；
-  /// 按页缓存而不是按 sort 缓存整份结果：条数上限变化时已抓页复用，只增量抓新页
-  static final Map<String, List<ModSummary>> _featuredPageCache = {};
+  /// 首页 HTML:分类卡片在这上面(版本列表在 modlist 页,各有各的缓存)
+  static String? _homeCache;
+  static List<ModVersion>? _versionCache;
 
-  /// 推荐列表的整页缓存(带总页数,「查看更多」页用)
+  /// 组合筛选的分页缓存:key = '筛选签名|页码'
   static final Map<String, ({List<ModSummary> mods, int totalPages})>
-  _featuredModsPageCache = {};
+  _filteredModsCache = {};
+
+  /// 分页缓存上限。组合筛选后 key 的空间是「分类 × 版本 × 排序 × 页码」,
+  /// 无上限的会话缓存会随浏览慢慢堆到 MB 级;按插入序淘汰即可 ——
+  /// 用户回看时走的是局部路径,最早写入的通常最不可能再看
+  static const int _maxCachedQueries = 60;
+
+  /// 写分页缓存,超过上限时先淘汰最早写入的一条
+  /// (Map 默认按插入序迭代,keys.first 就是最老的那条)
+  static void _cacheFiltered(
+    Map<String, ({List<ModSummary> mods, int totalPages})> cache,
+    String key,
+    ({List<ModSummary> mods, int totalPages}) value,
+  ) {
+    if (cache.length >= _maxCachedQueries) cache.remove(cache.keys.first);
+    cache[key] = value;
+  }
 
   @visibleForTesting
   static void clearCaches() {
     _searchCache.clear();
     _detailCache.clear();
     _categoryCache = null;
-    _categoryModsCache.clear();
-    _featuredPageCache.clear();
-    _featuredModsPageCache.clear();
+    _homeCache = null;
+    _versionCache = null;
+    _filteredModsCache.clear();
     _cookies.clear();
     _lastWwwAt = null;
     // 重置惰性缓存的客户端,让测试可以替换 clientFactory
@@ -223,81 +238,35 @@ class McmodApi {
     return detail;
   }
 
-  /// 获取 mcmod.cn 首页“最新收录 / 最新编辑”版块的模组列表
+  /// 组合筛选分页查询:第 [page] 页的模组与总页数,由浏览页滚到底增量请求。
   ///
-  /// [sort]: createtime=最新收录, lastedittime=最新编辑
-  /// [limit]: 返回的最大条数。为 null 时保持旧行为(仅第 1 页,约 20 条);
-  ///          非空时逐页获取,直到凑满 [limit] 条或翻到末页
-  ///          (列表页每页约 20 条,limit 超过 20 时需要请求多页)
-  /// (首页版块内容由 JS 动态加载,这里直接取版块“更多”指向的列表页)
-  static Future<List<ModSummary>> getFeaturedMods({
-    String sort = 'createtime',
-    int? limit,
-  }) async {
-    // 未指定上限:保持旧行为,只取第 1 页
-    if (limit == null) {
-      return _featuredPage(sort, 1);
-    }
-    if (limit <= 0) return const [];
-
-    final all = <ModSummary>[];
-    var page = 1;
-    // 满页容量:以第 1 页条数为准,不足此数的页视为末页
-    var capacity = 0;
-    while (all.length < limit) {
-      final mods = await _featuredPage(sort, page);
-      if (page == 1) capacity = mods.length;
-      all.addAll(mods);
-      // 翻到末页(条目数不足一页)或出现空页:停止翻页
-      if (mods.isEmpty || mods.length < capacity) break;
-      page++;
-    }
-    // 多页累计可能略超上限(如 limit=30 需要完整两页),统一截断
-    return all.take(limit).toList();
-  }
-
-  /// 获取推荐列表第 [page] 页的模组与总页数(「查看更多」页用)。
-  ///
-  /// 与 [getFeaturedMods] 取同一个列表页,区别是这里按页返回,
-  /// 由页面在滚到底时增量请求下一页
-  static Future<({List<ModSummary> mods, int totalPages})> getFeaturedModsPage(
-    String sort, {
+  /// 参数实测(mcmod):
+  /// - `category=<id>`、`mcver=<版本>`、`sort=createtime|lastedittime` 可同时生效
+  ///   (科技分类 40 页 → 科技 + 1.20.1 共 15 页;再叠排序集合不变、顺序变);
+  /// - 默认排序不带 `sort` 参数;
+  /// - 站点自己生成的分页链接会丢掉 `mcver`,所以翻页 URL 必须自己拼,
+  ///   不能跟着页面里的链接走。
+  static Future<({List<ModSummary> mods, int totalPages})> getFilteredMods(
+    Filter filter, {
     int page = 1,
   }) async {
-    final key = '$sort-$page';
-    final cached = _featuredModsPageCache[key];
+    final key = '${filter.signature}|$page';
+    final cached = _filteredModsCache[key];
     if (cached != null) return cached;
 
-    final body = await _fetchWithRetry(
-      _featuredUri(sort, page),
-      _detailMinInterval,
-      _lastWwwAt,
+    final uri = Uri.parse('https://www.mcmod.cn/modlist.html').replace(
+      queryParameters: {
+        if (filter.category != null) 'category': filter.category!.id,
+        if (filter.version != null) 'mcver': filter.version!.version,
+        'sort': SourceManager.mcmodFeatureSort(filter.featureSource),
+        if (page > 1) 'page': '$page',
+      },
     );
+    final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
     final result = _parseModlistPage(body);
-    _featuredModsPageCache[key] = result;
+    _cacheFiltered(_filteredModsCache, key, result);
     return result;
   }
-
-  /// 推荐列表页第 [page] 页的模组(带会话缓存)
-  static Future<List<ModSummary>> _featuredPage(String sort, int page) async {
-    final key = '$sort-$page';
-    final cached = _featuredPageCache[key];
-    if (cached != null) return cached;
-
-    final body = await _fetchWithRetry(
-      _featuredUri(sort, page),
-      _detailMinInterval,
-      _lastWwwAt,
-    );
-    final mods = _parseModlist(body);
-    _featuredPageCache[key] = mods;
-    return mods;
-  }
-
-  /// 推荐列表页地址:sort 为空即默认排序(站内推荐序),第 1 页不带 page 参数
-  static Uri _featuredUri(String sort, int page) => Uri.parse(
-    'https://www.mcmod.cn/modlist.html',
-  ).replace(queryParameters: {'sort': sort, if (page > 1) 'page': '$page'});
 
   /// 获取 mcmod.cn 首页展示的模组分类(科技/魔法等)。
   ///
@@ -306,32 +275,37 @@ class McmodApi {
     final cached = _categoryCache;
     if (cached != null) return cached;
 
-    final uri = Uri.parse('https://www.mcmod.cn/');
-    final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
-    final cats = _parseCategories(body);
+    final cats = _parseCategories(await _loadHome());
     _categoryCache = cats;
     return cats;
   }
 
-  /// 获取分类列表第 [page] 页的模组(每页约 20 个)与总页数。
+  /// 获取版本列表。
   ///
-  /// 与推荐列表共用 modlist 接口,按 category 过滤:
-  /// https://www.mcmod.cn/modlist.html?category={id}(&page={n})
-  static Future<({List<ModSummary> mods, int totalPages})> getCategoryMods(
-    String categoryId, {
-    int page = 1,
-  }) async {
-    final key = '$categoryId-$page';
-    final cached = _categoryModsCache[key];
+  /// 分两类入口:头部下拉的常用版本(1.20.1 / 1.7.10 …),
+  /// 与按大版本分组的完整列表(组标题是更新名,如「棘巧试炼」= 1.21.x)。
+  /// 两者都在 modlist 页上 —— **首页没有版本信息**(站点改版后首页只剩分类),
+  /// 所以这里取的是 modlist.html
+  static Future<List<ModVersion>> getVersions() async {
+    final cached = _versionCache;
     if (cached != null) return cached;
 
-    final uri = Uri.parse('https://www.mcmod.cn/modlist.html').replace(
-      queryParameters: {'category': categoryId, if (page > 1) 'page': '$page'},
-    );
+    final uri = Uri.parse('https://www.mcmod.cn/modlist.html');
     final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
-    final result = _parseModlistPage(body);
-    _categoryModsCache[key] = result;
-    return result;
+    final versions = _parseVersions(body);
+    _versionCache = versions;
+    return versions;
+  }
+
+  /// 首页 HTML(分类卡片在这上面)
+  static Future<String> _loadHome() async {
+    final cached = _homeCache;
+    if (cached != null) return cached;
+
+    final uri = Uri.parse('https://www.mcmod.cn/');
+    final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
+    _homeCache = body;
+    return body;
   }
 
   // ---------- 请求基础 ----------
@@ -512,6 +486,31 @@ class McmodApi {
       );
     }
     return cats;
+  }
+
+  /// 解析 modlist 页里的版本筛选项。
+  ///
+  /// 站点上有两种写法,都要认:
+  /// - 头部下拉的常用版本用 href:`href="//www.mcmod.cn/modlist.html?mcver=1.20.1"`;
+  /// - 分组列表(按大版本分组,组标题是更新名)用 onclick:
+  ///   `onclick="window.location='/modlist.html?mcver=26.x'"`。
+  ///
+  /// 按文档顺序去重即站点自己的排列:常用版本在前,之后是新到旧的分组。
+  /// `mcver=earlier`(远古版本)不是具体版本号,跳过 —— 它出现在胶囊上只会是个
+  /// 看不懂的 "earlier"。
+  static List<ModVersion> _parseVersions(String html) {
+    final doc = html_parser.parse(html);
+    final versions = <ModVersion>[];
+    final pattern = RegExp(r'mcver=([0-9A-Za-z._-]+)');
+    for (final a in doc.querySelectorAll('a[href*=mcver], a[onclick*=mcver]')) {
+      final raw =
+          '${a.attributes['onclick'] ?? ''} ${a.attributes['href'] ?? ''}';
+      final version = pattern.firstMatch(raw)?.group(1) ?? '';
+      if (version.isEmpty || version == 'earlier') continue;
+      if (versions.any((v) => v.version == version)) continue;
+      versions.add(ModVersion(version: version, source: ModSource.mcmod));
+    }
+    return versions;
   }
 
   // ---------- 分类列表页解析 ----------

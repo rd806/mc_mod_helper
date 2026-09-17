@@ -6,6 +6,9 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/curseforge.dart';
+import 'package:mc_mod_helper/model/filter.dart';
+import 'package:mc_mod_helper/model/mod/mod_category.dart';
+import 'package:mc_mod_helper/model/mod/mod_version.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
@@ -18,6 +21,16 @@ http.Response _json(Object data) => http.Response.bytes(
 /// 搜索 / 分类 / 详情 / 文件 四条路由的假响应
 Future<http.Response> _handler(http.Request request) async {
   final path = request.url.path;
+  if (path == '/v1/minecraft/version') {
+    return _json({
+      'data': [
+        {'versionString': '1.21.1'},
+        {'versionString': '1.21.1-pre1'}, // 预发布
+        {'versionString': '23w31a'}, // 快照
+        {'versionString': '1.20.1'},
+      ],
+    });
+  }
   if (path == '/v1/categories') {
     return _json({
       'data': [
@@ -28,6 +41,22 @@ Future<http.Response> _handler(http.Request request) async {
   }
   if (path == '/v1/mods/search') {
     final categoryId = request.url.queryParameters['categoryId'];
+    final gameVersion = request.url.queryParameters['gameVersion'];
+    if (gameVersion != null) {
+      return _json({
+        'data': [
+          {
+            'id': 250898,
+            'name': 'Create',
+            'summary': 'Tech mod',
+            'logo': null,
+            'downloadCount': 100000,
+            'followerCount': 500,
+          },
+        ],
+        'pagination': {'totalCount': 45},
+      });
+    }
     if (categoryId != null) {
       return _json({
         'data': [
@@ -141,51 +170,94 @@ void main() {
     expect(tech.source, ModSource.curseforge);
   });
 
-  test('getCategoryMods 按分类 id 过滤并计算总页数', () async {
-    final r1 = await CurseforgeApi.getCategoryMods('416');
-    expect(r1.mods.first.id, '250898');
-    expect(r1.totalPages, 3); // 45 条 / 20 每页 = 3 页
-    final r2 = await CurseforgeApi.getCategoryMods('416', page: 2);
-    expect(r2.mods, hasLength(1));
-    // 非法分类 id:空结果而非异常
-    final bad = await CurseforgeApi.getCategoryMods('not-a-number');
-    expect(bad.mods, isEmpty);
+  test('getVersions 只保留数字编号的正式版', () async {
+    final versions = await CurseforgeApi.getVersions();
+    // 快照(23w31a)与预发布(1.21.1-pre1)被筛掉
+    expect(versions.map((v) => v.version), ['1.21.1', '1.20.1']);
+    expect(versions.first.source, ModSource.curseforge);
   });
 
-  test('getFeaturedMods 按排序映射 sortField 并传递条数', () async {
+  test('getFilteredMods:分类+版本+排序都可组合,并分页', () async {
     final uris = <Uri>[];
     CurseforgeApi.clientFactory = () => MockClient((request) async {
       uris.add(request.url);
       return _handler(request);
     });
+    CurseforgeApi.clearCaches();
 
-    final mods = await CurseforgeApi.getFeaturedMods(
-      sort: FeatureSource.none,
-      limit: 20,
+    final r1 = await CurseforgeApi.getFilteredMods(
+      const Filter(
+        modSource: ModSource.curseforge,
+        featureSource: FeatureSource.lastEditTime,
+        category: ModCategory(
+          id: '416',
+          name: '科技',
+          source: ModSource.curseforge,
+        ),
+        version: ModVersion(version: '1.21.1', source: ModSource.curseforge),
+      ),
     );
-    expect(mods.single.id, '238222');
+    expect(r1.mods.first.id, '250898');
+    expect(r1.totalPages, 3); // 45 条 / 20 每页 = 3 页
+    final params = uris.single.queryParameters;
+    expect(params['categoryId'], '416');
+    expect(params['gameVersion'], '1.21.1');
+    expect(params['sortField'], '3'); // lastEditTime → 3
+    expect(params['pageSize'], '20');
+    expect(params['index'], '0');
+
+    // 翻页是 index 偏移制
+    final r2 = await CurseforgeApi.getFilteredMods(
+      const Filter(
+        modSource: ModSource.curseforge,
+        featureSource: FeatureSource.lastEditTime,
+        category: ModCategory(
+          id: '416',
+          name: '科技',
+          source: ModSource.curseforge,
+        ),
+      ),
+      page: 2,
+    );
+    expect(r2.mods, hasLength(1));
+    expect(uris.last.queryParameters['index'], '20');
+  });
+
+  test('getFilteredMods:非法分类 id 返回空结果而非异常', () async {
+    CurseforgeApi.clientFactory = () => MockClient(_handler);
+    CurseforgeApi.clearCaches();
+
+    final bad = await CurseforgeApi.getFilteredMods(
+      const Filter(
+        modSource: ModSource.curseforge,
+        featureSource: FeatureSource.none,
+        category: ModCategory(
+          id: 'not-a-number',
+          name: '?',
+          source: ModSource.curseforge,
+        ),
+      ),
+    );
+    expect(bad.mods, isEmpty);
+    expect(bad.totalPages, 0);
+  });
+
+  test('getFilteredMods:默认排序映射到 sortField=1', () async {
+    final uris = <Uri>[];
+    CurseforgeApi.clientFactory = () => MockClient((request) async {
+      uris.add(request.url);
+      return _handler(request);
+    });
+    CurseforgeApi.clearCaches();
+
+    await CurseforgeApi.getFilteredMods(
+      const Filter(
+        modSource: ModSource.curseforge,
+        featureSource: FeatureSource.none,
+      ),
+    );
     expect(uris.single.queryParameters['sortField'], '1');
-    expect(uris.single.queryParameters['pageSize'], '20');
-
-    await CurseforgeApi.getFeaturedMods(
-      sort: FeatureSource.createTime,
-      limit: 5,
-    );
-    expect(uris.last.queryParameters['sortField'], '11');
-    expect(uris.last.queryParameters['pageSize'], '5');
-    await CurseforgeApi.getFeaturedMods(
-      sort: FeatureSource.lastEditTime,
-      limit: 60,
-    );
-    expect(uris.last.queryParameters['sortField'], '3');
-    expect(uris.last.queryParameters['pageSize'], '50'); // 上限截断
-
-    // limit=0 短路,不发请求
-    final before = uris.length;
-    expect(
-      await CurseforgeApi.getFeaturedMods(sort: FeatureSource.none, limit: 0),
-      isEmpty,
-    );
-    expect(uris.length, before);
+    expect(uris.single.queryParameters.containsKey('categoryId'), isFalse);
+    expect(uris.single.queryParameters.containsKey('gameVersion'), isFalse);
   });
 }

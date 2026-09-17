@@ -13,8 +13,11 @@ class SelectionButton extends StatefulWidget {
     required this.button,
     required this.selectedIndex,
     required this.switchTo,
-    this.spacing,
+    this.spacing = 0,
   });
+
+  /// 分段之间的水平间距(默认 0:按钮自带左右内边距,紧挨着也不挤)
+  final double spacing;
 
   /// 分段定义:(标签, 选中值)
   final List<(String, int)> button;
@@ -24,9 +27,6 @@ class SelectionButton extends StatefulWidget {
 
   /// 切换回调(由父组件更新选中值)
   final void Function(int index) switchTo;
-
-  /// 按钮的间距
-  final double? spacing;
 
   /// 分段文字样式:公式与实际布局共用一份。
   ///
@@ -142,7 +142,7 @@ class _SelectionButtonState extends State<SelectionButton> {
             scrollDirection: Axis.horizontal,
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              spacing: widget.spacing ?? 0,
+              spacing: widget.spacing,
               children: _buildButtons(theme),
             ),
           ),
@@ -190,7 +190,7 @@ class _SelectionButtonState extends State<SelectionButton> {
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(6),
         boxShadow: [
           BoxShadow(
             color: theme.colorScheme.primary.withValues(alpha: 0.15),

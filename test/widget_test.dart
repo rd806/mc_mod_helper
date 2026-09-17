@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/main.dart';
+import 'package:mc_mod_helper/page/config.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
@@ -20,14 +21,15 @@ import 'package:mc_mod_helper/service/value/render.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/widget/button/search_bar.dart';
 
-/// 启动应用并推进到首页三个版块与分类页都完成失败渲染。
+/// 启动应用并推进到浏览页完成失败渲染。
 ///
 /// 测试环境中网络请求被禁用(返回 HTTP 400)。各页面挂在 IndexedStack
-/// 中同时挂载,请求共用 mcmod www 的 1s 节流:一个发完下一个才轮到。
-/// pumpAndSettle 会提前退出留下 pending Timer,因此这里显式推进假时钟。
+/// 中同时挂载(只有设置页不发请求),请求共用 mcmod www 的 1s 节流:
+/// 一个发完下一个才轮到。pumpAndSettle 会提前退出留下 pending Timer,
+/// 因此这里显式推进假时钟。
 Future<void> pumpApp(WidgetTester tester) async {
   await tester.pumpWidget(const McModHelper());
-  // 首页三个版块各一次请求(顺序发起)+ 分类页一次,逐个推过节流计时器
+  // 浏览页顺序发起三次请求(筛选选项 ×2 + 列表第 1 页),逐个推过节流计时器
   for (var i = 0; i < 5; i++) {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -80,58 +82,73 @@ void main() {
     ModrinthApi.clearCaches();
   });
 
-  testWidgets('启动显示主页:当前版块加载失败,侧边栏导航可用', (tester) async {
+  testWidgets('启动显示浏览页:列表加载失败,侧边栏导航可用', (tester) async {
     await pumpApp(tester);
 
-    // 首页 AppBar 现在是「数据来源」胶囊(带来源图标),不再是应用名
-    expect(find.widgetWithText(AppBar, 'MC百科'), findsOneWidget);
-    // 三个版块名:切换标签一处,当前版块的标题行一处
-    for (final title in ['默认排序', '最新收录', '最新编辑']) {
-      expect(find.text(title), findsWidgets);
-    }
-    // 只渲染当前版块:一个「查看更多」、一处加载失败(测试环境 HTTP 400)
-    expect(find.text('查看更多'), findsOneWidget);
+    // 筛选栏摘要条:数据来源胶囊 + 当前条件
+    expect(find.widgetWithText(ActionChip, 'MC百科'), findsOneWidget);
+    expect(find.text('全部分类 · 全部版本 · 默认排序'), findsOneWidget);
+    // 列表加载失败(测试环境 HTTP 400),没有「查看更多」这类跳转入口
     expect(find.textContaining('加载失败'), findsOneWidget);
-    // 侧边栏四个页签入口(测试窗口 800x600 走宽屏 NavigationRail;
-    // 搜索在「探索」页右上角,设置在各页 AppBar)
+    expect(find.text('查看更多'), findsNothing);
+    // 侧边栏四个页签入口(首页与探索已合并,设置回到页签;
+    // 测试窗口 800x600 走宽屏 NavigationRail)
     expect(find.text('首页'), findsOneWidget);
-    expect(find.text('探索'), findsOneWidget);
     expect(find.text('AI'), findsOneWidget);
     expect(find.text('我的'), findsOneWidget);
-    expect(find.text('设置'), findsNothing);
-    // 设置入口:主页 AppBar 一个,宽屏侧边栏底部还留了一个
-    expect(find.byTooltip('设置'), findsWidgets);
-    expect(find.byIcon(Icons.refresh), findsOneWidget); // 主页刷新按钮
+    expect(find.text('设置'), findsOneWidget);
+    expect(find.text('探索'), findsNothing); // 已并入首页
+    // 设置不再是浏览页 AppBar 上的按钮(只在页签里)
+    expect(find.widgetWithIcon(AppBar, Icons.settings), findsNothing);
+    expect(find.byIcon(Icons.refresh), findsOneWidget); // 浏览页刷新按钮
   });
 
-  testWidgets('首页切换版块标签:换的是当前展示的版块', (tester) async {
+  testWidgets('筛选栏默认收起:展开后才有选项内容', (tester) async {
     await pumpApp(tester);
 
-    // 默认停在「默认排序」:标题行 + 查看更多都属于它
-    expect(find.textContaining('加载失败'), findsOneWidget);
+    // 收起状态:只有摘要条,面板里的内容一律不渲染
+    expect(find.text('重置筛选'), findsNothing);
+    expect(find.textContaining('筛选项加载失败'), findsNothing);
 
-    // 切到「最新收录」标签(标签在页面顶部,取第一个)
-    await tester.tap(find.text('最新收录').first);
-    await tester.pump();
-    expect(find.text('查看更多'), findsOneWidget);
-    expect(find.textContaining('加载失败'), findsOneWidget);
+    await tester.tap(find.byTooltip('展开筛选'));
+    await tester.pumpAndSettle();
+    // 测试环境下分类/版本的请求都是 HTTP 400 → 面板走错误分支给出重试
+    // (三组选项的正常渲染由 browse_page_test 用假响应覆盖)
+    expect(find.textContaining('筛选项加载失败'), findsOneWidget);
+    expect(find.text('重试'), findsWidgets); // 面板一个,列表错误态一个
+    // 列表本身不受筛选项失败影响,照常走自己的错误态
+    expect(find.textContaining('加载失败'), findsWidgets);
   });
 
-  testWidgets('侧边栏切换页签:探索里的分类与搜索', (tester) async {
+  testWidgets('浏览页的搜索入口:伪搜索栏进搜索页', (tester) async {
     await pumpApp(tester);
 
-    // 切到「探索」页签:分类区(测试环境同样请求失败)
-    await tester.tap(find.text('探索'));
-    await tester.pump(); // IndexedStack 切换,无路由动画
-    expect(find.textContaining('加载失败'), findsWidgets); // 分类区错误
-    expect(find.text('默认排序'), findsNothing); // 已离开首页
-
-    // 搜索入口在「探索」页的 AppBar 上(伪搜索栏:整条可点,点开进搜索页)
+    // 搜索入口就在首页(浏览页)AppBar 上,不需要先切页签
     await tester.tap(find.byType(FakeSearchBar));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
     expect(find.text('模组搜索'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('窄屏:设置页也可从底栏页签进入', (tester) async {
+    // 窄屏（≤700）走底部 BottomNavigationBar，宽屏走 NavigationRail：
+    // 两种布局共用同一份页签列表，设置页都得能进
+    tester.view.physicalSize = const Size(600, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpApp(tester);
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+    expect(find.byType(NavigationRail), findsNothing);
+
+    await tester.tap(find.text('设置')); // 底栏标签（设置页此时是 offstage 的）
+    await tester.pump();
+    expect(find.byType(ConfigPage), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '设置'), findsOneWidget);
+
+    // 设置页在窄屏下没有横向溢出（曾经用 Spacer + 不定宽文本，值一长就挤爆）
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('进入设置页,可修改主题/显示/语言/AI 设置', (tester) async {
@@ -143,16 +160,22 @@ void main() {
 
     await pumpApp(tester);
 
-    // 设置页从主页 AppBar 推开(不再是页签);无网络请求、无挂起计时器
-    await tester.tap(find.byTooltip('设置').first);
+    // 设置是第四个页签(宽屏为 NavigationRail),不再是 AppBar 推开的整页:
+    // 页签切换没有路由过渡,也无网络请求、无挂起计时器
+    await tester.tap(find.text('设置'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
-    await tester.pump(const Duration(milliseconds: 350));
+
+    // 页签切换后设置页与侧边栏同时在树上:侧边栏的「AI」「设置」标签
+    // 与设置页里的分组标题重名,页面内的断言一律限定在设置页里找
+    final settings = find.byType(ConfigPage);
 
     // 五个分组标题都在,且默认全部折叠(子项不渲染)
     expect(find.widgetWithText(AppBar, '设置'), findsOneWidget);
     for (final title in ['主题', '显示', '语言', 'AI', '关于']) {
-      expect(find.text(title), findsOneWidget);
+      expect(
+        find.descendant(of: settings, matching: find.text(title)),
+        findsOneWidget,
+      );
     }
     expect(find.byType(DropdownButton<ThemeMode>), findsNothing);
 
@@ -243,7 +266,7 @@ void main() {
     expect(LanguageSettings.instance.translateLang, 'en');
 
     // ---- AI:三项都是「点击弹出输入框」,弹窗里「确定」才写回 ----
-    await tester.tap(find.text('AI'));
+    await tester.tap(find.descendant(of: settings, matching: find.text('AI')));
     await tester.pumpAndSettle();
     expect(find.text('接口地址'), findsOneWidget);
     expect(find.text('API Key'), findsOneWidget);
@@ -289,24 +312,7 @@ void main() {
     expect(find.textContaining('加载失败'), findsOneWidget);
   });
 
-  testWidgets('「查看更多」进入对应版块的列表页', (tester) async {
-    await pumpApp(tester);
-
-    // 第一个「查看更多」属于「默认排序」版块
-    await tester.tap(find.text('查看更多').first);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
-    await tester.pump(const Duration(milliseconds: 350));
-
-    expect(find.widgetWithText(AppBar, '默认排序'), findsOneWidget);
-    expect(find.byTooltip('刷新'), findsWidgets); // 列表页自带刷新
-
-    // 列表页的首屏请求挂着 mcmod 的 1s 节流:推完它再结束,避免留下计时器
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump();
-  });
-
-  testWidgets('切换数据来源后首页当前版块重新拉取', (tester) async {
+  testWidgets('切换数据来源后浏览页重拉列表', (tester) async {
     await pumpApp(tester);
     expect(find.textContaining('加载失败'), findsWidgets);
 
@@ -316,9 +322,9 @@ void main() {
     ModrinthApi.clearCaches(); // 让上面的工厂生效
 
     DisplaySettings.instance.setDataSource(ModSource.modrinth);
-    await tester.pump(); // 当前版块请求发出
+    await tester.pump(); // 列表请求发出
     await tester.pump(); // 响应 → 渲染
-    // 其余两个版块(以及探索页的分类)依次受 1s 节流约束
+    // 筛选选项(分类 + 版本)依次受 1s 节流约束
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
       await tester.pump();
@@ -397,9 +403,7 @@ void main() {
     ModrinthApi.clearCaches(); // 重置惰性客户端,让上面的工厂生效
 
     await pumpApp(tester);
-    // 搜索入口:「探索」页 AppBar 上的伪搜索栏
-    await tester.tap(find.text('探索'));
-    await tester.pump();
+    // 搜索入口:浏览页 AppBar 上的伪搜索栏
     await tester.tap(find.byType(FakeSearchBar));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350)); // 路由过渡

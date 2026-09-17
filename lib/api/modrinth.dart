@@ -6,8 +6,10 @@ import 'package:markdown/markdown.dart' as md;
 import 'package:mc_mod_helper/service/value/source.dart';
 
 import '../model/author.dart';
+import '../model/filter.dart';
 import '../model/mod/mod_category.dart';
 import '../model/mod/mod_detail.dart';
+import '../model/mod/mod_version.dart';
 import '../model/link.dart';
 import '../model/mod/mod_summary.dart';
 
@@ -36,24 +38,33 @@ class ModrinthApi {
   static final Map<String, List<ModSummary>> _searchCache = {};
   static final Map<String, ModDetail> _detailCache = {};
   static List<ModCategory>? _categoryCache;
-  static final Map<String, ({List<ModSummary> mods, int totalPages})>
-  _categoryModsCache = {};
 
-  /// 推荐列表缓存:key='$index-$limit'(limit 影响 API 返回条数,一起作 key)
-  static final Map<String, List<ModSummary>> _featuredCache = {};
+  static List<ModVersion>? _versionCache;
 
-  /// 推荐列表的整页缓存(带总页数,「查看更多」页用)
+  /// 组合筛选的分页缓存:key = '筛选签名|页码'
   static final Map<String, ({List<ModSummary> mods, int totalPages})>
-  _featuredModsPageCache = {};
+  _filteredModsCache = {};
+
+  /// 分页缓存上限(组合筛选的 key 空间大,不能让会话缓存无限堆积)
+  static const int _maxCachedQueries = 60;
+
+  /// 写分页缓存,超过上限时先淘汰最早写入的一条
+  static void _cacheFiltered(
+    Map<String, ({List<ModSummary> mods, int totalPages})> cache,
+    String key,
+    ({List<ModSummary> mods, int totalPages}) value,
+  ) {
+    if (cache.length >= _maxCachedQueries) cache.remove(cache.keys.first);
+    cache[key] = value;
+  }
 
   @visibleForTesting
   static void clearCaches() {
     _searchCache.clear();
     _detailCache.clear();
     _categoryCache = null;
-    _categoryModsCache.clear();
-    _featuredCache.clear();
-    _featuredModsPageCache.clear();
+    _versionCache = null;
+    _filteredModsCache.clear();
     _lastAt = null;
     // 重置惰性缓存的客户端,让测试可以替换 clientFactory
     _clientInstance = null;
@@ -130,91 +141,75 @@ class ModrinthApi {
     return cats;
   }
 
-  /// 获取分类下第 [page] 页的模组(每页 20 个)与总页数。
+  /// 获取 Minecraft 版本列表(release 正式版,新版在前)。
   ///
-  /// 用 search 接口按 categories facet 过滤,index=downloads 按下载量排序;
+  /// 官方 tag 接口给的是全部版本(含快照/预发布,数量是正式版的近十倍),
+  /// 模组基本只针对正式版发布,故只保留 version_type=release。
+  static Future<List<ModVersion>> getVersions() async {
+    final cached = _versionCache;
+    if (cached != null) return cached;
+
+    final uri = Uri.parse('https://api.modrinth.com/v2/tag/game_version');
+    final body = await _get(uri);
+    final versions = _parseVersions(body);
+    _versionCache = versions;
+    return versions;
+  }
+
+  /// 组合筛选分页查询:第 [page] 页的模组与总页数。
+  ///
+  /// 分类 / 版本 / 项目类型各占一个内层数组 —— Modrinth 的 facets
+  /// **外层是 AND、内层是 OR**(实测:`[["categories:technology"],
+  /// ["project_type:mod"]]` 八千余条,把两者并进同一个内层数组则八万余条),
+  /// 所以组合筛选要写成「一个条件一个数组」而不是「全塞进一个数组」。
   /// 分页是 offset 制,(page-1)*20 换算。
-  static Future<({List<ModSummary> mods, int totalPages})> getCategoryMods(
-    String categoryName, {
+  static Future<({List<ModSummary> mods, int totalPages})> getFilteredMods(
+    Filter filter, {
     int page = 1,
   }) async {
-    final key = '$categoryName-$page';
-    final cached = _categoryModsCache[key];
+    // 没选的维度整个数组都不给:空的内层数组会变成一个"谁都不满足"的 OR 组,
+    // 把整个查询清空
+    final facets = jsonEncode([
+      if (filter.category != null) ['categories:${filter.category!.id}'],
+      if (filter.version != null) ['versions:${filter.version!.version}'],
+      ['project_type:mod'],
+    ]);
+    final key = '${filter.signature}|$page';
+    final cached = _filteredModsCache[key];
     if (cached != null) return cached;
 
     final uri = Uri.parse('https://api.modrinth.com/v2/search').replace(
       queryParameters: {
         'limit': '20',
         'offset': '${(page - 1) * 20}',
-        'index': 'downloads',
-        'facets': '[["categories:$categoryName"],["project_type:mod"]]',
+        'index': _featuredIndex(filter.featureSource),
+        'facets': facets,
       },
     );
     final body = await _get(uri);
     final result = _parseCategoryPage(body);
-    _categoryModsCache[key] = result;
+    _cacheFiltered(_filteredModsCache, key, result);
     return result;
   }
 
-  /// 获取首页推荐模组,返回最多 [limit] 条。
-  ///
-  /// 复用 search 接口,[sort] 映射到 index 排序参数:
-  /// - none → downloads(按下载量,站内“热门”语义)
-  /// - createTime → newest(最新发布)
-  /// - lastEditTime → updated(最近更新)
-  /// search 的 limit 上限为 100,超出截断。
-  static Future<List<ModSummary>> getFeaturedMods({
-    FeatureSource sort = FeatureSource.none,
-    int limit = 20,
-  }) async {
-    final clamped = limit.clamp(0, 100);
-    if (clamped == 0) return const [];
-    final index = _featuredIndex(sort);
-    final key = '$index-$clamped';
-    final cached = _featuredCache[key];
-    if (cached != null) return cached;
-
-    final uri = Uri.parse('https://api.modrinth.com/v2/search').replace(
-      queryParameters: {
-        'limit': '$clamped',
-        'index': index,
-        'facets': '[["project_type:mod"]]',
-      },
-    );
-    final body = await _get(uri);
-    final results = _parseSearch(body);
-    _featuredCache[key] = results;
-    return results;
-  }
-
-  /// 获取推荐列表第 [page] 页(每页 20 个)与总页数(「查看更多」页用)。
-  ///
-  /// 与 [getCategoryMods] 一样走 search 接口,只是不按分类过滤、
-  /// 排序换成 [sort];分页是 offset 制,(page-1)*20 换算
-  static Future<({List<ModSummary> mods, int totalPages})> getFeaturedModsPage(
-    FeatureSource sort, {
-    int page = 1,
-  }) async {
-    final index = _featuredIndex(sort);
-    final key = '$index-$page';
-    final cached = _featuredModsPageCache[key];
-    if (cached != null) return cached;
-
-    final uri = Uri.parse('https://api.modrinth.com/v2/search').replace(
-      queryParameters: {
-        'limit': '20',
-        'offset': '${(page - 1) * 20}',
-        'index': index,
-        'facets': '[["project_type:mod"]]',
-      },
-    );
-    final body = await _get(uri);
-    final result = _parseCategoryPage(body);
-    _featuredModsPageCache[key] = result;
-    return result;
+  /// 解析游戏版本列表(tag/game_version),只取 release
+  static List<ModVersion> _parseVersions(String body) {
+    final data = jsonDecode(body) as List<dynamic>;
+    final versions = <ModVersion>[];
+    for (final item in data.cast<Map<String, dynamic>>()) {
+      if (item['version_type'] != 'release') continue;
+      final version = (item['version'] as String?)?.trim() ?? '';
+      if (version.isEmpty) continue;
+      versions.add(ModVersion(version: version, source: ModSource.modrinth));
+    }
+    return versions;
   }
 
   /// [FeatureSource] → search 接口的 index 排序参数
+  ///
+  /// - none → downloads(按下载量,站内“热门”语义)
+  /// - createTime → newest(最新发布)
+  /// - lastEditTime → updated(最近更新)
   static String _featuredIndex(FeatureSource sort) => switch (sort) {
     FeatureSource.none => 'downloads',
     FeatureSource.createTime => 'newest',

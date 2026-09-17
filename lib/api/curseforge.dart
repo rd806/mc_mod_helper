@@ -5,8 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
 
 import '../model/author.dart';
+import '../model/filter.dart';
 import '../model/mod/mod_category.dart';
 import '../model/mod/mod_detail.dart';
+import '../model/mod/mod_version.dart';
 import '../model/link.dart';
 import '../model/mod/mod_summary.dart';
 import '../service/value/source.dart';
@@ -41,15 +43,25 @@ class CurseforgeApi {
   static final Map<String, List<ModSummary>> _searchCache = {};
   static final Map<String, ModDetail> _detailCache = {};
   static List<ModCategory>? _categoryCache;
-  static final Map<String, ({List<ModSummary> mods, int totalPages})>
-  _categoryModsCache = {};
 
-  /// 推荐列表缓存:key='$sortField-$limit'(limit 影响 API 返回条数,一起作 key)
-  static final Map<String, List<ModSummary>> _featuredCache = {};
+  static List<ModVersion>? _versionCache;
 
-  /// 推荐列表的整页缓存(带总页数,「查看更多」页用)
+  /// 组合筛选的分页缓存:key = '筛选签名|页码'
   static final Map<String, ({List<ModSummary> mods, int totalPages})>
-  _featuredModsPageCache = {};
+  _filteredModsCache = {};
+
+  /// 分页缓存上限(组合筛选的 key 空间大,不能让会话缓存无限堆积)
+  static const int _maxCachedQueries = 60;
+
+  /// 写分页缓存,超过上限时先淘汰最早写入的一条
+  static void _cacheFiltered(
+    Map<String, ({List<ModSummary> mods, int totalPages})> cache,
+    String key,
+    ({List<ModSummary> mods, int totalPages}) value,
+  ) {
+    if (cache.length >= _maxCachedQueries) cache.remove(cache.keys.first);
+    cache[key] = value;
+  }
 
   /// Minecraft 游戏 ID(CurseForge 中 Minecraft 的 gameId 固定为 432)
   static const int _gameId = 432;
@@ -91,9 +103,8 @@ class CurseforgeApi {
     _searchCache.clear();
     _detailCache.clear();
     _categoryCache = null;
-    _categoryModsCache.clear();
-    _featuredCache.clear();
-    _featuredModsPageCache.clear();
+    _versionCache = null;
+    _filteredModsCache.clear();
     _lastAt = null;
     // 重置惰性缓存的客户端,让测试可以替换 clientFactory
     _clientInstance = null;
@@ -171,98 +182,55 @@ class CurseforgeApi {
     return cats;
   }
 
-  /// 获取分类下第 [page] 页的模组(每页 20 个)与总页数。
+  /// 获取 Minecraft 版本列表(新版在前)。
   ///
-  /// [categoryId] 为分类的数字 id 字符串(来自 ModCategory.id)。
-  /// 分页是 index 偏移制,(page-1)*20 换算;
-  /// sortField=6 按总下载量排序。
-  static Future<({List<ModSummary> mods, int totalPages})> getCategoryMods(
-    String categoryId, {
-    int page = 1,
-  }) async {
-    final key = '$categoryId-$page';
-    final cached = _categoryModsCache[key];
+  /// 官方接口给的是全部版本(含快照/预发布),这里只留形如 `1.20.1` 的正式版:
+  /// 快照名的形态各异(`1.21-pre1`、`23w31a`…),用「只有数字与点」来筛。
+  static Future<List<ModVersion>> getVersions() async {
+    final cached = _versionCache;
     if (cached != null) return cached;
 
-    final id = int.tryParse(categoryId);
-    if (id == null) return (mods: const <ModSummary>[], totalPages: 0);
+    final uri = Uri.parse('https://api.curseforge.com/v1/minecraft/version');
+    final body = await _get(uri);
+    final versions = _parseVersions(body);
+    _versionCache = versions;
+    return versions;
+  }
+
+  /// 组合筛选分页查询:第 [page] 页的模组与总页数。
+  ///
+  /// 分类 / 版本 / 排序是三个互相独立的搜索参数,可自由组合。
+  /// [Filter.category] 的 id 必须是数字(CF 用数字分类 id),
+  /// 非数字时返回空结果而不是抛异常(沿用旧行为)。
+  /// 分页是 index 偏移制,(page-1)*20 换算。
+  static Future<({List<ModSummary> mods, int totalPages})> getFilteredMods(
+    Filter filter, {
+    int page = 1,
+  }) async {
+    final categoryId = filter.category?.id;
+    final id = categoryId == null ? null : int.tryParse(categoryId);
+    if (categoryId != null && id == null) {
+      return (mods: const <ModSummary>[], totalPages: 0);
+    }
+    final key = '${filter.signature}|$page';
+    final cached = _filteredModsCache[key];
+    if (cached != null) return cached;
 
     final uri = Uri.parse('https://api.curseforge.com/v1/mods/search').replace(
       queryParameters: {
         'gameId': '$_gameId',
         'classId': '$_modClassId',
-        'categoryId': '$id',
+        if (id != null) 'categoryId': '$id',
+        if (filter.version != null) 'gameVersion': filter.version!.version,
         'pageSize': '20',
         'index': '${(page - 1) * 20}',
-        'sortField': '6', // 6 = 总下载量
+        'sortField': _featuredSortField(filter.featureSource),
         'sortOrder': 'desc',
       },
     );
     final body = await _get(uri);
     final result = _parseCategoryPage(body);
-    _categoryModsCache[key] = result;
-    return result;
-  }
-
-  /// 获取首页推荐模组,返回最多 [limit] 条。
-  ///
-  /// 复用 search 接口,[sort] 映射到 ModsSearchSortField 的 sortField:
-  /// - none → 1(Featured,站内“精选”)
-  /// - createTime → 11(ReleasedDate,发布日期,最接近“创建时间”)
-  /// - lastEditTime → 3(LastUpdated,最近更新)
-  /// search 的 pageSize 上限为 50,超出截断。
-  static Future<List<ModSummary>> getFeaturedMods({
-    FeatureSource sort = FeatureSource.none,
-    int limit = 20,
-  }) async {
-    final clamped = limit.clamp(0, 50);
-    if (clamped == 0) return const [];
-    final sortField = _featuredSortField(sort);
-    final key = '$sortField-$clamped';
-    final cached = _featuredCache[key];
-    if (cached != null) return cached;
-
-    final uri = Uri.parse('https://api.curseforge.com/v1/mods/search').replace(
-      queryParameters: {
-        'gameId': '$_gameId',
-        'classId': '$_modClassId',
-        'pageSize': '$clamped',
-        'sortField': sortField,
-        'sortOrder': 'desc',
-      },
-    );
-    final body = await _get(uri);
-    final results = _parseSearch(body);
-    _featuredCache[key] = results;
-    return results;
-  }
-
-  /// 获取推荐列表第 [page] 页(每页 20 个)与总页数(「查看更多」页用)。
-  ///
-  /// 与 [getCategoryMods] 一样走 search 接口,只是不按分类过滤、
-  /// 排序换成 [sort];分页是 index 偏移制,(page-1)*20 换算
-  static Future<({List<ModSummary> mods, int totalPages})> getFeaturedModsPage(
-    FeatureSource sort, {
-    int page = 1,
-  }) async {
-    final sortField = _featuredSortField(sort);
-    final key = '$sortField-$page';
-    final cached = _featuredModsPageCache[key];
-    if (cached != null) return cached;
-
-    final uri = Uri.parse('https://api.curseforge.com/v1/mods/search').replace(
-      queryParameters: {
-        'gameId': '$_gameId',
-        'classId': '$_modClassId',
-        'pageSize': '20',
-        'index': '${(page - 1) * 20}',
-        'sortField': sortField,
-        'sortOrder': 'desc',
-      },
-    );
-    final body = await _get(uri);
-    final result = _parseCategoryPage(body);
-    _featuredModsPageCache[key] = result;
+    _cacheFiltered(_filteredModsCache, key, result);
     return result;
   }
 
@@ -338,6 +306,22 @@ class CurseforgeApi {
       );
     }
     return cats;
+  }
+
+  /// 解析版本列表:只保留「数字与点」的正式版(快照名形态各异,一并筛掉)
+  static List<ModVersion> _parseVersions(String body) {
+    final data = jsonDecode(body) as Map<String, dynamic>;
+    final versions = <ModVersion>[];
+    for (final item
+        in (data['data'] as List<dynamic>? ?? const [])
+            .cast<Map<String, dynamic>>()) {
+      final version = (item['versionString'] as String?)?.trim() ?? '';
+      if (version.isEmpty) continue;
+      if (!RegExp(r'^\d+(\.\d+)*$').hasMatch(version)) continue;
+      if (versions.any((v) => v.version == version)) continue;
+      versions.add(ModVersion(version: version, source: ModSource.curseforge));
+    }
+    return versions;
   }
 
   static ({List<ModSummary> mods, int totalPages}) _parseCategoryPage(

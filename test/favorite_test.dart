@@ -72,7 +72,7 @@ Future<http.Response> _handler(http.Request request) async {
   return http.Response('not found', 404);
 }
 
-/// 启动应用并推过首页三个版块与分类页的 400 请求(mcmod 真实客户端)。
+/// 启动应用并推过浏览页的 400 请求(筛选选项 ×2 + 列表第 1 页,mcmod 真实客户端)。
 /// 各请求共用 1s 节流:一个发完下一个才轮到,故逐个推进假时钟
 Future<void> _pumpApp(WidgetTester tester) async {
   await tester.pumpWidget(const McModHelper());
@@ -83,11 +83,9 @@ Future<void> _pumpApp(WidgetTester tester) async {
   await tester.pump(); // 渲染错误态
 }
 
-/// 在搜索页(「探索」页 AppBar 的伪搜索栏进入)里搜索 jei 并等结果渲染
+/// 在搜索页(浏览页 AppBar 的伪搜索栏进入)里搜索 jei 并等结果渲染
 /// (Modrinth 假响应,mcmod 真实 400;mcmod 搜索走 www 节流,请求要等 1s 计时器)
 Future<void> _searchJei(WidgetTester tester) async {
-  await tester.tap(find.text('探索'));
-  await tester.pump();
   await tester.tap(find.byType(FakeSearchBar));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 350)); // 路由过渡

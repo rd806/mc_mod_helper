@@ -11,9 +11,9 @@ import 'package:mc_mod_helper/widget/button/input_box.dart';
 import 'package:mc_mod_helper/widget/button/switch_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../setting/agent_settings.dart';
-import '../../setting/theme_settings.dart';
-import '../../widget/common/expansion_tile.dart';
+import '../setting/agent_settings.dart';
+import '../setting/theme_settings.dart';
+import '../widget/common/expansion_tile.dart';
 
 /// 设置页:主题(模式/强调色)、字体大小、推荐列表条数上限
 class ConfigPage extends StatefulWidget {

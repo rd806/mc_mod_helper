@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/page/agent.dart';
-import 'package:mc_mod_helper/page/config/config.dart';
+import 'package:mc_mod_helper/page/browse.dart';
+import 'package:mc_mod_helper/page/config.dart';
 import 'package:mc_mod_helper/page/custom.dart';
-import 'package:mc_mod_helper/page/recommend.dart';
-import 'package:mc_mod_helper/page/discover.dart';
 
 /// 主页
 /// 包含导航栏
@@ -19,18 +18,19 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
   // 定义页面列表（对应底栏每个选项）
+  // 首页与探索已合并成「浏览」:分类/版本/排序由页内筛选栏决定
   final List<Widget> _pages = [
-    FeaturePage(),
-    DiscoverPage(),
+    BrowsePage(),
     AgentPage(),
     CustomPage(),
+    ConfigPage(),
   ];
 
   final List<NavigationItem> _navItems = const [
     NavigationItem(icon: Icons.home, label: '首页'),
-    NavigationItem(icon: Icons.category, label: '探索'),
     NavigationItem(icon: Icons.smart_toy_outlined, label: 'AI'),
     NavigationItem(icon: Icons.person_outline, label: '我的'),
+    NavigationItem(icon: Icons.settings, label: '设置'),
   ];
 
   // 点击切换页面
@@ -100,25 +100,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               )
               .toList(),
-
-          trailing: Expanded(
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: IconButton(
-                  tooltip: '设置',
-                  icon: const Icon(Icons.settings),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => ConfigPage()),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
         ),
         // 右侧内容区域（填充剩余空间）
         Expanded(

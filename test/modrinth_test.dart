@@ -13,6 +13,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
+import 'package:mc_mod_helper/model/filter.dart';
+import 'package:mc_mod_helper/model/mod/mod_category.dart';
+import 'package:mc_mod_helper/model/mod/mod_version.dart';
 import 'package:mc_mod_helper/service/value/source.dart';
 import 'package:mc_mod_helper/main.dart';
 import 'package:mc_mod_helper/page/mod/description.dart';
@@ -29,6 +32,14 @@ http.Response _json(Object data) => http.Response.bytes(
 
 /// 搜索 + 详情两条路由的假响应
 Future<http.Response> _handler(http.Request request) async {
+  if (request.url.path == '/v2/tag/game_version') {
+    return _json([
+      {'version': '1.21.1', 'version_type': 'release'},
+      {'version': '1.21.2-rc1', 'version_type': 'snapshot'},
+      {'version': '25w31a', 'version_type': 'snapshot'},
+      {'version': '1.20.1', 'version_type': 'release'},
+    ]);
+  }
   if (request.url.path == '/v2/tag/category') {
     return _json([
       {
@@ -53,6 +64,21 @@ Future<http.Response> _handler(http.Request request) async {
   }
   if (request.url.path == '/v2/search') {
     final facets = request.url.queryParameters['facets'] ?? '';
+    if (facets.contains('versions:1.21.1')) {
+      return _json({
+        'hits': [
+          {
+            'slug': 'create',
+            'title': 'Create',
+            'description': 'Tech mod',
+            'icon_url': null,
+            'downloads': 100000,
+            'follows': 500,
+          },
+        ],
+        'total_hits': 45,
+      });
+    }
     if (facets.contains('categories:technology')) {
       return _json({
         'hits': [
@@ -215,62 +241,62 @@ void main() {
       expect(tech.id, 'technology');
     });
 
-    test('getCategoryMods 按 offset 分页并计算总页数', () async {
-      final r1 = await ModrinthApi.getCategoryMods('technology');
-      expect(r1.mods.first.id, 'create');
-      expect(r1.totalPages, 3); // 45 条 / 20 每页 = 3 页
-
-      final r2 = await ModrinthApi.getCategoryMods('technology', page: 2);
-      expect(r2.mods, hasLength(1));
-      expect(r2.totalPages, 3);
+    test('getVersions 只保留 release 正式版', () async {
+      final versions = await ModrinthApi.getVersions();
+      // 快照/预发布不参与(数量是正式版的近十倍,模组基本只发正式版)
+      expect(versions.map((v) => v.version), ['1.21.1', '1.20.1']);
+      expect(versions.first.source, ModSource.modrinth);
     });
 
-    test('getFeaturedMods 按排序映射 index 并传递条数', () async {
+    test('getFilteredMods:分类/版本各一个 facet 数组,可同时生效并分页', () async {
       final uris = <Uri>[];
       ModrinthApi.clientFactory = () => MockClient((request) async {
         uris.add(request.url);
-        return _json({
-          'hits': [
-            {
-              'slug': 'sodium',
-              'title': 'Sodium',
-              'description': '',
-              'icon_url': null,
-              'downloads': 8630000,
-              'follows': 3200,
-            },
-          ],
-          'total_hits': 1,
-        });
+        return _handler(request);
       });
+      ModrinthApi.clearCaches();
 
-      final mods = await ModrinthApi.getFeaturedMods(
-        sort: FeatureSource.none,
-        limit: 5,
+      // 单分类
+      final byCategory = await ModrinthApi.getFilteredMods(
+        const Filter(
+          modSource: ModSource.modrinth,
+          featureSource: FeatureSource.none,
+          category: ModCategory(
+            id: 'technology',
+            name: '科技',
+            source: ModSource.modrinth,
+          ),
+        ),
       );
-      expect(mods.single.id, 'sodium');
-      expect(uris.single.queryParameters['index'], 'downloads');
-      expect(uris.single.queryParameters['limit'], '5');
-      expect(uris.single.queryParameters['facets'], '[["project_type:mod"]]');
-
-      await ModrinthApi.getFeaturedMods(
-        sort: FeatureSource.createTime,
-        limit: 20,
-      );
-      expect(uris.last.queryParameters['index'], 'newest');
-      await ModrinthApi.getFeaturedMods(
-        sort: FeatureSource.lastEditTime,
-        limit: 20,
-      );
-      expect(uris.last.queryParameters['index'], 'updated');
-
-      // limit=0 短路,不发请求
-      final before = uris.length;
+      expect(byCategory.mods.first.id, 'create');
+      expect(byCategory.totalPages, 3); // 45 条 / 20 每页 = 3 页
+      expect(uris.last.queryParameters['index'], 'downloads');
+      // facets 外层是 AND、内层是 OR:每个条件各占一个内层数组
       expect(
-        await ModrinthApi.getFeaturedMods(sort: FeatureSource.none, limit: 0),
-        isEmpty,
+        uris.last.queryParameters['facets'],
+        '[["categories:technology"],["project_type:mod"]]',
       );
-      expect(uris.length, before);
+
+      // 分类 + 版本 + 排序:三个条件都在(版本那个数组不能是空的)
+      await ModrinthApi.getFilteredMods(
+        const Filter(
+          modSource: ModSource.modrinth,
+          featureSource: FeatureSource.lastEditTime,
+          category: ModCategory(
+            id: 'technology',
+            name: '科技',
+            source: ModSource.modrinth,
+          ),
+          version: ModVersion(version: '1.21.1', source: ModSource.modrinth),
+        ),
+        page: 2,
+      );
+      final facets = uris.last.queryParameters['facets']!;
+      expect(facets, contains('categories:technology'));
+      expect(facets, contains('versions:1.21.1'));
+      expect(facets, contains('project_type:mod'));
+      expect(uris.last.queryParameters['index'], 'updated');
+      expect(uris.last.queryParameters['offset'], '20'); // offset 制分页
     });
   });
 
@@ -282,27 +308,25 @@ void main() {
     // 重置 mcmod 节流时间戳:保证启动时的推荐请求立即发出
     McmodApi.clearCaches();
 
-    // 启动应用:推荐/分类两个页签的请求(真实 HTTP 400)按既有节奏推完
+    // 启动应用:浏览页的筛选选项(分类 + 版本)与列表第 1 页
+    // (真实 HTTP 400)按既有节奏推完
     await tester.pumpWidget(const McModHelper());
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump();
+    for (var i = 0; i < 3; i++) {
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    }
     await tester.pump();
 
-    // 切来源:推荐页与分类页随之重拉(Modrinth,MockClient)。
-    // 推荐请求无节流立即发出,分类请求挂在 1s 节流计时器上
+    // 切来源:浏览页的筛选选项与列表都按新来源重拉(Modrinth,MockClient)。
+    // 三个请求(分类选项 / 版本选项 / 列表)依次排在 1s 节流上
     DisplaySettings.instance.setDataSource(ModSource.modrinth);
-    await tester.pump(); // 推荐请求发出
-    await tester.pump(const Duration(seconds: 1)); // 节流 → 分类请求发出
-    await tester.pump(); // 两个响应 → setState
-    await tester.pump();
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+    }
+    expect(find.text('Sodium'), findsOneWidget); // 列表已按 Modrinth 渲染
 
-    // 分类在「探索」页签(IndexedStack 默认停在首页)
-    await tester.tap(find.text('探索'));
-    await tester.pump();
-    expect(find.text('科技'), findsWidgets); // Modrinth 分类卡片已渲染
-
-    // 搜索入口在「探索」页 AppBar 的伪搜索栏上
+    // 搜索入口在浏览页 AppBar 的伪搜索栏上
     await tester.tap(find.byType(FakeSearchBar));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350)); // 路由过渡
