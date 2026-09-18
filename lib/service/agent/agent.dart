@@ -5,10 +5,10 @@ import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 import 'package:mc_mod_helper/setting/display_settings.dart';
 
-import '../../model/author.dart';
-import '../../model/mod/mod_detail.dart';
-import '../../model/mod/mod_loader.dart';
-import '../../model/mod/mod_summary.dart';
+import '../../model/author/author_summary.dart';
+import '../../model/project/project_detail.dart';
+import '../../model/project/project_loader.dart';
+import '../../model/project/project_summary.dart';
 import '../../setting/agent_settings.dart';
 import '../../setting/value/source.dart';
 
@@ -25,7 +25,7 @@ class AgentReply {
   const AgentReply({required this.text, this.mods = const []});
 
   final String text;
-  final List<ModSummary> mods;
+  final List<ProjectSummary> mods;
 }
 
 /// 详情页上下文:把当前正在浏览的模组资料交给助手,
@@ -47,14 +47,16 @@ class AgentModContext {
   });
 
   /// 从详情构造(正文去标签转纯文本)
-  factory AgentModContext.fromDetail(ModDetail detail) => AgentModContext(
+  factory AgentModContext.fromDetail(ProjectDetail detail) => AgentModContext(
     id: detail.id,
     source: detail.source,
     title: detail.title,
     subName: detail.subName,
     description: detail.description,
     body: _plainText(detail.body ?? ''),
-    authors: [for (final a in detail.authors ?? const <Author>[]) a.name],
+    authors: [
+      for (final a in detail.authors ?? const <AuthorSummary>[]) a.name,
+    ],
     platform: detail.platform,
     mcVersions: detail.mcVersions,
   );
@@ -74,7 +76,7 @@ class AgentModContext {
 
   final List<String> authors;
   final String? platform;
-  final Map<ModLoader, List<String>> mcVersions;
+  final Map<ProjectLoader, List<String>> mcVersions;
 
   /// 正文最多交给模型多少字符
   static const int maxBodyChars = 6000;
@@ -229,12 +231,12 @@ class AgentApi {
 
   /// 依次用各关键词搜索并合并去重(单个关键词失败不影响整体)。
   /// [exclude] 是「来源:标识」,命中即跳过(详情页不推荐当前模组自己)
-  static Future<List<ModSummary>> _search(
+  static Future<List<ProjectSummary>> _search(
     List<String> keywords, {
     String? exclude,
   }) async {
     final source = DisplaySettings.instance.dataSource;
-    final mods = <ModSummary>[];
+    final mods = <ProjectSummary>[];
     final seen = <String>{};
     for (final keyword in keywords) {
       try {

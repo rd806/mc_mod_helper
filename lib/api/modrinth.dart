@@ -5,15 +5,16 @@ import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
 import 'package:mc_mod_helper/setting/value/source.dart';
 
-import '../model/author.dart';
+import '../model/author/author_summary.dart';
 import '../model/filter/filter.dart';
 import '../model/filter/sort_method.dart';
-import '../model/mod/mod_category.dart';
-import '../model/mod/mod_detail.dart';
-import '../model/mod/mod_loader.dart';
-import '../model/mod/mod_version.dart';
+import '../model/project/project_category.dart';
+import '../model/project/project_detail.dart';
+import '../model/project/project_loader.dart';
+import '../model/project/project_type.dart';
+import '../model/project/project_version.dart';
 import '../model/link.dart';
-import '../model/mod/mod_summary.dart';
+import '../model/project/project_summary.dart';
 
 /// Modrinth(modrinth.com)数据获取服务。
 ///
@@ -37,14 +38,14 @@ class ModrinthApi {
   static DateTime? _lastAt;
 
   /// 会话缓存,避免重复请求
-  static final Map<String, List<ModSummary>> _searchCache = {};
-  static final Map<String, ModDetail> _detailCache = {};
-  static List<ModCategory>? _categoryCache;
+  static final Map<String, List<ProjectSummary>> _searchCache = {};
+  static final Map<String, ProjectDetail> _detailCache = {};
+  static List<ProjectCategory>? _categoryCache;
 
-  static List<ModVersion>? _versionCache;
+  static List<ProjectVersion>? _versionCache;
 
   /// 组合筛选的分页缓存:key = '筛选签名|页码'
-  static final Map<String, ({List<ModSummary> mods, int totalPages})>
+  static final Map<String, ({List<ProjectSummary> mods, int totalPages})>
   _filteredModsCache = {};
 
   /// 分页缓存上限(组合筛选的 key 空间大,不能让会话缓存无限堆积)
@@ -52,9 +53,9 @@ class ModrinthApi {
 
   /// 写分页缓存,超过上限时先淘汰最早写入的一条
   static void _cacheFiltered(
-    Map<String, ({List<ModSummary> mods, int totalPages})> cache,
+    Map<String, ({List<ProjectSummary> mods, int totalPages})> cache,
     String key,
-    ({List<ModSummary> mods, int totalPages}) value,
+    ({List<ProjectSummary> mods, int totalPages}) value,
   ) {
     if (cache.length >= _maxCachedQueries) cache.remove(cache.keys.first);
     cache[key] = value;
@@ -75,7 +76,7 @@ class ModrinthApi {
   /// 按关键词搜索模组,返回摘要列表。
   ///
   /// index=relevance 的返回顺序即相关度排序,不需要再做重排。
-  static Future<List<ModSummary>> search(String keyword) async {
+  static Future<List<ProjectSummary>> search(String keyword) async {
     final cached = _searchCache[keyword];
     if (cached != null) return cached;
 
@@ -97,7 +98,7 @@ class ModrinthApi {
   /// 获取模组详情。[sourceId] 为项目 slug(如 'jei')或项目 id。
   ///
   /// [fallbackDescription] 用于正文为空时回退(通常来自搜索结果)。
-  static Future<ModDetail> getDetail(
+  static Future<ProjectDetail> getDetail(
     String sourceId, {
     String? fallbackDescription,
   }) async {
@@ -132,7 +133,7 @@ class ModrinthApi {
   ///
   /// Modrinth 的 tag/category 接口返回全部分类(含资源包分辨率、加载器等),
   /// 这里只保留 project_type=mod 的 categories 组。
-  static Future<List<ModCategory>> getCategories() async {
+  static Future<List<ProjectCategory>> getCategories() async {
     final cached = _categoryCache;
     if (cached != null) return cached;
 
@@ -147,7 +148,7 @@ class ModrinthApi {
   ///
   /// 官方 tag 接口给的是全部版本(含快照/预发布,数量是正式版的近十倍),
   /// 模组基本只针对正式版发布,故只保留 version_type=release。
-  static Future<List<ModVersion>> getVersions() async {
+  static Future<List<ProjectVersion>> getVersions() async {
     final cached = _versionCache;
     if (cached != null) return cached;
 
@@ -165,7 +166,7 @@ class ModrinthApi {
   /// ["project_type:mod"]]` 八千余条,把两者并进同一个内层数组则八万余条),
   /// 所以组合筛选要写成「一个条件一个数组」而不是「全塞进一个数组」。
   /// 分页是 offset 制,(page-1)*20 换算。
-  static Future<({List<ModSummary> mods, int totalPages})> getFilteredMods(
+  static Future<({List<ProjectSummary> mods, int totalPages})> getFilteredMods(
     Filter filter, {
     int page = 1,
   }) async {
@@ -195,14 +196,16 @@ class ModrinthApi {
   }
 
   /// 解析游戏版本列表(tag/game_version),只取 release
-  static List<ModVersion> _parseVersions(String body) {
+  static List<ProjectVersion> _parseVersions(String body) {
     final data = jsonDecode(body) as List<dynamic>;
-    final versions = <ModVersion>[];
+    final versions = <ProjectVersion>[];
     for (final item in data.cast<Map<String, dynamic>>()) {
       if (item['version_type'] != 'release') continue;
       final version = (item['version'] as String?)?.trim() ?? '';
       if (version.isEmpty) continue;
-      versions.add(ModVersion(version: version, source: ModSource.modrinth));
+      versions.add(
+        ProjectVersion(version: version, source: ModSource.modrinth),
+      );
     }
     return versions;
   }
@@ -238,7 +241,7 @@ class ModrinthApi {
 
   // ---------- 解析 ----------
 
-  static List<ModSummary> _parseSearch(String body) {
+  static List<ProjectSummary> _parseSearch(String body) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final hits = (data['hits'] as List<dynamic>? ?? const []);
     return [
@@ -246,13 +249,19 @@ class ModrinthApi {
     ];
   }
 
+  /// Modrinth 的 project_type 取值与 [ProjectType] 的枚举名一一对应
+  /// (mod / modpack / resourcepack / shader / plugin),缺失或陌生取值按模组处理
+  static ProjectType _projectType(Object? raw) =>
+      ProjectTypeManager.typeFromString(raw is String ? raw : null);
+
   /// 单个搜索命中条目 → ModSummary;字段缺失时返回 null 丢弃
-  static ModSummary? _parseHit(Map<String, dynamic> hit) {
+  static ProjectSummary? _parseHit(Map<String, dynamic> hit) {
     final slug = (hit['slug'] as String?)?.trim() ?? '';
     final title = (hit['title'] as String?)?.trim() ?? '';
     if (slug.isEmpty || title.isEmpty) return null;
-    return ModSummary(
+    return ProjectSummary(
       id: slug,
+      type: _projectType(hit['project_type']),
       title: title,
       description: (hit['description'] as String?) ?? '',
       iconUrl: hit['icon_url'] as String?,
@@ -287,17 +296,18 @@ class ModrinthApi {
     'worldgen': '世界生成',
   };
 
-  static List<ModCategory> _parseCategories(String body) {
+  static List<ProjectCategory> _parseCategories(String body) {
     final data = jsonDecode(body) as List<dynamic>;
-    final cats = <ModCategory>[];
+    final cats = <ProjectCategory>[];
     for (final item in data.cast<Map<String, dynamic>>()) {
       if (item['project_type'] != 'mod') continue;
       if (item['header'] != 'categories') continue;
       final slug = (item['name'] as String?)?.trim() ?? '';
       if (slug.isEmpty) continue;
       cats.add(
-        ModCategory(
+        ProjectCategory(
           id: slug,
+          type: _projectType(item['project_type']),
           name: _categoryNames[slug] ?? slug,
           source: ModSource.modrinth,
         ),
@@ -306,7 +316,7 @@ class ModrinthApi {
     return cats;
   }
 
-  static ({List<ModSummary> mods, int totalPages}) _parseCategoryPage(
+  static ({List<ProjectSummary> mods, int totalPages}) _parseCategoryPage(
     String body,
   ) {
     final data = jsonDecode(body) as Map<String, dynamic>;
@@ -319,7 +329,7 @@ class ModrinthApi {
     return (mods: mods, totalPages: totalPages);
   }
 
-  static ModDetail _parseDetail(
+  static ProjectDetail _parseDetail(
     String body, {
     required String versionsBody,
     required String membersBody,
@@ -338,8 +348,9 @@ class ModrinthApi {
         (fallbackDescription ?? (data['description'] as String?) ?? '');
     final html = markdown.isEmpty ? '' : _markdownToHtml(markdown);
 
-    return ModDetail(
+    return ProjectDetail(
       id: sourceId,
+      type: _projectType(data['project_type']),
       title: title,
       subName: null,
       description: description,
@@ -364,15 +375,15 @@ class ModrinthApi {
   };
 
   /// 成员列表 → 作者:每个成员带 user(用户名/头像)与 role
-  static List<Author>? _parseAuthors(String body) {
+  static List<AuthorSummary>? _parseAuthors(String body) {
     final data = jsonDecode(body) as List<dynamic>;
-    final authors = <Author>[];
+    final authors = <AuthorSummary>[];
     for (final m in data.cast<Map<String, dynamic>>()) {
       final user = m['user'] as Map<String, dynamic>?;
       final name = (user?['username'] as String?)?.trim() ?? '';
       if (name.isEmpty) continue;
       authors.add(
-        Author(
+        AuthorSummary(
           name: name,
           avatarUrl: user?['avatar_url'] as String?,
           role:
@@ -406,9 +417,9 @@ class ModrinthApi {
   ///
   /// /v2/project/{id}/version 返回全部版本条目,每个条目带 loaders[]
   /// 与 game_versions[];按加载器聚合并去重(保持接口返回顺序)
-  static Map<ModLoader, List<String>> _parseVersionsByLoader(String body) {
+  static Map<ProjectLoader, List<String>> _parseVersionsByLoader(String body) {
     final data = jsonDecode(body) as List<dynamic>;
-    final map = <ModLoader, List<String>>{};
+    final map = <ProjectLoader, List<String>>{};
     for (final v in data.cast<Map<String, dynamic>>()) {
       final loaders = (v['loaders'] as List<dynamic>? ?? const [])
           .cast<String>();
@@ -417,7 +428,7 @@ class ModrinthApi {
       for (final loader in loaders) {
         // 接口给的是小写标识(datapack、liteloader 之类也在内),
         // 交给 ModLoader 统一认名字
-        final list = map.putIfAbsent(ModLoader.of(loader), () => []);
+        final list = map.putIfAbsent(ProjectLoader.of(loader), () => []);
         for (final gv in versions) {
           if (!list.contains(gv)) list.add(gv);
         }

@@ -10,9 +10,9 @@ import 'package:mc_mod_helper/widget/filter/filter_bar.dart';
 
 import '../api/mcmod.dart';
 import '../model/filter/sort_method.dart';
-import '../model/mod/mod_category.dart';
-import '../model/mod/mod_summary.dart';
-import '../model/mod/mod_version.dart';
+import '../model/project/project_category.dart';
+import '../model/project/project_summary.dart';
+import '../model/project/project_version.dart';
 import '../widget/dialog/captcha_dialog.dart';
 import '../widget/common/error_view.dart';
 
@@ -39,13 +39,13 @@ class _BrowsePageState extends State<BrowsePage> {
   late Filter _filter;
 
   /// 筛选栏的可选项(按数据来源抓取)
-  List<ModCategory> _categories = const [];
-  List<ModVersion> _versions = const [];
+  List<ProjectCategory> _categories = const [];
+  List<ProjectVersion> _versions = const [];
   bool _optionsLoading = true;
   String? _optionsError;
 
   /// 列表状态
-  final List<ModSummary> _mods = [];
+  final List<ProjectSummary> _mods = [];
   int _seq = 0;
   int _page = 0;
   int? _totalPages;
@@ -160,8 +160,8 @@ class _BrowsePageState extends State<BrowsePage> {
   /// 每次请求都受站点 1s 节流约束,不防抖的话连点两个 chip 会排出两次请求,
   /// 用户看到的进度比手速慢好几拍
   void _onFilterChanged(
-    ModCategory? category,
-    ModVersion? version,
+    ProjectCategory? category,
+    ProjectVersion? version,
     SortMethod sort,
   ) {
     final next = Filter(

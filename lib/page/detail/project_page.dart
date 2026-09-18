@@ -8,8 +8,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
-import '../../model/mod/mod_detail.dart';
-import '../../model/mod/mod_summary.dart';
+import '../../model/project/project_detail.dart';
+import '../../model/project/project_summary.dart';
+import '../../model/project/project_type.dart';
 import '../../service/agent/agent.dart';
 import '../../service/saves/history.dart';
 import '../../widget/dialog/agent_sheet.dart';
@@ -24,11 +25,12 @@ import '../../widget/detail/links_card.dart';
 import '../../widget/mod/favorite_toggle.dart';
 
 /// 模组详情页
-class DetailPage extends StatefulWidget {
-  const DetailPage({
+class ProjectPage extends StatefulWidget {
+  const ProjectPage({
     super.key,
     required this.id,
     required this.source,
+    this.type = ProjectType.mod,
     this.initialTitle,
     this.initialDescription,
   });
@@ -39,6 +41,9 @@ class DetailPage extends StatefulWidget {
   /// 数据来源:'mcmod' 或 'modrinth',决定用哪个 API 加载详情
   final ModSource source;
 
+  /// 项目类型(详情未加载完时的标题栏与收藏摘要用)
+  final ProjectType type;
+
   /// 详情加载完成前显示在标题栏的名称
   final String? initialTitle;
 
@@ -46,14 +51,14 @@ class DetailPage extends StatefulWidget {
   final String? initialDescription;
 
   @override
-  State<DetailPage> createState() => _DetailPageState();
+  State<ProjectPage> createState() => _ProjectPageState();
 }
 
-class _DetailPageState extends State<DetailPage> {
+class _ProjectPageState extends State<ProjectPage> {
   // 当前展示的组件
   int _currentIndex = 0;
   // 待加载的信息
-  late Future<ModDetail> _future;
+  late Future<ProjectDetail> _future;
 
   final List<(String, int)> _button = [('介绍', 0), ('信息', 1)];
   // 左右控制器
@@ -86,7 +91,7 @@ class _DetailPageState extends State<DetailPage> {
   /// 获取详情:按数据来源选择 API;
   /// 被站点安全验证拦截时弹窗人工输入验证码,通过后自动重试。
   /// 加载成功即记一条浏览历史(详情页是唯一的"浏览"入口)
-  Future<ModDetail> _load() async {
+  Future<ProjectDetail> _load() async {
     try {
       final detail = switch (widget.source) {
         ModSource.mcmod => await McmodApi.getDetail(
@@ -102,7 +107,7 @@ class _DetailPageState extends State<DetailPage> {
           fallbackDescription: widget.initialDescription,
         ),
       };
-      await HistoryService.instance.record(ModSummary.fromDetail(detail));
+      await HistoryService.instance.record(ProjectSummary.fromDetail(detail));
       return detail;
     } on McmodCaptchaException catch (e) {
       if (!mounted) rethrow;
@@ -138,7 +143,7 @@ class _DetailPageState extends State<DetailPage> {
         if (widget.source != ModSource.modrinth && mcmod == widget.id) return;
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => DetailPage(id: mcmod, source: ModSource.mcmod),
+            builder: (_) => ProjectPage(id: mcmod, source: ModSource.mcmod),
           ),
         );
         return;
@@ -153,7 +158,7 @@ class _DetailPageState extends State<DetailPage> {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) =>
-                DetailPage(id: modrinth, source: ModSource.modrinth),
+                ProjectPage(id: modrinth, source: ModSource.modrinth),
           ),
         );
         return;
@@ -205,17 +210,21 @@ class _DetailPageState extends State<DetailPage> {
       // 刘海屏
       appBar: AppBar(
         // 标题可能还在加载，不使用模组名
-        title: Text(widget.initialTitle ?? '模组详情'),
+        title: Text(
+          widget.initialTitle ??
+              '${ProjectTypeManager.getTypeTitle(widget.type)}详情',
+        ),
         actions: [
           // 收藏:详情未加载完时用初始信息构造摘要
           // (id+来源已足够匹配收藏,加载完再补全标题/图标)
-          FutureBuilder<ModDetail>(
+          FutureBuilder<ProjectDetail>(
             future: _future,
             builder: (context, snapshot) {
               final mod = snapshot.hasData
-                  ? ModSummary.fromDetail(snapshot.data!)
-                  : ModSummary(
+                  ? ProjectSummary.fromDetail(snapshot.data!)
+                  : ProjectSummary(
                       id: widget.id,
+                      type: widget.type,
                       title: widget.initialTitle ?? widget.id,
                       description: widget.initialDescription ?? '',
                       source: widget.source,
@@ -239,7 +248,7 @@ class _DetailPageState extends State<DetailPage> {
           ),
         ],
       ),
-      body: FutureBuilder<ModDetail>(
+      body: FutureBuilder<ProjectDetail>(
         future: _future,
         builder: (context, snapshot) {
           // 加载界面
@@ -256,7 +265,7 @@ class _DetailPageState extends State<DetailPage> {
       ),
       // 模组助手:总结当前模组 / 推荐相似模组。
       // 详情还没加载出来时没有可总结的内容,先不显示入口
-      floatingActionButton: FutureBuilder<ModDetail>(
+      floatingActionButton: FutureBuilder<ProjectDetail>(
         future: _future,
         builder: (context, snapshot) {
           final mod = snapshot.data;
@@ -273,7 +282,7 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   // 错误界面
-  Widget _buildError(AsyncSnapshot<ModDetail> snapshot) {
+  Widget _buildError(AsyncSnapshot<ProjectDetail> snapshot) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -292,7 +301,7 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   /// 正确的模组界面:按宽度选布局,并把返回顶部按钮浮在内容之上
-  Widget _buildSuccess(ModDetail mod) {
+  Widget _buildSuccess(ProjectDetail mod) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final narrow = constraints.maxWidth < 800;
@@ -314,7 +323,7 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   /// 宽屏布局:顶部通栏封面+名称,下方左右两栏(左宽右窄)各自独立滚动
-  Widget _buildWidePage(ModDetail mod) {
+  Widget _buildWidePage(ProjectDetail mod) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -364,7 +373,7 @@ class _DetailPageState extends State<DetailPage> {
   /// IndexedStack 高度取所有子项的最大者——长「介绍」会让切到短「信息」
   /// 后仍保留巨大的滚动范围(下方大段空白)。只放当前页签,滚动范围
   /// 与当前内容一致。
-  Widget _buildNarrowPage(ModDetail mod) {
+  Widget _buildNarrowPage(ProjectDetail mod) {
     return CustomScrollView(
       controller: _narrowController,
       slivers: [
@@ -393,7 +402,7 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   /// 「介绍」正文:整段描述(可能很长,作为单个块随页面滚动)
-  Widget _introSliver(ModDetail mod) {
+  Widget _introSliver(ProjectDetail mod) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsetsGeometry.fromLTRB(16, 0, 16, 16),
@@ -403,7 +412,7 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   /// 「信息」正文:环境/作者/链接/版本区块
-  Widget _infoSliver(ModDetail mod) {
+  Widget _infoSliver(ProjectDetail mod) {
     return SliverPadding(
       padding: const EdgeInsetsGeometry.fromLTRB(16, 0, 16, 16),
       sliver: SliverList(
@@ -417,12 +426,12 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   /// 描述区域
-  Widget _buildDescription(ModDetail mod) {
+  Widget _buildDescription(ProjectDetail mod) {
     return DescriptionCard(mod: mod, onLinkTap: _openUrl);
   }
 
   /// 其他页签: 环境/作者/链接/版本四个区块
-  Widget _buildOther(ModDetail mod) {
+  Widget _buildOther(ProjectDetail mod) {
     return Column(
       children: [
         EnvironmentCard(mod: mod),

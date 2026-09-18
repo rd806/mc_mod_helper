@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
 import '../../icon/icon_manager.dart';
-import '../../model/mod/mod_detail.dart';
+import '../../model/project/project_detail.dart';
 import '../common/image_box.dart';
 
 /// 详情页封面与标题的公共基类:
@@ -11,7 +11,7 @@ import '../common/image_box.dart';
 abstract class ModCover extends StatelessWidget {
   const ModCover({super.key, required this.mod});
 
-  final ModDetail mod;
+  final ProjectDetail mod;
 
   /// 打开灯箱
   void _showLightbox(BuildContext context, String url) {
@@ -85,7 +85,7 @@ abstract class ModCover extends StatelessWidget {
   }
 
   // 显示来源
-  Widget _buildSource(ModDetail mod, ThemeData theme) {
+  Widget _buildSource(ProjectDetail mod, ThemeData theme) {
     return Chip(
       avatar: IconManager.getIconForDataSource(mod.source),
       backgroundColor: Colors.transparent,
@@ -97,7 +97,7 @@ abstract class ModCover extends StatelessWidget {
   }
 
   // 显示描述
-  Widget _buildDescription(ModDetail mod, ThemeData theme) {
+  Widget _buildDescription(ProjectDetail mod, ThemeData theme) {
     final description = mod.description;
     if (description == null || description.isEmpty) {
       return const SizedBox.shrink();
@@ -112,7 +112,7 @@ abstract class ModCover extends StatelessWidget {
   }
 
   // 统计信息
-  Widget _buildStatistic(ModDetail mod, ThemeData theme) {
+  Widget _buildStatistic(ProjectDetail mod, ThemeData theme) {
     final statistic = mod.statistics;
     List<Widget> widget = [];
 

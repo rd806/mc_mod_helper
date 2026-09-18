@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../model/mod/mod_summary.dart';
+import '../../model/project/project_summary.dart';
+import '../../model/project/project_type.dart';
 import '../../setting/value/source.dart';
 
 /// 助手对话里的一条消息(用户文本,或助手文本 + 候选模组)。
@@ -25,12 +26,12 @@ class AgentChatItem {
   /// 助手回复([mods] 为空表示纯聊天)
   factory AgentChatItem.assistant(
     String text, {
-    List<ModSummary> mods = const [],
+    List<ProjectSummary> mods = const [],
   }) => AgentChatItem(fromUser: false, text: text, mods: mods);
 
   final bool fromUser;
   final String text;
-  final List<ModSummary> mods;
+  final List<ProjectSummary> mods;
 
   Map<String, Object?> toJson() => {
     'fromUser': fromUser,
@@ -53,27 +54,30 @@ class AgentChatItem {
     );
   }
 
-  static Map<String, Object?> _modToJson(ModSummary mod) => {
+  static Map<String, Object?> _modToJson(ProjectSummary mod) => {
     'id': mod.id,
     'title': mod.title,
     'description': mod.description,
     'source': mod.source.name,
+    'type': ProjectTypeManager.typeToString(mod.type),
     'subName': mod.subName,
     'iconUrl': mod.iconUrl,
   };
 
-  static ModSummary? _modFromJson(Object? raw) {
+  static ProjectSummary? _modFromJson(Object? raw) {
     if (raw is! Map) return null;
     final id = raw['id'];
     final title = raw['title'];
     if (id is! String || title is! String) return null;
-    return ModSummary(
+    return ProjectSummary(
       id: id,
       title: title,
       description: raw['description'] as String? ?? '',
       subName: raw['subName'] as String?,
       iconUrl: raw['iconUrl'] as String?,
       source: SourceManager.sourceToString(raw['source'] as String?),
+      // 缺失(这次改动之前存下的对话)按 mod 处理
+      type: ProjectTypeManager.typeFromString(raw['type'] as String?),
     );
   }
 }

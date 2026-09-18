@@ -9,7 +9,7 @@ import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/modrinth.dart';
-import 'package:mc_mod_helper/page/mod/description.dart';
+import 'package:mc_mod_helper/page/detail/project_page.dart';
 import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
@@ -81,7 +81,7 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
-        home: DetailPage(
+        home: ProjectPage(
           id: 'jei',
           source: ModSource.modrinth,
           initialTitle: 'JEI',
@@ -186,7 +186,7 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
-        home: DetailPage(
+        home: ProjectPage(
           id: 'jei',
           source: ModSource.modrinth,
           initialTitle: 'JEI',
@@ -220,7 +220,7 @@ void main() {
     // 验证按钮已绑上新 controller 并随方向显示
     final leftList = find
         .descendant(
-          of: find.byType(DetailPage),
+          of: find.byType(ProjectPage),
           matching: find.byType(ListView),
         )
         .first;

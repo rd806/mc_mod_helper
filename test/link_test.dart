@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mc_mod_helper/icon/link_icons.dart';
 import 'package:mc_mod_helper/model/link.dart';
-import 'package:mc_mod_helper/model/mod/mod_loader.dart';
+import 'package:mc_mod_helper/model/project/project_loader.dart';
 
 /// 图标内容(用于断言取到的是哪一个)
 IconData _data(Widget icon) => (icon as Icon).icon!;
@@ -32,8 +32,8 @@ void main() {
 
   test('加载器名按全等认:CurseForge 不会被 Forge 抢走', () {
     // 名字就是加载器名时给加载器图标(与旧行为一致)
-    expect(Link.getIcon('Forge'), modLoaders['forge']!.icon);
-    expect(Link.getIcon('fabric'), modLoaders['fabric']!.icon);
+    expect(Link.getIcon('Forge'), projectLoaders['forge']!.icon);
+    expect(Link.getIcon('fabric'), projectLoaders['fabric']!.icon);
     // 关键:加载器不参与包含匹配。若参与,'CurseForge' 会命中 'forge'
     expect(_data(Link.getIcon('CurseForge')), LinkIcons.curseforge);
     expect(_data(Link.getIcon('NeoForge 下载')), Icons.link);

@@ -3,16 +3,17 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
-import 'package:mc_mod_helper/model/mod/mod_loader.dart';
+import 'package:mc_mod_helper/model/project/project_loader.dart';
 
-import '../model/author.dart';
+import '../model/author/author_summary.dart';
 import '../model/filter/filter.dart';
 import '../model/filter/sort_method.dart';
-import '../model/mod/mod_category.dart';
-import '../model/mod/mod_detail.dart';
-import '../model/mod/mod_version.dart';
+import '../model/project/project_category.dart';
+import '../model/project/project_detail.dart';
+import '../model/project/project_type.dart';
+import '../model/project/project_version.dart';
 import '../model/link.dart';
-import '../model/mod/mod_summary.dart';
+import '../model/project/project_summary.dart';
 import '../setting/value/source.dart';
 
 /// CurseForge(curseforge.com)数据获取服务。
@@ -42,14 +43,14 @@ class CurseforgeApi {
   static DateTime? _lastAt;
 
   /// 会话缓存,避免重复请求
-  static final Map<String, List<ModSummary>> _searchCache = {};
-  static final Map<String, ModDetail> _detailCache = {};
-  static List<ModCategory>? _categoryCache;
+  static final Map<String, List<ProjectSummary>> _searchCache = {};
+  static final Map<String, ProjectDetail> _detailCache = {};
+  static List<ProjectCategory>? _categoryCache;
 
-  static List<ModVersion>? _versionCache;
+  static List<ProjectVersion>? _versionCache;
 
   /// 组合筛选的分页缓存:key = '筛选签名|页码'
-  static final Map<String, ({List<ModSummary> mods, int totalPages})>
+  static final Map<String, ({List<ProjectSummary> mods, int totalPages})>
   _filteredModsCache = {};
 
   /// 分页缓存上限(组合筛选的 key 空间大,不能让会话缓存无限堆积)
@@ -57,9 +58,9 @@ class CurseforgeApi {
 
   /// 写分页缓存,超过上限时先淘汰最早写入的一条
   static void _cacheFiltered(
-    Map<String, ({List<ModSummary> mods, int totalPages})> cache,
+    Map<String, ({List<ProjectSummary> mods, int totalPages})> cache,
     String key,
-    ({List<ModSummary> mods, int totalPages}) value,
+    ({List<ProjectSummary> mods, int totalPages}) value,
   ) {
     if (cache.length >= _maxCachedQueries) cache.remove(cache.keys.first);
     cache[key] = value;
@@ -115,7 +116,7 @@ class CurseforgeApi {
   /// 按关键词搜索模组,返回摘要列表。
   ///
   /// searchFilter 触发站内相关度排序,返回顺序即相关度顺序。
-  static Future<List<ModSummary>> search(String keyword) async {
+  static Future<List<ProjectSummary>> search(String keyword) async {
     final cached = _searchCache[keyword];
     if (cached != null) return cached;
 
@@ -138,7 +139,7 @@ class CurseforgeApi {
   /// 获取模组详情。[sourceId] 为 CurseForge 的 modId(数字字符串)。
   ///
   /// 详情需要两次请求:模组基本信息 + 文件列表(文件携带版本与加载器)。
-  static Future<ModDetail> getDetail(
+  static Future<ProjectDetail> getDetail(
     String sourceId, {
     String? fallbackDescription,
   }) async {
@@ -171,7 +172,7 @@ class CurseforgeApi {
   }
 
   /// 获取模组分类列表(classId=6 下 Minecraft 的模组分类)
-  static Future<List<ModCategory>> getCategories() async {
+  static Future<List<ProjectCategory>> getCategories() async {
     final cached = _categoryCache;
     if (cached != null) return cached;
 
@@ -188,7 +189,7 @@ class CurseforgeApi {
   ///
   /// 官方接口给的是全部版本(含快照/预发布),这里只留形如 `1.20.1` 的正式版:
   /// 快照名的形态各异(`1.21-pre1`、`23w31a`…),用「只有数字与点」来筛。
-  static Future<List<ModVersion>> getVersions() async {
+  static Future<List<ProjectVersion>> getVersions() async {
     final cached = _versionCache;
     if (cached != null) return cached;
 
@@ -205,14 +206,14 @@ class CurseforgeApi {
   /// [Filter.category] 的 id 必须是数字(CF 用数字分类 id),
   /// 非数字时返回空结果而不是抛异常(沿用旧行为)。
   /// 分页是 index 偏移制,(page-1)*20 换算。
-  static Future<({List<ModSummary> mods, int totalPages})> getFilteredMods(
+  static Future<({List<ProjectSummary> mods, int totalPages})> getFilteredMods(
     Filter filter, {
     int page = 1,
   }) async {
     final categoryId = filter.category?.id;
     final id = categoryId == null ? null : int.tryParse(categoryId);
     if (categoryId != null && id == null) {
-      return (mods: const <ModSummary>[], totalPages: 0);
+      return (mods: const <ProjectSummary>[], totalPages: 0);
     }
     final key = '${filter.signature}|$page';
     final cached = _filteredModsCache[key];
@@ -263,7 +264,7 @@ class CurseforgeApi {
 
   // ---------- 解析 ----------
 
-  static List<ModSummary> _parseSearch(String body) {
+  static List<ProjectSummary> _parseSearch(String body) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final mods = (data['data'] as List<dynamic>? ?? const []);
     return [
@@ -272,14 +273,28 @@ class CurseforgeApi {
     ];
   }
 
+  /// classId → 项目类型(Minecraft 下:6 模组、4471 整合包、12 材质包、
+  /// 6552 光影、5 服务端插件)。表外的 classId(以及字段缺失)按模组处理
+  static const Map<int, ProjectType> _classTypes = {
+    6: ProjectType.mod,
+    4471: ProjectType.modpack,
+    12: ProjectType.resourcepack,
+    6552: ProjectType.shader,
+    5: ProjectType.plugin,
+  };
+
+  static ProjectType _projectType(Object? classId) =>
+      _classTypes[classId is num ? classId.toInt() : null] ?? ProjectType.mod;
+
   /// 单个搜索命中条目 → ModSummary;字段缺失时返回 null 丢弃
-  static ModSummary? _parseModSummary(Map<String, dynamic> mod) {
+  static ProjectSummary? _parseModSummary(Map<String, dynamic> mod) {
     final id = (mod['id'] as num?)?.toInt().toString() ?? '';
     final name = (mod['name'] as String?)?.trim() ?? '';
     if (id.isEmpty || name.isEmpty) return null;
     final logo = mod['logo'] as Map<String, dynamic>?;
-    return ModSummary(
+    return ProjectSummary(
       id: id,
+      type: _projectType(mod['classId']),
       title: name,
       description: (mod['summary'] as String?) ?? '',
       iconUrl: logo?['url'] as String?,
@@ -291,17 +306,18 @@ class CurseforgeApi {
     );
   }
 
-  static List<ModCategory> _parseCategories(String body) {
+  static List<ProjectCategory> _parseCategories(String body) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final items = (data['data'] as List<dynamic>? ?? const []);
-    final cats = <ModCategory>[];
+    final cats = <ProjectCategory>[];
     for (final item in items.cast<Map<String, dynamic>>()) {
       final id = (item['id'] as num?)?.toInt();
       final name = (item['name'] as String?)?.trim() ?? '';
       if (id == null || name.isEmpty) continue;
       cats.add(
-        ModCategory(
+        ProjectCategory(
           id: id.toString(),
+          type: _projectType(item['classId']),
           name: _categoryNames[name] ?? name,
           source: ModSource.curseforge,
         ),
@@ -311,9 +327,9 @@ class CurseforgeApi {
   }
 
   /// 解析版本列表:只保留「数字与点」的正式版(快照名形态各异,一并筛掉)
-  static List<ModVersion> _parseVersions(String body) {
+  static List<ProjectVersion> _parseVersions(String body) {
     final data = jsonDecode(body) as Map<String, dynamic>;
-    final versions = <ModVersion>[];
+    final versions = <ProjectVersion>[];
     for (final item
         in (data['data'] as List<dynamic>? ?? const [])
             .cast<Map<String, dynamic>>()) {
@@ -321,17 +337,19 @@ class CurseforgeApi {
       if (version.isEmpty) continue;
       if (!RegExp(r'^\d+(\.\d+)*$').hasMatch(version)) continue;
       if (versions.any((v) => v.version == version)) continue;
-      versions.add(ModVersion(version: version, source: ModSource.curseforge));
+      versions.add(
+        ProjectVersion(version: version, source: ModSource.curseforge),
+      );
     }
     return versions;
   }
 
-  static ({List<ModSummary> mods, int totalPages}) _parseCategoryPage(
+  static ({List<ProjectSummary> mods, int totalPages}) _parseCategoryPage(
     String body,
   ) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final mods = (data['data'] as List<dynamic>? ?? const []);
-    final parsed = <ModSummary>[];
+    final parsed = <ProjectSummary>[];
     for (final mod in mods.cast<Map<String, dynamic>>()) {
       final summary = _parseModSummary(mod);
       if (summary != null) parsed.add(summary);
@@ -343,7 +361,7 @@ class CurseforgeApi {
     return (mods: parsed, totalPages: totalPages);
   }
 
-  static ModDetail _parseDetail(
+  static ProjectDetail _parseDetail(
     String body, {
     required String filesBody,
     required String sourceId,
@@ -362,8 +380,9 @@ class CurseforgeApi {
     final html = summary.isEmpty ? '' : _markdownToHtml(summary);
     final logo = data['logo'] as Map<String, dynamic>?;
 
-    return ModDetail(
+    return ProjectDetail(
       id: sourceId,
+      type: _projectType(data['classId']),
       title: title,
       subName: null,
       body: html.isEmpty ? null : html,
@@ -378,13 +397,13 @@ class CurseforgeApi {
   }
 
   /// 作者:API 的 authors 列表(id/name/url),无头像与角色信息
-  static List<Author>? _parseAuthors(Map<String, dynamic> data) {
-    final authors = <Author>[];
+  static List<AuthorSummary>? _parseAuthors(Map<String, dynamic> data) {
+    final authors = <AuthorSummary>[];
     for (final a in (data['authors'] as List<dynamic>? ?? const [])) {
       if (a is! Map<String, dynamic>) continue;
       final name = (a['name'] as String?)?.trim() ?? '';
       if (name.isEmpty) continue;
-      authors.add(Author(name: name));
+      authors.add(AuthorSummary(name: name));
     }
     return authors.isEmpty ? null : authors;
   }
@@ -402,10 +421,10 @@ class CurseforgeApi {
   /// CurseForge 文件的 gameVersions 把版本号与加载器名混在同一列表
   /// (如 ['1.21.1', 'Fabric']):含加载器名的按加载器分组,
   /// 版本号(含 '.')收集进对应组;无加载器信息的进 'default'。
-  static Map<ModLoader, List<String>> _parseVersionsFromFiles(String body) {
+  static Map<ProjectLoader, List<String>> _parseVersionsFromFiles(String body) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final files = (data['data'] as List<dynamic>? ?? const []);
-    final map = <ModLoader, List<String>>{};
+    final map = <ProjectLoader, List<String>>{};
 
     for (final file in files.cast<Map<String, dynamic>>()) {
       final gameVersions = (file['gameVersions'] as List<dynamic>? ?? const [])
@@ -413,14 +432,14 @@ class CurseforgeApi {
 
       final loaders = [
         for (final v in gameVersions)
-          if (_cfLoaders.contains(v)) ModLoader.of(v),
+          if (_cfLoaders.contains(v)) ProjectLoader.of(v),
       ];
 
       // 版本号:含 '.' 的条目(加载器名不带点)
       final mcVersions = gameVersions.where((v) => v.contains('.')).toList();
 
       // 文件没标加载器时归到 'default'(ModLoader 会保留这个名字并给通用图标)
-      final targets = loaders.isEmpty ? [ModLoader.of('default')] : loaders;
+      final targets = loaders.isEmpty ? [ProjectLoader.of('default')] : loaders;
       for (final loader in targets) {
         final list = map.putIfAbsent(loader, () => []);
         for (final v in mcVersions) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../icon/link_icons.dart';
-import 'mod/mod_loader.dart';
+import 'project/project_loader.dart';
 
 /// 链接名关键词 → 图标。
 ///
@@ -53,7 +53,7 @@ class Link {
   /// 且不能参与包含匹配 —— 否则 'CurseForge' 会被 'forge' 抢先命中。
   static Widget getIcon(String name) {
     final n = name.trim().toLowerCase();
-    final loader = modLoaders[n];
+    final loader = projectLoaders[n];
     if (loader != null) return loader.icon;
     for (final entry in linkIcon.entries) {
       if (n.contains(entry.key)) return entry.value;

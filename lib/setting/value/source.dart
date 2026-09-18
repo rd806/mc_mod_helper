@@ -1,8 +1,8 @@
 import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
-import 'package:mc_mod_helper/model/mod/mod_category.dart';
-import 'package:mc_mod_helper/model/mod/mod_summary.dart';
-import 'package:mc_mod_helper/model/mod/mod_version.dart';
+import 'package:mc_mod_helper/model/project/project_category.dart';
+import 'package:mc_mod_helper/model/project/project_summary.dart';
+import 'package:mc_mod_helper/model/project/project_version.dart';
 
 import '../../api/mcmod.dart';
 import '../../api/modrinth.dart';
@@ -25,7 +25,7 @@ class SourceManager {
   ///
   /// 各来源自己把 [Filter] 翻译成平台的参数(分类/版本/排序的拼法互不相同,
   /// 能否组合由各站点决定);浏览页只负责「显示的就是筛选栏里选的」。
-  static Future<({List<ModSummary> mods, int totalPages})> getFilteredMods(
+  static Future<({List<ProjectSummary> mods, int totalPages})> getFilteredMods(
     Filter filter, {
     int page = 1,
   }) async {
@@ -40,7 +40,7 @@ class SourceManager {
   }
 
   /// 获取主页分类
-  static Future<List<ModCategory>> getCategory(ModSource source) async {
+  static Future<List<ProjectCategory>> getCategory(ModSource source) async {
     switch (source) {
       case ModSource.mcmod:
         return await McmodApi.getCategories();
@@ -52,7 +52,7 @@ class SourceManager {
   }
 
   /// 获取游戏版本列表(浏览页筛选栏的版本选项)
-  static Future<List<ModVersion>> getVersions(ModSource source) async {
+  static Future<List<ProjectVersion>> getVersions(ModSource source) async {
     switch (source) {
       case ModSource.mcmod:
         return await McmodApi.getVersions();
@@ -64,7 +64,7 @@ class SourceManager {
   }
 
   /// 单一搜索
-  static Future<List<ModSummary>> getSearch(
+  static Future<List<ProjectSummary>> getSearch(
     ModSource source,
     String keyword,
   ) async {
@@ -88,10 +88,13 @@ class SourceManager {
   /// 弹窗让用户手动解决,解决后整组重试(成功来源的结果有会话缓存,
   /// 重试无额外请求开销)。
   static Future<
-    ({Map<ModSource, List<ModSummary>> results, Map<ModSource, String> errors})
+    ({
+      Map<ModSource, List<ProjectSummary>> results,
+      Map<ModSource, String> errors,
+    })
   >
   getTotalSearch(List<ModSource> modSource, String keyword) async {
-    final results = <ModSource, List<ModSummary>>{};
+    final results = <ModSource, List<ProjectSummary>>{};
     final errors = <ModSource, String>{};
     // 并发发起,每个来源独立收集结果或错误
     final entries = await Future.wait(

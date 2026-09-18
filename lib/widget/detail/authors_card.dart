@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../model/author.dart';
-import '../../model/mod/mod_detail.dart';
+import '../../model/author/author_summary.dart';
+import '../../model/project/project_detail.dart';
 import '../common/collapsible_widgets.dart';
 import '../common/section_title.dart';
 
@@ -9,7 +9,7 @@ import '../common/section_title.dart';
 class AuthorsCard extends StatelessWidget {
   const AuthorsCard({super.key, required this.mod});
 
-  final ModDetail mod;
+  final ProjectDetail mod;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +27,7 @@ class AuthorsCard extends StatelessWidget {
             CollapsibleWidgets(
               widget: [
                 for (final author in authors)
-                  Author.buildAuthorChip(author, theme),
+                  AuthorSummary.buildAuthorChip(author, theme),
               ],
             ),
           ],

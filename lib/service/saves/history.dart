@@ -1,7 +1,8 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
-import 'package:mc_mod_helper/model/mod/mod_summary.dart';
+import 'package:mc_mod_helper/model/project/project_summary.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:path/path.dart' as p;
 // 副作用导入:sqflite 库加载时把插件工厂设为默认工厂
@@ -23,9 +24,11 @@ class History {
     this.subName,
     this.iconUrl,
     ModSource source = ModSource.mcmod,
+    ProjectType type = ProjectType.mod,
     required this.date,
     this.visits = 1,
-  }) : sourceName = source.name;
+  }) : sourceName = source.name,
+       typeName = ProjectTypeManager.typeToString(type);
 
   /// 统一模组标识(字符串):MC百科为数字字符串,Modrinth 为 slug
   final String id;
@@ -40,6 +43,9 @@ class History {
   /// 数据来源的枚举名(存 name 而非 index:枚举增删/改序后旧数据不失效)
   final String sourceName;
 
+  /// 项目类型的枚举名(如 'modpack');存法与 [sourceName] 相同
+  final String typeName;
+
   /// 最近一次浏览时间(Unix 时间戳,毫秒)
   final double date;
 
@@ -48,7 +54,7 @@ class History {
 
   /// 从列表页/详情页摘要构造
   factory History.fromSummary(
-    ModSummary mod, {
+    ProjectSummary mod, {
     required DateTime time,
     int visits = 1,
   }) {
@@ -59,6 +65,7 @@ class History {
       subName: mod.subName,
       iconUrl: mod.iconUrl,
       source: mod.source,
+      type: mod.type,
       date: time.millisecondsSinceEpoch.toDouble(),
       visits: visits,
     );
@@ -67,12 +74,16 @@ class History {
   /// 数据来源(由持久化的枚举名还原,未知值回落到 mcmod)
   ModSource get source => SourceManager.sourceToString(sourceName);
 
+  /// 项目类型(由持久化的枚举名还原,未知值/旧记录回落到 mod)
+  ProjectType get type => ProjectTypeManager.typeFromString(typeName);
+
   /// 最近浏览时间
   DateTime get time => DateTime.fromMillisecondsSinceEpoch(date.round());
 
   /// 转成列表页可用的摘要
-  ModSummary toSummary() => ModSummary(
+  ProjectSummary toSummary() => ProjectSummary(
     id: id,
+    type: type,
     title: title,
     description: description ?? '',
     subName: subName,
@@ -87,6 +98,7 @@ class History {
     subName: subName,
     iconUrl: iconUrl,
     source: source,
+    type: type,
     date: (time ?? this.time).millisecondsSinceEpoch.toDouble(),
     visits: visits ?? this.visits,
   );
@@ -115,6 +127,7 @@ class HistoryService extends ChangeNotifier {
       sub_name TEXT,
       icon_url TEXT,
       source TEXT NOT NULL,
+      type TEXT,
       date REAL NOT NULL,
       visits INTEGER NOT NULL DEFAULT 1,
       PRIMARY KEY(source, id)
@@ -138,8 +151,15 @@ class HistoryService extends ChangeNotifier {
     _db = await factory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
         onCreate: (db, version) => db.execute(_createSql),
+        onUpgrade: (db, oldVersion, newVersion) async {
+          // v1 → v2:新增项目类型列。旧记录留空(NULL),
+          // 读出来按 mod 处理(那时应用里只有模组)
+          if (oldVersion < 2) {
+            await db.execute('ALTER TABLE history ADD COLUMN type TEXT');
+          }
+        },
       ),
     );
     final rows = await _db!.query('history', orderBy: 'date DESC');
@@ -150,13 +170,13 @@ class HistoryService extends ChangeNotifier {
   List<History> list() => List.unmodifiable(_cache);
 
   /// 浏览历史的摘要(列表页直接渲染)
-  List<ModSummary> summaries() => [for (final h in _cache) h.toSummary()];
+  List<ProjectSummary> summaries() => [for (final h in _cache) h.toSummary()];
 
   /// 记录一次浏览。
   ///
   /// 同一个模组已有记录时只更新时间与次数并置顶(不重复插入);
   /// 先更新缓存让界面立即响应,再异步落库
-  Future<void> record(ModSummary mod, {DateTime? time}) async {
+  Future<void> record(ProjectSummary mod, {DateTime? time}) async {
     final at = time ?? DateTime.now();
     final index = _cache.indexWhere(
       (h) => h.id == mod.id && h.sourceName == mod.source.name,
@@ -175,7 +195,7 @@ class HistoryService extends ChangeNotifier {
   }
 
   /// 删除某条记录(未记录时无操作)
-  Future<void> remove(ModSummary mod) async {
+  Future<void> remove(ProjectSummary mod) async {
     final before = _cache.length;
     _cache.removeWhere(
       (h) => h.id == mod.id && h.sourceName == mod.source.name,
@@ -213,6 +233,7 @@ class HistoryService extends ChangeNotifier {
       'sub_name': entry.subName,
       'icon_url': entry.iconUrl,
       'source': entry.sourceName,
+      'type': entry.typeName,
       'date': entry.date,
       'visits': entry.visits,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -260,6 +281,7 @@ class HistoryService extends ChangeNotifier {
     subName: row['sub_name'] as String?,
     iconUrl: row['icon_url'] as String?,
     source: SourceManager.sourceToString(row['source'] as String?),
+    type: ProjectTypeManager.typeFromString(row['type'] as String?),
     date: (row['date']! as num).toDouble(),
     visits: (row['visits'] as num?)?.toInt() ?? 1,
   );

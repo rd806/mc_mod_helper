@@ -8,9 +8,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
-import 'package:mc_mod_helper/model/mod/mod_category.dart';
-import 'package:mc_mod_helper/model/mod/mod_loader.dart';
-import 'package:mc_mod_helper/model/mod/mod_version.dart';
+import 'package:mc_mod_helper/model/project/project_category.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
+import 'package:mc_mod_helper/model/project/project_loader.dart';
+import 'package:mc_mod_helper/model/project/project_version.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
@@ -140,6 +141,39 @@ void main() {
     expect(m.statisticsText, '下载 863万 · 关注 3200');
   });
 
+  test('classId 映射到 ProjectType(表外的 classId 按模组处理)', () async {
+    // CurseForge 用数字 classId 区分资源种类:4471 整合包、6552 光影
+    CurseforgeApi.clientFactory = () => MockClient((request) async {
+      final path = request.url.path;
+      if (path == '/v1/mods/search') {
+        return _json({
+          'data': [
+            {'id': 1, 'name': '整合包', 'summary': '', 'classId': 4471},
+            {'id': 2, 'name': '光影', 'summary': '', 'classId': 6552},
+            {'id': 3, 'name': '没给 classId', 'summary': ''},
+          ],
+        });
+      }
+      if (path == '/v1/mods/4') {
+        return _json({
+          'data': {'id': 4, 'name': '插件', 'summary': '', 'classId': 5},
+        });
+      }
+      if (path == '/v1/mods/4/files') return _json({'data': const []});
+      return http.Response('', 404);
+    });
+    CurseforgeApi.clearCaches(); // 重置惰性客户端与节流时间,让上面的工厂生效
+
+    final hits = await CurseforgeApi.search('x');
+    expect(hits.map((h) => h.type), [
+      ProjectType.modpack,
+      ProjectType.shader,
+      ProjectType.mod,
+    ]);
+
+    expect((await CurseforgeApi.getDetail('4')).type, ProjectType.plugin);
+  });
+
   test('getDetail:name 作标题、logo 作封面、文件列表分组版本与加载器', () async {
     final d = await CurseforgeApi.getDetail('238222');
     expect(d.id, '238222');
@@ -149,9 +183,9 @@ void main() {
     expect(d.coverUrl, 'https://media.forgecdn.net/avatars/sodium.png');
     // 版本按加载器分组(加载器名与版本号混在 gameVersions 里)
     expect(d.mcVersions, {
-      modLoaders['fabric']!: ['1.21.1'],
-      modLoaders['forge']!: ['1.20.4'],
-      modLoaders['neoforge']!: ['1.20.4'],
+      projectLoaders['fabric']!: ['1.21.1'],
+      projectLoaders['forge']!: ['1.20.4'],
+      projectLoaders['neoforge']!: ['1.20.4'],
     });
     // 键换成 ModLoader 后,名称已是规范写法(CurseForge 本来就给这个写法)
     expect(d.mcVersions.keys.map((l) => l.name), [
@@ -197,12 +231,16 @@ void main() {
       const Filter(
         modSource: ModSource.curseforge,
         sortMethod: SortMethod.lastEditTime,
-        category: ModCategory(
+        category: ProjectCategory(
           id: '416',
+          type: ProjectType.mod,
           name: '科技',
           source: ModSource.curseforge,
         ),
-        version: ModVersion(version: '1.21.1', source: ModSource.curseforge),
+        version: ProjectVersion(
+          version: '1.21.1',
+          source: ModSource.curseforge,
+        ),
       ),
     );
     expect(r1.mods.first.id, '250898');
@@ -219,8 +257,9 @@ void main() {
       const Filter(
         modSource: ModSource.curseforge,
         sortMethod: SortMethod.lastEditTime,
-        category: ModCategory(
+        category: ProjectCategory(
           id: '416',
+          type: ProjectType.mod,
           name: '科技',
           source: ModSource.curseforge,
         ),
@@ -239,8 +278,9 @@ void main() {
       const Filter(
         modSource: ModSource.curseforge,
         sortMethod: SortMethod.none,
-        category: ModCategory(
+        category: ProjectCategory(
           id: 'not-a-number',
+          type: ProjectType.mod,
           name: '?',
           source: ModSource.curseforge,
         ),

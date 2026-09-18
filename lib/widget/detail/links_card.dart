@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../model/mod/mod_detail.dart';
+import '../../model/project/project_detail.dart';
 import '../common/collapsible_widgets.dart';
 import '../common/section_title.dart';
 
@@ -8,7 +8,7 @@ import '../common/section_title.dart';
 class LinksCard extends StatelessWidget {
   const LinksCard({super.key, required this.mod, required this.onOpenUrl});
 
-  final ModDetail mod;
+  final ProjectDetail mod;
 
   /// 链接点击回调(灯箱/浏览器/应用内跳转由调用方分流)
   final void Function(String url) onOpenUrl;

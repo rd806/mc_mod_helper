@@ -7,7 +7,7 @@ import 'package:mc_mod_helper/setting/display_settings.dart';
 
 import '../../api/mcmod.dart';
 import '../../icon/icon_manager.dart';
-import '../../model/mod/mod_summary.dart';
+import '../../model/project/project_summary.dart';
 import '../../widget/dialog/captcha_dialog.dart';
 import '../../widget/common/error_view.dart';
 
@@ -31,7 +31,7 @@ class _SearchPageState extends State<SearchPage> {
   final List<ModSource> _source = const [ModSource.mcmod, ModSource.modrinth];
 
   /// 各来源搜索结果(仅成功来源,空列表也正常收录)
-  Map<ModSource, List<ModSummary>> _totalResults = const {};
+  Map<ModSource, List<ProjectSummary>> _totalResults = const {};
 
   /// 失败来源的错误信息
   Map<ModSource, String> _sourceErrors = const {};

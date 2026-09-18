@@ -8,14 +8,15 @@ import 'package:http/http.dart' as http;
 import 'package:mc_mod_helper/model/filter/sort_method.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
-import '../model/author.dart';
+import '../model/author/author_summary.dart';
 import '../model/filter/filter.dart';
-import '../model/mod/mod_category.dart';
-import '../model/mod/mod_detail.dart';
-import '../model/mod/mod_loader.dart';
-import '../model/mod/mod_version.dart';
+import '../model/project/project_category.dart';
+import '../model/project/project_detail.dart';
+import '../model/project/project_loader.dart';
+import '../model/project/project_type.dart';
+import '../model/project/project_version.dart';
 import '../model/link.dart';
-import '../model/mod/mod_summary.dart';
+import '../model/project/project_summary.dart';
 
 /// 被站点限流时抛出的异常
 class McmodThrottledException implements Exception {
@@ -98,16 +99,16 @@ class McmodApi {
   static DateTime? _lastWwwAt;
 
   /// 会话缓存,避免重复请求触发限流
-  static final Map<String, List<ModSummary>> _searchCache = {};
-  static final Map<String, ModDetail> _detailCache = {};
-  static List<ModCategory>? _categoryCache;
+  static final Map<String, List<ProjectSummary>> _searchCache = {};
+  static final Map<String, ProjectDetail> _detailCache = {};
+  static List<ProjectCategory>? _categoryCache;
 
   /// 首页 HTML:分类卡片在这上面(版本列表在 modlist 页,各有各的缓存)
   static String? _homeCache;
-  static List<ModVersion>? _versionCache;
+  static List<ProjectVersion>? _versionCache;
 
   /// 组合筛选的分页缓存:key = '筛选签名|页码'
-  static final Map<String, ({List<ModSummary> mods, int totalPages})>
+  static final Map<String, ({List<ProjectSummary> mods, int totalPages})>
   _filteredModsCache = {};
 
   /// 分页缓存上限。组合筛选后 key 的空间是「分类 × 版本 × 排序 × 页码」,
@@ -118,9 +119,9 @@ class McmodApi {
   /// 写分页缓存,超过上限时先淘汰最早写入的一条
   /// (Map 默认按插入序迭代,keys.first 就是最老的那条)
   static void _cacheFiltered(
-    Map<String, ({List<ModSummary> mods, int totalPages})> cache,
+    Map<String, ({List<ProjectSummary> mods, int totalPages})> cache,
     String key,
-    ({List<ModSummary> mods, int totalPages}) value,
+    ({List<ProjectSummary> mods, int totalPages}) value,
   ) {
     if (cache.length >= _maxCachedQueries) cache.remove(cache.keys.first);
     cache[key] = value;
@@ -144,7 +145,7 @@ class McmodApi {
   ///
   /// 与推荐/分类共用 modlist 接口:
   /// https://www.mcmod.cn/modlist.html?key={keyword}
-  static Future<List<ModSummary>> search(String keyword) async {
+  static Future<List<ProjectSummary>> search(String keyword) async {
     final cached = _searchCache[keyword];
     if (cached != null) return cached;
 
@@ -160,7 +161,7 @@ class McmodApi {
   }
 
   /// 计算模组与关键词的匹配程度,分数越高越相关
-  static int _relevanceScore(ModSummary m, String key) {
+  static int _relevanceScore(ProjectSummary m, String key) {
     final k = key.toLowerCase();
     final title = m.title.toLowerCase();
     final display = m.displayName.toLowerCase().trim();
@@ -184,8 +185,8 @@ class McmodApi {
   }
 
   /// 按相关度降序排序;分数相同时保持站点原始顺序
-  static List<ModSummary> _sortByRelevance(
-    List<ModSummary> results,
+  static List<ProjectSummary> _sortByRelevance(
+    List<ProjectSummary> results,
     String keyword,
   ) {
     final scored = results
@@ -210,7 +211,7 @@ class McmodApi {
   /// 获取模组详情。[id] 为统一字符串标识(mcmod 数字字符串,如 '123')。
   ///
   /// [fallbackDescription] 用于详情页没有“概述”时回退(通常来自搜索结果)。
-  static Future<ModDetail> getDetail(
+  static Future<ProjectDetail> getDetail(
     String id, {
     String? fallbackDescription,
   }) async {
@@ -248,7 +249,7 @@ class McmodApi {
   /// - 默认排序不带 `sort` 参数;
   /// - 站点自己生成的分页链接会丢掉 `mcver`,所以翻页 URL 必须自己拼,
   ///   不能跟着页面里的链接走。
-  static Future<({List<ModSummary> mods, int totalPages})> getFilteredMods(
+  static Future<({List<ProjectSummary> mods, int totalPages})> getFilteredMods(
     Filter filter, {
     int page = 1,
   }) async {
@@ -273,7 +274,7 @@ class McmodApi {
   /// 获取 mcmod.cn 首页展示的模组分类(科技/魔法等)。
   ///
   /// 首页的分类块是服务端渲染的,直接解析 HTML 即可。
-  static Future<List<ModCategory>> getCategories() async {
+  static Future<List<ProjectCategory>> getCategories() async {
     final cached = _categoryCache;
     if (cached != null) return cached;
 
@@ -288,7 +289,7 @@ class McmodApi {
   /// 与按大版本分组的完整列表(组标题是更新名,如「棘巧试炼」= 1.21.x)。
   /// 两者都在 modlist 页上 —— **首页没有版本信息**(站点改版后首页只剩分类),
   /// 所以这里取的是 modlist.html
-  static Future<List<ModVersion>> getVersions() async {
+  static Future<List<ProjectVersion>> getVersions() async {
     final cached = _versionCache;
     if (cached != null) return cached;
 
@@ -426,9 +427,9 @@ class McmodApi {
 
   // ---------- 模组列表页(modlist)解析 ----------
 
-  static List<ModSummary> _parseModlist(String html) {
+  static List<ProjectSummary> _parseModlist(String html) {
     final doc = html_parser.parse(html);
-    final results = <ModSummary>[];
+    final results = <ProjectSummary>[];
     for (final block in doc.querySelectorAll('.modlist-block')) {
       final nameA = block.querySelector('.title .name a');
       final href = nameA?.attributes['href'] ?? '';
@@ -447,8 +448,11 @@ class McmodApi {
       if (icon.startsWith('//')) icon = 'https:$icon';
 
       results.add(
-        ModSummary(
+        ProjectSummary(
           id: idMatch.group(1)!,
+          // 站点另有整合包/材质包等版块,但本应用用的 modlist 与 class 页
+          // 都是模组,故这里恒为 mod
+          type: ProjectType.mod,
           title: title,
           description: intro,
           source: ModSource.mcmod,
@@ -465,9 +469,9 @@ class McmodApi {
   /// 解析首页的 9 个分类块(.class_category_block):
   /// data-id 为分类 ID,.icon a 为名称,.text span.i 为标语,
   /// .text span.t 为分类定义(站点上隐藏,但文本仍在 HTML 中)
-  static List<ModCategory> _parseCategories(String html) {
+  static List<ProjectCategory> _parseCategories(String html) {
     final doc = html_parser.parse(html);
-    final cats = <ModCategory>[];
+    final cats = <ProjectCategory>[];
     for (final block in doc.querySelectorAll('.class_category_block')) {
       final id = (block.attributes['data-id'] ?? '').trim();
       if (id.isEmpty) continue;
@@ -478,8 +482,9 @@ class McmodApi {
       );
       final desc = _cleanText(block.querySelector('.text span.t')?.text ?? '');
       cats.add(
-        ModCategory(
+        ProjectCategory(
           id: id,
+          type: ProjectType.mod,
           name: name,
           source: ModSource.mcmod,
           slogan: slogan.isEmpty ? null : slogan,
@@ -500,9 +505,9 @@ class McmodApi {
   /// 按文档顺序去重即站点自己的排列:常用版本在前,之后是新到旧的分组。
   /// `mcver=earlier`(远古版本)不是具体版本号,跳过 —— 它出现在胶囊上只会是个
   /// 看不懂的 "earlier"。
-  static List<ModVersion> _parseVersions(String html) {
+  static List<ProjectVersion> _parseVersions(String html) {
     final doc = html_parser.parse(html);
-    final versions = <ModVersion>[];
+    final versions = <ProjectVersion>[];
     final pattern = RegExp(r'mcver=([0-9A-Za-z._-]+)');
     for (final a in doc.querySelectorAll('a[href*=mcver], a[onclick*=mcver]')) {
       final raw =
@@ -510,7 +515,7 @@ class McmodApi {
       final version = pattern.firstMatch(raw)?.group(1) ?? '';
       if (version.isEmpty || version == 'earlier') continue;
       if (versions.any((v) => v.version == version)) continue;
-      versions.add(ModVersion(version: version, source: ModSource.mcmod));
+      versions.add(ProjectVersion(version: version, source: ModSource.mcmod));
     }
     return versions;
   }
@@ -520,7 +525,7 @@ class McmodApi {
   /// 解析 modlist 列表页(推荐与分类共用):条目走 [_parseModlist],
   /// 总页数取自分页链接的 data-page 属性最大值;
   /// 没有分页块(单页)时兜底为 1 页
-  static ({List<ModSummary> mods, int totalPages}) _parseModlistPage(
+  static ({List<ProjectSummary> mods, int totalPages}) _parseModlistPage(
     String html,
   ) {
     final mods = _parseModlist(html);
@@ -535,7 +540,7 @@ class McmodApi {
 
   // ---------- 详情页解析 ----------
 
-  static ModDetail _parseDetail(
+  static ProjectDetail _parseDetail(
     String id,
     String html, {
     String? fallbackDescription,
@@ -593,7 +598,7 @@ class McmodApi {
     // 支持的 MC 版本:按加载器分组(去重,保持页面顺序)。
     // 页面结构:li.mcver > ul > ul,每个内层 ul 的首个 li 是加载器标签
     // (如 'Forge: '),其余 li 的链接为版本号
-    final mcVersions = <ModLoader, List<String>>{};
+    final mcVersions = <ProjectLoader, List<String>>{};
     for (final group in doc.querySelectorAll('li.mcver > ul > ul')) {
       final label = group.querySelector('li')?.text.trim() ?? '';
       final loader = label.replaceFirst(RegExp(r'[:：]\s*$'), '');
@@ -602,7 +607,7 @@ class McmodApi {
         final v = a.text.trim();
         if (v.isNotEmpty && !versions.contains(v)) versions.add(v);
       }
-      if (loader.isNotEmpty) mcVersions[ModLoader.of(loader)] = versions;
+      if (loader.isNotEmpty) mcVersions[ProjectLoader.of(loader)] = versions;
     }
 
     String? field(String label) {
@@ -645,17 +650,17 @@ class McmodApi {
 
     // 作者:左侧信息面板的作者区块(li.col-lg-12.author),
     // 每项是 头像(.avatar img) + 名称(.name) + 角色(.position)
-    List<Author>? parseAuthors() {
+    List<AuthorSummary>? parseAuthors() {
       final items = doc.querySelectorAll('.author .frame li');
       if (items.isEmpty) return null;
-      final authors = <Author>[];
+      final authors = <AuthorSummary>[];
       for (final li in items) {
         final name = li.querySelector('.name')?.text.trim() ?? '';
         if (name.isEmpty) continue;
         var avatar = li.querySelector('.avatar img')?.attributes['src'] ?? '';
         if (avatar.startsWith('//')) avatar = 'https:$avatar';
         authors.add(
-          Author(
+          AuthorSummary(
             name: name,
             avatarUrl: avatar.isEmpty ? null : avatar,
             role: li.querySelector('.position')?.text.trim(),
@@ -701,8 +706,9 @@ class McmodApi {
     // 用列表页/搜索页带过来的简介作为 cover 的简要介绍
     final intro = fallbackDescription?.trim();
 
-    return ModDetail(
+    return ProjectDetail(
       id: id,
+      type: ProjectType.mod,
       title: title,
       source: ModSource.mcmod,
       subName: subName,

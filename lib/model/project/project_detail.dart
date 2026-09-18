@@ -1,13 +1,15 @@
-import 'package:mc_mod_helper/model/author.dart';
-import 'package:mc_mod_helper/model/mod/mod_loader.dart';
+import 'package:mc_mod_helper/model/author/author_summary.dart';
+import 'package:mc_mod_helper/model/project/project_loader.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
 import '../link.dart';
 
 /// 模组详细信息(解析自详情页)
-class ModDetail {
-  const ModDetail({
+class ProjectDetail {
+  const ProjectDetail({
     required this.id,
+    required this.type,
     required this.title,
     required this.source,
     this.subName,
@@ -22,10 +24,13 @@ class ModDetail {
     this.sides,
   });
 
-  /// 统一模组标识(字符串):
+  /// 统一标识(字符串):
   /// - MC百科为数字字符串(如 '123'),
   /// - Modrinth 为 slug(如 'jei')
   final String id;
+
+  /// 项目类型
+  final ProjectType type;
 
   /// 主要名称
   final String title;
@@ -57,13 +62,13 @@ class ModDetail {
   /// 支持的 MC 版本,按加载器分组:
   /// key 为加载器名(Forge/NeoForge/Fabric 等,与数据源原始写法一致),
   /// value 为该加载器支持的 MC 版本列表
-  final Map<ModLoader, List<String>> mcVersions;
+  final Map<ProjectLoader, List<String>> mcVersions;
 
   /// 支持平台(如 Java版)
   final String? platform;
 
   /// 模组作者
-  final List<Author>? authors;
+  final List<AuthorSummary>? authors;
 
   /// 数据来源：'mcmod' 或 'modrinth'
   final ModSource source;
@@ -72,8 +77,9 @@ class ModDetail {
   String get pageUrl => SourceManager.getUrl(source, id);
 
   /// 复制详情并替换简要介绍(会话缓存补简介用,其余字段原样保留)
-  ModDetail copyWith({String? description}) => ModDetail(
+  ProjectDetail copyWith({String? description}) => ProjectDetail(
     id: id,
+    type: type,
     title: title,
     source: source,
     subName: subName,

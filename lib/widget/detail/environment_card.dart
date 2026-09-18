@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../model/mod/mod_detail.dart';
-import '../../model/mod/mod_loader.dart';
+import '../../model/project/project_detail.dart';
+import '../../model/project/project_loader.dart';
 import '../common/collapsible_widgets.dart';
 import '../common/label.dart';
 import '../common/section_title.dart';
@@ -11,7 +11,7 @@ import '../common/section_title.dart';
 class EnvironmentCard extends StatelessWidget {
   const EnvironmentCard({super.key, required this.mod});
 
-  final ModDetail mod;
+  final ProjectDetail mod;
 
   @override
   Widget build(BuildContext context) {
@@ -133,9 +133,9 @@ class EnvironmentCard extends StatelessWidget {
     );
   }
 
-  /// 模组加载器:图标与名称都来自 [ModLoader],
+  /// 模组加载器:图标与名称都来自 [ProjectLoader],
   /// 名称与图标同色(颜色定义在图标上,表里没有的加载器用主题色)
-  Widget _getPlatform(ThemeData theme, ModLoader loader) {
+  Widget _getPlatform(ThemeData theme, ProjectLoader loader) {
     return Row(
       children: [
         loader.icon,

@@ -15,12 +15,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
-import 'package:mc_mod_helper/model/mod/mod_category.dart';
-import 'package:mc_mod_helper/model/mod/mod_loader.dart';
-import 'package:mc_mod_helper/model/mod/mod_version.dart';
+import 'package:mc_mod_helper/model/project/project_category.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
+import 'package:mc_mod_helper/model/project/project_loader.dart';
+import 'package:mc_mod_helper/model/project/project_version.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/main.dart';
-import 'package:mc_mod_helper/page/mod/description.dart';
+import 'package:mc_mod_helper/page/detail/project_page.dart';
 import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 import 'package:mc_mod_helper/widget/filter/search_bar.dart';
@@ -191,6 +192,55 @@ void main() {
       expect(m.pageUrl, 'https://modrinth.com/mod/sodium');
     });
 
+    test('project_type 映射到 ProjectType(非模组的资源类型也认得出来)', () async {
+      // 接口的 project_type 与枚举名一一对应;缺字段/陌生取值按模组处理
+      ModrinthApi.clientFactory = () => MockClient((request) async {
+        if (request.url.path == '/v2/search') {
+          return _json({
+            'hits': [
+              {
+                'slug': 'fabulously-optimized',
+                'title': 'Fabulously Optimized',
+                'description': '整合包',
+                'project_type': 'modpack',
+              },
+              {
+                'slug': 'faithful',
+                'title': 'Faithful',
+                'description': '材质包',
+                'project_type': 'resourcepack',
+              },
+              {'slug': 'x', 'title': 'X', 'description': '没给类型'},
+            ],
+            'total_hits': 3,
+          });
+        }
+        if (request.url.path == '/v2/project/complementary') {
+          return _json({
+            'title': 'Complementary',
+            'description': '光影',
+            'project_type': 'shader',
+          });
+        }
+        if (request.url.path == '/v2/project/complementary/version' ||
+            request.url.path == '/v2/project/complementary/members') {
+          return _json(const []);
+        }
+        return http.Response('', 404);
+      });
+      ModrinthApi.clearCaches(); // 重置惰性客户端与节流时间,让上面的工厂生效
+
+      final hits = await ModrinthApi.search('x');
+      expect(hits.map((h) => h.type), [
+        ProjectType.modpack,
+        ProjectType.resourcepack,
+        ProjectType.mod,
+      ]);
+
+      final detail = await ModrinthApi.getDetail('complementary');
+      expect(detail.type, ProjectType.shader);
+    });
+
     test('getDetail 映射到 ModDetail(Markdown 转 HTML,原生 HTML 透传)', () async {
       final d = await ModrinthApi.getDetail('sodium');
       expect(d.id, 'sodium');
@@ -208,8 +258,8 @@ void main() {
       // 版本按加载器分组(版本列表接口聚合,去重保序);
       // 键是 ModLoader:接口给的小写标识会被认出来并换成规范名称
       expect(d.mcVersions, {
-        modLoaders['fabric']!: ['1.21.1', '1.20.4'],
-        modLoaders['forge']!: ['1.20.4'],
+        projectLoaders['fabric']!: ['1.21.1', '1.20.4'],
+        projectLoaders['forge']!: ['1.20.4'],
       });
       expect(d.mcVersions.keys.map((l) => l.name), ['Fabric', 'Forge']);
       expect(d.links.map((l) => l.name), contains('GitHub'));
@@ -265,8 +315,9 @@ void main() {
         const Filter(
           modSource: ModSource.modrinth,
           sortMethod: SortMethod.none,
-          category: ModCategory(
+          category: ProjectCategory(
             id: 'technology',
+            type: ProjectType.mod,
             name: '科技',
             source: ModSource.modrinth,
           ),
@@ -286,12 +337,16 @@ void main() {
         const Filter(
           modSource: ModSource.modrinth,
           sortMethod: SortMethod.lastEditTime,
-          category: ModCategory(
+          category: ProjectCategory(
             id: 'technology',
+            type: ProjectType.mod,
             name: '科技',
             source: ModSource.modrinth,
           ),
-          version: ModVersion(version: '1.21.1', source: ModSource.modrinth),
+          version: ProjectVersion(
+            version: '1.21.1',
+            source: ModSource.modrinth,
+          ),
         ),
         page: 2,
       );
@@ -365,7 +420,7 @@ void main() {
     // 右栏 = DetailPage 下第二个 ListView(左栏是第一个)
     final rightList = find
         .descendant(
-          of: find.byType(DetailPage),
+          of: find.byType(ProjectPage),
           matching: find.byType(ListView),
         )
         .at(1);
@@ -375,7 +430,7 @@ void main() {
     // 「模组介绍」在左栏(宽屏)或下方(窄屏),向上拖动详情列表再断言。
     // hyper_render 在单个 RenderObject 里自绘文本,不能用 find.text 找,
     // 改为校验转换后的 HTML 已正确传入 HyperViewer
-    await tester.drag(find.byType(DetailPage), const Offset(0, -600));
+    await tester.drag(find.byType(ProjectPage), const Offset(0, -600));
     await tester.pump();
     final viewer = tester.widget<HyperViewer>(find.byType(HyperViewer));
     expect(viewer.content, contains('高性能渲染引擎'));

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../icon/icon_manager.dart';
-import '../../model/mod/mod_summary.dart';
-import '../../page/mod/description.dart';
+import '../../model/project/project_summary.dart';
+import '../../page/detail/project_page.dart';
 import '../../service/agent/agent.dart';
 import '../../service/agent/history.dart';
 
@@ -199,14 +199,15 @@ class _AgentSheetState extends State<AgentSheet> {
   /// 收起来,否则返回详情页时会发现面板还盖在上面;而页面形态下没有面板可收,
   /// 无条件 pop 会把整个首页路由弹掉 —— 详情页被推到空栈上,返回时无处可去
   /// (表现为"进得去、回不来")。故按"当前路由是不是弹出层"来区分。
-  void _openMod(ModSummary mod) {
+  void _openMod(ProjectSummary mod) {
     final navigator = Navigator.of(context);
     if (ModalRoute.of(context) is PopupRoute) navigator.pop(); // 收起面板
     navigator.push(
       MaterialPageRoute(
-        builder: (_) => DetailPage(
+        builder: (_) => ProjectPage(
           id: mod.id,
           source: mod.source,
+          type: mod.type,
           initialTitle: mod.title,
           initialDescription: mod.description,
         ),
@@ -439,7 +440,7 @@ class _AgentSheetState extends State<AgentSheet> {
     );
   }
 
-  Widget _buildModTile(ThemeData theme, ModSummary mod) {
+  Widget _buildModTile(ThemeData theme, ProjectSummary mod) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, right: 4, bottom: 6),
       child: Card(

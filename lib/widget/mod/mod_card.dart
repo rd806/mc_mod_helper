@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../model/mod/mod_summary.dart';
-import '../../page/mod/description.dart';
+import '../../model/project/project_summary.dart';
+import '../../page/detail/project_page.dart';
 import 'favorite_toggle.dart';
 
 /// 分类页模组卡片的公共基类:
@@ -10,7 +10,7 @@ import 'favorite_toggle.dart';
 abstract class ModCard extends StatelessWidget {
   const ModCard({super.key, required this.mod});
 
-  final ModSummary mod;
+  final ProjectSummary mod;
 
   /// 卡片外壳:Card + InkWell 点击跳转详情页。
   /// StatelessWidget 没有 context 属性，由子类的 build 传入
@@ -26,11 +26,12 @@ abstract class ModCard extends StatelessWidget {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => DetailPage(
+              builder: (_) => ProjectPage(
                 id: mod.id,
+                source: mod.source,
+                type: mod.type,
                 initialTitle: mod.displayName,
                 initialDescription: mod.description,
-                source: mod.source,
               ),
             ),
           );

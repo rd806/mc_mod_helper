@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/model/mod/mod_summary.dart';
+import 'package:mc_mod_helper/model/project/project_summary.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 
 /// 收藏开关按钮:心形,点亮=已收藏。
@@ -9,7 +9,7 @@ import 'package:mc_mod_helper/service/saves/likes.dart';
 class FavoriteToggle extends StatelessWidget {
   const FavoriteToggle({super.key, required this.mod});
 
-  final ModSummary mod;
+  final ProjectSummary mod;
 
   @override
   Widget build(BuildContext context) {

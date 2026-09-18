@@ -8,10 +8,11 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/modrinth.dart';
-import 'package:mc_mod_helper/model/mod/mod_summary.dart';
+import 'package:mc_mod_helper/model/project/project_summary.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/page/custom.dart';
 import 'package:mc_mod_helper/page/custom/history.dart';
-import 'package:mc_mod_helper/page/mod/description.dart';
+import 'package:mc_mod_helper/page/detail/project_page.dart';
 import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
@@ -23,8 +24,9 @@ http.Response _json(Object data) => http.Response.bytes(
   headers: {'content-type': 'application/json; charset=utf-8'},
 );
 
-ModSummary _mod(String id, {String? title}) => ModSummary(
+ProjectSummary _mod(String id, {String? title}) => ProjectSummary(
   id: id,
+  type: ProjectType.mod,
   title: title ?? '模组$id',
   description: '第 $id 个模组',
   source: ModSource.mcmod,
@@ -118,8 +120,9 @@ void main() {
       final service = HistoryService.instance;
       await service.record(_mod('jei'));
       await service.record(
-        const ModSummary(
+        const ProjectSummary(
           id: 'jei',
+          type: ProjectType.mod,
           title: 'JEI',
           description: '',
           source: ModSource.modrinth,
@@ -209,7 +212,7 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
-        home: DetailPage(
+        home: ProjectPage(
           id: 'jei',
           source: ModSource.modrinth,
           initialTitle: 'JEI',

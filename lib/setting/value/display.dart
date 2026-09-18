@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/model/mod/mod_summary.dart';
+import 'package:mc_mod_helper/model/project/project_summary.dart';
 
 import '../../widget/mod/mod_card.dart';
 
@@ -27,7 +27,7 @@ class DisplayManager {
   ///
   /// 由调用方包一层 SliverPadding 控制边距;
   /// 空列表时 childCount 为 0,渲染为空白
-  static Widget buildSliver(DisplayStyle style, List<ModSummary> mods) {
+  static Widget buildSliver(DisplayStyle style, List<ProjectSummary> mods) {
     switch (style) {
       case DisplayStyle.card:
         return _buildModGrid(mods);
@@ -44,7 +44,7 @@ class DisplayManager {
   }
 
   /// 列表格式:模组单行排列(左侧封面,右侧标题与统计)
-  static Widget _buildModList(List<ModSummary> mods) {
+  static Widget _buildModList(List<ProjectSummary> mods) {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, i) => ModCardRow(mod: mods[i]),
@@ -57,7 +57,7 @@ class DisplayManager {
   ///
   /// 列数按实际可用宽度计算(不能在构建时读 MediaQuery:
   /// sliver 的宽度约束要到 SliverLayoutBuilder 里才确定)
-  static Widget _buildModGrid(List<ModSummary> mods) {
+  static Widget _buildModGrid(List<ProjectSummary> mods) {
     return SliverLayoutBuilder(
       builder: (context, constraints) {
         final count = (constraints.crossAxisExtent / 225).floor().clamp(1, 8);

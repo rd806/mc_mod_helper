@@ -7,7 +7,8 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/service/agent/translate.dart';
-import 'package:mc_mod_helper/model/mod/mod_detail.dart';
+import 'package:mc_mod_helper/model/project/project_detail.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/setting/agent_settings.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:mc_mod_helper/setting/language_settings.dart';
@@ -28,31 +29,39 @@ http.Response _chat(String content) => http.Response.bytes(
   headers: {'content-type': 'application/json; charset=utf-8'},
 );
 
-const _mod = ModDetail(
+const _mod = ProjectDetail(
   id: '123',
   title: '测试模组',
+  type: ProjectType.mod,
   source: ModSource.mcmod,
   body: '<p>Original English text</p>',
 );
 
 /// 另一个模组:用于验证 State 被复用(详情页刷新/换模组)时译文不串台
-const _otherMod = ModDetail(
+const _otherMod = ProjectDetail(
   id: '456',
+  type: ProjectType.mod,
   title: '另一个模组',
   source: ModSource.mcmod,
   body: '<p>Other mod body</p>',
 );
 
 /// 中文正文:中文目标 + 中文正文时自动翻译应当跳过
-const _zhMod = ModDetail(
+const _zhMod = ProjectDetail(
   id: '789',
+  type: ProjectType.mod,
   title: '中文模组',
   source: ModSource.mcmod,
   body: '<p>本模组添加了大量新的物品与方块,并优化了合成配方。</p>',
 );
 
 /// 没有正文的模组(此时整张卡片不渲染)
-const _emptyMod = ModDetail(id: '999', title: '空正文', source: ModSource.mcmod);
+const _emptyMod = ProjectDetail(
+  id: '999',
+  type: ProjectType.mod,
+  title: '空正文',
+  source: ModSource.mcmod,
+);
 
 Widget _wrap(Widget child) => MaterialApp(
   home: Scaffold(body: SingleChildScrollView(child: child)),

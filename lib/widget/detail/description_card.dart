@@ -8,7 +8,7 @@ import 'package:mc_mod_helper/setting/language_settings.dart';
 import 'package:mc_mod_helper/setting/value/render.dart';
 
 import '../../service/agent/translate.dart';
-import '../../model/mod/mod_detail.dart';
+import '../../model/project/project_detail.dart';
 import '../../setting/display_settings.dart';
 import '../common/section_title.dart';
 
@@ -30,7 +30,7 @@ class DescriptionCard extends StatefulWidget {
     required this.onLinkTap,
   });
 
-  final ModDetail mod;
+  final ProjectDetail mod;
 
   /// 正文链接/图片点击回调(灯箱/站内跳转/浏览器由调用方分流)
   final void Function(String url) onLinkTap;

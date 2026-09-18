@@ -2,7 +2,8 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
-import 'package:mc_mod_helper/model/mod/mod_summary.dart';
+import 'package:mc_mod_helper/model/project/project_summary.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:path/path.dart' as p;
 // 副作用导入:sqflite 库加载时把插件工厂设为默认工厂
 // (databaseFactoryOrNull ??= 插件工厂),移动端(Android/iOS)靠它
@@ -23,8 +24,10 @@ class Likes {
     this.subName,
     this.iconUrl,
     ModSource source = ModSource.mcmod,
+    ProjectType type = ProjectType.mod,
     required this.date,
-  }) : sourceName = source.name;
+  }) : sourceName = source.name,
+       typeName = ProjectTypeManager.typeToString(type);
 
   final String id;
   final String title;
@@ -39,11 +42,14 @@ class Likes {
   /// 存 name 字符串而非枚举 index:枚举增删/改序后旧数据不失效
   final String sourceName;
 
+  /// 项目类型的枚举名(如 'modpack');存法与 [sourceName] 相同
+  final String typeName;
+
   /// 收藏时间(Unix 时间戳,毫秒)
   final double date;
 
-  /// 从列表页摘要构造(收藏入口拿到的通常是 ModSummary)
-  factory Likes.fromSummary(ModSummary mod, {required DateTime time}) {
+  /// 从列表页摘要构造(收藏入口拿到的通常是 ProjectSummary)
+  factory Likes.fromSummary(ProjectSummary mod, {required DateTime time}) {
     return Likes(
       id: mod.id,
       title: mod.title,
@@ -51,6 +57,7 @@ class Likes {
       subName: mod.subName,
       iconUrl: mod.iconUrl,
       source: mod.source,
+      type: mod.type,
       date: time.millisecondsSinceEpoch.toDouble(),
     );
   }
@@ -58,12 +65,16 @@ class Likes {
   /// 数据来源(由持久化的枚举名还原,未知值回落到 mcmod)
   ModSource get source => SourceManager.sourceToString(sourceName);
 
+  /// 项目类型(由持久化的枚举名还原,未知值/旧记录回落到 mod)
+  ProjectType get type => ProjectTypeManager.typeFromString(typeName);
+
   /// 收藏时间(由时间戳还原)
   DateTime get time => DateTime.fromMillisecondsSinceEpoch(date.round());
 
   /// 转成列表页可用的摘要
-  ModSummary toSummary() => ModSummary(
+  ProjectSummary toSummary() => ProjectSummary(
     id: id,
+    type: type,
     title: title,
     description: description ?? '',
     subName: subName,
@@ -93,6 +104,7 @@ class FavoritesService extends ChangeNotifier {
       sub_name TEXT,
       icon_url TEXT,
       source TEXT NOT NULL,
+      type TEXT,
       date REAL NOT NULL,
       PRIMARY KEY(source, id)
     )''';
@@ -116,12 +128,17 @@ class FavoritesService extends ChangeNotifier {
     _db = await factory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 2,
+        version: 3,
         onCreate: (db, version) => db.execute(_createSql),
         onUpgrade: (db, oldVersion, newVersion) async {
           // v1 → v2:新增次要名称列
           if (oldVersion < 2) {
             await db.execute('ALTER TABLE likes ADD COLUMN sub_name TEXT');
+          }
+          // v2 → v3:新增项目类型列。旧记录留空(NULL),
+          // 读出来按 mod 处理(那时应用里只有模组)
+          if (oldVersion < 3) {
+            await db.execute('ALTER TABLE likes ADD COLUMN type TEXT');
           }
         },
       ),
@@ -134,7 +151,7 @@ class FavoritesService extends ChangeNotifier {
   ///
   /// 匹配按「来源 + id」复合键:各来源的 id 规则不同
   /// (MC百科数字字符串 / Modrinth slug),只按 id 可能误伤
-  bool isFavorite(ModSummary mod) =>
+  bool isFavorite(ProjectSummary mod) =>
       _cache.any((l) => l.id == mod.id && l.sourceName == mod.source.name);
 
   /// 收藏(返回保存的条目);已收藏时返回 null 不重复写入。
@@ -158,6 +175,7 @@ class FavoritesService extends ChangeNotifier {
         'sub_name': likes.subName,
         'icon_url': likes.iconUrl,
         'source': likes.sourceName,
+        'type': likes.typeName,
         'date': likes.date,
       });
     } catch (_) {
@@ -172,7 +190,7 @@ class FavoritesService extends ChangeNotifier {
   /// 取消收藏(未收藏时无操作)。
   ///
   /// 与 [add] 一致:先更新缓存(乐观更新)再异步落库
-  Future<void> remove(ModSummary mod) async {
+  Future<void> remove(ProjectSummary mod) async {
     _cache.removeWhere(
       (l) => l.id == mod.id && l.sourceName == mod.source.name,
     );
@@ -185,7 +203,7 @@ class FavoritesService extends ChangeNotifier {
   }
 
   /// 收藏开关:已收藏则取消,未收藏则加入(收藏按钮直接调用)
-  Future<void> toggle(ModSummary mod) async {
+  Future<void> toggle(ProjectSummary mod) async {
     if (isFavorite(mod)) {
       await remove(mod);
     } else {
@@ -197,7 +215,7 @@ class FavoritesService extends ChangeNotifier {
   List<Likes> list() => List.unmodifiable(_cache);
 
   /// 收藏列表的摘要(列表页直接渲染)
-  List<ModSummary> summaries() => [for (final l in _cache) l.toSummary()];
+  List<ProjectSummary> summaries() => [for (final l in _cache) l.toSummary()];
 
   /// 清空收藏(测试用例间隔离用)
   @visibleForTesting
@@ -239,10 +257,13 @@ class FavoritesService extends ChangeNotifier {
   static Likes _fromRow(Map<String, Object?> row) => Likes(
     id: row['id']! as String,
     title: row['title']! as String,
-    description: row['description']! as String,
+    // description 列可空(不带简介的条目就是这样存的),
+    // 不能强解包:一条 NULL 会让整个收藏列表在启动时读不出来
+    description: row['description'] as String?,
     subName: row['sub_name'] as String?,
     iconUrl: row['icon_url'] as String?,
     source: SourceManager.sourceToString(row['source'] as String?),
+    type: ProjectTypeManager.typeFromString(row['type'] as String?),
     date: (row['date']! as num).toDouble(),
   );
 }

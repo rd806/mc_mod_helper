@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
-import 'package:mc_mod_helper/model/mod/mod_version.dart';
+import 'package:mc_mod_helper/model/project/project_version.dart';
 import 'package:mc_mod_helper/page/browse.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
 
@@ -15,7 +15,7 @@ import '../../model/filter/sort_method.dart';
 class VersionChip extends StatelessWidget {
   const VersionChip({super.key, required this.version});
 
-  final ModVersion version;
+  final ProjectVersion version;
 
   @override
   Widget build(BuildContext context) {

@@ -8,10 +8,11 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
-import 'package:mc_mod_helper/model/author.dart';
-import 'package:mc_mod_helper/model/mod/mod_detail.dart';
-import 'package:mc_mod_helper/model/mod/mod_loader.dart';
-import 'package:mc_mod_helper/model/mod/mod_summary.dart';
+import 'package:mc_mod_helper/model/author/author_summary.dart';
+import 'package:mc_mod_helper/model/project/project_detail.dart';
+import 'package:mc_mod_helper/model/project/project_loader.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
+import 'package:mc_mod_helper/model/project/project_summary.dart';
 import 'package:mc_mod_helper/page/agent.dart';
 import 'package:mc_mod_helper/service/agent/agent.dart';
 import 'package:mc_mod_helper/service/agent/history.dart';
@@ -170,16 +171,17 @@ void main() {
 
   test('AgentModContext:正文去标签转纯文本,资料块含各字段', () {
     final ctx = AgentModContext.fromDetail(
-      ModDetail(
+      ProjectDetail(
         id: 'jei',
+        type: ProjectType.mod,
         source: ModSource.modrinth,
         title: 'JEI',
         subName: 'Just Enough Items',
         description: '查看物品合成',
-        authors: const [Author(name: 'mezz', role: '所有者')],
+        authors: const [AuthorSummary(name: 'mezz', role: '所有者')],
         platform: 'Fabric',
         mcVersions: {
-          ModLoader.of('fabric'): ['1.21.1', '1.20.4'],
+          ProjectLoader.of('fabric'): ['1.21.1', '1.20.4'],
         },
         body: '<h2>简介</h2><script>忽略我</script><p>查看物品的合成配方与用途。</p>',
       ),
@@ -202,8 +204,9 @@ void main() {
   test('AgentModContext:超长正文截断到上限', () {
     final long = '啊' * (AgentModContext.maxBodyChars + 500);
     final ctx = AgentModContext.fromDetail(
-      ModDetail(
+      ProjectDetail(
         id: 'x',
+        type: ProjectType.mod,
         source: ModSource.mcmod,
         title: 'X',
         body: '<p>$long</p>',
@@ -362,8 +365,9 @@ void main() {
       AgentChatItem.assistant(
         '推荐 JEI',
         mods: const [
-          ModSummary(
+          ProjectSummary(
             id: '459',
+            type: ProjectType.mod,
             title: '[JEI] JEI物品管理器',
             description: '查看物品的合成与用途',
             subName: 'Just Enough Items',

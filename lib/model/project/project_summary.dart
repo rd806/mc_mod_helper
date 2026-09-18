@@ -1,11 +1,13 @@
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
-import 'mod_detail.dart';
+import 'project_detail.dart';
 
 /// 搜索结果中的模组摘要
-class ModSummary {
-  const ModSummary({
+class ProjectSummary {
+  const ProjectSummary({
     required this.id,
+    required this.type,
     required this.title,
     required this.description,
     required this.source,
@@ -18,9 +20,10 @@ class ModSummary {
   ///
   /// description 用简要介绍(纯文本,适合列表副标题;正文 body 是 HTML);
   /// 统计信息一并带上,详情页收藏的条目才能在收藏页/卡片上展示统计
-  factory ModSummary.fromDetail(ModDetail d) {
-    return ModSummary(
+  factory ProjectSummary.fromDetail(ProjectDetail d) {
+    return ProjectSummary(
       id: d.id,
+      type: d.type,
       title: d.title,
       subName: d.subName,
       description: d.description ?? '',
@@ -32,6 +35,9 @@ class ModSummary {
 
   /// 统一模组标识(字符串):MC百科为数字字符串(如 '123'),Modrinth 为 slug(如 'jei')
   final String id;
+
+  /// 项目类型
+  final ProjectType type;
 
   /// 完整标题,如 `[JEI] JEI物品管理器 (Just Enough Items)`
   final String title;

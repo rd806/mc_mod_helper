@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/icon/icon_manager.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
-import 'package:mc_mod_helper/model/mod/mod_category.dart';
-import 'package:mc_mod_helper/model/mod/mod_version.dart';
+import 'package:mc_mod_helper/model/project/project_category.dart';
+import 'package:mc_mod_helper/model/project/project_version.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/widget/common/collapsible_widgets.dart';
 import 'package:mc_mod_helper/widget/dialog/switch_dialog.dart';
@@ -33,10 +33,10 @@ class FilterBar extends StatefulWidget {
   final Filter filter;
 
   /// 可选分类(按当前数据来源抓取,可能还没加载完)
-  final List<ModCategory> categories;
+  final List<ProjectCategory> categories;
 
   /// 可选版本
-  final List<ModVersion> versions;
+  final List<ProjectVersion> versions;
 
   /// 选项加载中/失败(失败时给一次重试,不阻塞列表本身)
   final bool optionsLoading;
@@ -45,8 +45,8 @@ class FilterBar extends StatefulWidget {
 
   /// 任一项变化:分类、版本、(可选)排序
   final void Function(
-    ModCategory? category,
-    ModVersion? version,
+    ProjectCategory? category,
+    ProjectVersion? version,
     SortMethod sort,
   )
   onChanged;

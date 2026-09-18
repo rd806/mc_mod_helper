@@ -7,8 +7,9 @@ import 'package:http/testing.dart';
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/filter/sort_method.dart';
-import 'package:mc_mod_helper/model/mod/mod_category.dart';
-import 'package:mc_mod_helper/model/mod/mod_version.dart';
+import 'package:mc_mod_helper/model/project/project_category.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
+import 'package:mc_mod_helper/model/project/project_version.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
 void main() {
@@ -173,6 +174,8 @@ void main() {
       final cats = await McmodApi.getCategories();
       expect(cats.single.name, '科技');
       expect(cats.single.slogan, '科学技术是第一生产力。');
+      // 本站没有类型字段:本应用用到的接口(modlist / class 页)全是模组
+      expect(cats.single.type, ProjectType.mod);
       expect(uris.single.path, '/');
     });
 
@@ -232,8 +235,13 @@ void main() {
         const Filter(
           modSource: ModSource.mcmod,
           sortMethod: SortMethod.lastEditTime,
-          category: ModCategory(id: '1', name: '科技', source: ModSource.mcmod),
-          version: ModVersion(version: '1.20.1', source: ModSource.mcmod),
+          category: ProjectCategory(
+            id: '1',
+            type: ProjectType.mod,
+            name: '科技',
+            source: ModSource.mcmod,
+          ),
+          version: ProjectVersion(version: '1.20.1', source: ModSource.mcmod),
         ),
       );
       expect(r1.mods.single.title, '[JEI] JEI物品管理器');
@@ -249,8 +257,13 @@ void main() {
         const Filter(
           modSource: ModSource.mcmod,
           sortMethod: SortMethod.lastEditTime,
-          category: ModCategory(id: '1', name: '科技', source: ModSource.mcmod),
-          version: ModVersion(version: '1.20.1', source: ModSource.mcmod),
+          category: ProjectCategory(
+            id: '1',
+            type: ProjectType.mod,
+            name: '科技',
+            source: ModSource.mcmod,
+          ),
+          version: ProjectVersion(version: '1.20.1', source: ModSource.mcmod),
         ),
         page: 2,
       );

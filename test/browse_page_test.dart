@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
-import 'package:mc_mod_helper/model/mod/mod_version.dart';
+import 'package:mc_mod_helper/model/project/project_version.dart';
 import 'package:mc_mod_helper/page/browse.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
@@ -398,7 +398,7 @@ void main() {
           initialFilter: const Filter(
             modSource: ModSource.mcmod,
             sortMethod: SortMethod.none,
-            version: ModVersion(version: '1.20.1', source: ModSource.mcmod),
+            version: ProjectVersion(version: '1.20.1', source: ModSource.mcmod),
           ),
         ),
       ),

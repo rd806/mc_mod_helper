@@ -1,6 +1,6 @@
 import 'package:mc_mod_helper/model/filter/sort_method.dart';
-import 'package:mc_mod_helper/model/mod/mod_category.dart';
-import 'package:mc_mod_helper/model/mod/mod_version.dart';
+import 'package:mc_mod_helper/model/project/project_category.dart';
+import 'package:mc_mod_helper/model/project/project_version.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
 /// 筛选器:浏览页的全部筛选条件。
@@ -23,10 +23,10 @@ class Filter {
   final SortMethod sortMethod;
 
   /// 模组分类
-  final ModCategory? category;
+  final ProjectCategory? category;
 
   /// 模组版本
-  final ModVersion? version;
+  final ProjectVersion? version;
 
   /// 请求签名 / 缓存 key:只含影响结果的字段。
   ///

@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
-import 'package:mc_mod_helper/model/mod/mod_summary.dart';
+import 'package:mc_mod_helper/model/project/project_summary.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 
 void main() {
@@ -63,8 +64,9 @@ void main() {
   });
 
   test('add 同「来源+id」去重,remove/isFavorite 按复合键匹配', () async {
-    final mod = ModSummary(
+    final mod = ProjectSummary(
       id: '1',
+      type: ProjectType.mod,
       title: 'A',
       description: '',
       source: ModSource.mcmod,
@@ -80,8 +82,9 @@ void main() {
     expect(FavoritesService.instance.isFavorite(mod), isTrue);
 
     // 不同来源的同名 id 不互相影响(modrinth slug 可能与数字 id 相同)
-    final other = ModSummary(
+    final other = ProjectSummary(
       id: '1',
+      type: ProjectType.mod,
       title: 'A',
       description: '',
       source: ModSource.modrinth,
@@ -94,8 +97,9 @@ void main() {
   });
 
   test('toggle 收藏开关:加入/移除', () async {
-    final mod = ModSummary(
+    final mod = ProjectSummary(
       id: '459',
+      type: ProjectType.mod,
       title: 'JEI',
       description: '',
       source: ModSource.mcmod,

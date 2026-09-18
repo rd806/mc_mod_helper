@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/filter/sort_method.dart';
-import 'package:mc_mod_helper/model/mod/mod_category.dart';
-import 'package:mc_mod_helper/model/mod/mod_version.dart';
+import 'package:mc_mod_helper/model/project/project_category.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
+import 'package:mc_mod_helper/model/project/project_version.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/widget/filter/filter_bar.dart';
 
@@ -19,11 +20,16 @@ Widget _bar({int categories = 4, int versions = 4}) {
         ),
         categories: [
           for (var i = 0; i < categories; i++)
-            ModCategory(id: '$i', name: '分类$i', source: ModSource.mcmod),
+            ProjectCategory(
+              id: '$i',
+              type: ProjectType.mod,
+              name: '分类$i',
+              source: ModSource.mcmod,
+            ),
         ],
         versions: [
           for (var i = 0; i < versions; i++)
-            ModVersion(version: '1.20.$i', source: ModSource.mcmod),
+            ProjectVersion(version: '1.20.$i', source: ModSource.mcmod),
         ],
         onChanged: (_, _, _) {},
       ),

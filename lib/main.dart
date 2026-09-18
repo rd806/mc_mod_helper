@@ -29,7 +29,7 @@ Future<void> main() async {
   runApp(const McModHelper());
 }
 
-/// MC百科模组信息浏览应用
+/// MC模组信息浏览应用
 class McModHelper extends StatelessWidget {
   const McModHelper({super.key});
 

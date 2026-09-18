@@ -9,7 +9,7 @@ import 'package:mc_mod_helper/setting/display_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/modrinth.dart';
-import 'package:mc_mod_helper/page/mod/description.dart';
+import 'package:mc_mod_helper/page/detail/project_page.dart';
 import 'package:mc_mod_helper/service/agent/agent.dart';
 import 'package:mc_mod_helper/service/agent/history.dart';
 import 'package:mc_mod_helper/service/saves/history.dart';
@@ -120,7 +120,7 @@ void main() {
   Future<void> pumpDetail(WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: DetailPage(
+        home: ProjectPage(
           id: 'jei',
           source: ModSource.modrinth,
           initialTitle: 'JEI',
@@ -151,7 +151,7 @@ void main() {
   testWidgets('详情页助手:加载完成前无入口,加载后可打开并带出模组资料', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: DetailPage(
+        home: ProjectPage(
           id: 'jei',
           source: ModSource.modrinth,
           initialTitle: 'JEI',
