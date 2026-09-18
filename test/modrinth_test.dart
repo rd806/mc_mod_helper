@@ -180,6 +180,44 @@ void main() {
   });
 
   group('ModrinthApi 解析', () {
+    test('整合包:facets 带 project_type:modpack,分类按类型取子集', () async {
+      final uris = <Uri>[];
+      ModrinthApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        if (request.url.path == '/v2/tag/category') {
+          return _json([
+            {
+              'name': 'technology',
+              'project_type': 'mod',
+              'header': 'categories',
+            },
+            {
+              'name': 'adventure',
+              'project_type': 'modpack',
+              'header': 'categories',
+            },
+          ]);
+        }
+        return _json({'hits': [], 'total_hits': 0});
+      });
+
+      // 分类:只取 modpack 的那几个(接口一次返回所有类型)
+      final cats = await ModrinthApi.getCategories(ProjectType.modpack);
+      expect(cats.map((c) => c.name), ['冒险']);
+      expect(cats.single.type, ProjectType.modpack);
+      expect(cats.single.id, 'adventure');
+
+      // 筛选:项目类型进 facets,与枚举名一致
+      await ModrinthApi.getFilteredMods(
+        const Filter(
+          type: ProjectType.modpack,
+          modSource: ModSource.modrinth,
+          sortMethod: SortMethod.none,
+        ),
+      );
+      expect(uris.last.queryParameters['facets'], '[["project_type:modpack"]]');
+    });
+
     test('search 映射到 ModSummary', () async {
       final results = await ModrinthApi.search('sodium');
       expect(results, hasLength(1));
@@ -287,7 +325,7 @@ void main() {
     });
 
     test('getCategories 只保留 mod 分类并映射中文名', () async {
-      final cats = await ModrinthApi.getCategories();
+      final cats = await ModrinthApi.getCategories(ProjectType.mod);
       expect(cats.map((c) => c.name), containsAll(['科技', '魔法']));
       expect(cats.map((c) => c.name), isNot(contains('128x')));
       final tech = cats.firstWhere((c) => c.id == 'technology');
@@ -313,6 +351,7 @@ void main() {
       // 单分类
       final byCategory = await ModrinthApi.getFilteredMods(
         const Filter(
+          type: ProjectType.mod,
           modSource: ModSource.modrinth,
           sortMethod: SortMethod.none,
           category: ProjectCategory(
@@ -335,6 +374,7 @@ void main() {
       // 分类 + 版本 + 排序:三个条件都在(版本那个数组不能是空的)
       await ModrinthApi.getFilteredMods(
         const Filter(
+          type: ProjectType.mod,
           modSource: ModSource.modrinth,
           sortMethod: SortMethod.lastEditTime,
           category: ProjectCategory(

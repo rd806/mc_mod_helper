@@ -214,6 +214,7 @@ void main() {
       const MaterialApp(
         home: ProjectPage(
           id: 'jei',
+          type: ProjectType.mod,
           source: ModSource.modrinth,
           initialTitle: 'JEI',
         ),

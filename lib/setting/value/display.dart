@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/model/project/project_summary.dart';
 
-import '../../widget/mod/mod_card.dart';
+import '../../widget/project/project_card.dart';
 
 /// 模组信息展示方式
 /// - 卡片式:网格,每个模组一张大卡片
@@ -47,7 +47,7 @@ class DisplayManager {
   static Widget _buildModList(List<ProjectSummary> mods) {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-        (context, i) => ModCardRow(mod: mods[i]),
+        (context, i) => ModCardRow(project: mods[i]),
         childCount: mods.length,
       ),
     );
@@ -69,7 +69,7 @@ class DisplayManager {
             childAspectRatio: 0.8,
           ),
           delegate: SliverChildBuilderDelegate(
-            (context, i) => ModCardColumn(mod: mods[i]),
+            (context, i) => ModCardColumn(project: mods[i]),
             childCount: mods.length,
           ),
         );

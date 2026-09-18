@@ -8,6 +8,7 @@ import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/filter/sort_method.dart';
 import 'package:mc_mod_helper/model/project/project_category.dart';
+import 'package:mc_mod_helper/model/project/project_loader.dart';
 import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/model/project/project_version.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
@@ -171,7 +172,7 @@ void main() {
         return http.Response.bytes(utf8.encode(homeHtml()), 200);
       });
 
-      final cats = await McmodApi.getCategories();
+      final cats = await McmodApi.getCategories(ProjectType.mod);
       expect(cats.single.name, '科技');
       expect(cats.single.slogan, '科学技术是第一生产力。');
       // 本站没有类型字段:本应用用到的接口(modlist / class 页)全是模组
@@ -186,7 +187,7 @@ void main() {
         return http.Response.bytes(utf8.encode(modlistHtml()), 200);
       });
 
-      final versions = await McmodApi.getVersions();
+      final versions = await McmodApi.getVersions(ProjectType.mod);
       // 头部快捷入口(href)+ 分组列表(onclick),按文档顺序去重;
       // 1.20.1 两处都有只留一份,earlier(远古版本)不是版本号
       expect(versions.map((v) => v.version), [
@@ -201,7 +202,7 @@ void main() {
       expect(uris.single.queryParameters, isEmpty);
 
       // 第二次命中缓存
-      await McmodApi.getVersions();
+      await McmodApi.getVersions(ProjectType.mod);
       expect(uris, hasLength(1));
     });
 
@@ -233,6 +234,7 @@ void main() {
       // 40 页 → 科技 + 1.20.1 共 15 页),所以照原样发出,不做取舍
       final r1 = await McmodApi.getFilteredMods(
         const Filter(
+          type: ProjectType.mod,
           modSource: ModSource.mcmod,
           sortMethod: SortMethod.lastEditTime,
           category: ProjectCategory(
@@ -255,6 +257,7 @@ void main() {
       // 翻页:同一组筛选的下一页,命中各自的缓存键
       await McmodApi.getFilteredMods(
         const Filter(
+          type: ProjectType.mod,
           modSource: ModSource.mcmod,
           sortMethod: SortMethod.lastEditTime,
           category: ProjectCategory(
@@ -268,6 +271,249 @@ void main() {
         page: 2,
       );
       expect(uris.last.queryParameters['page'], '2');
+    });
+  });
+
+  group('整合包', () {
+    /// 首页假 HTML(模组分类的来源,用来验证两类分类互不干扰)
+    String homeHtml() => '''
+<html><body>
+  <div class="class_category_block" data-id="1">
+    <div class="icon"><a>科技</a></div>
+    <div class="text"><span class="i">标语</span><span class="t">描述</span></div>
+  </div>
+</body></html>''';
+
+    /// modpack.html 假 HTML(按真实页面结构):条目 href 是 /modpack/N.html,
+    /// 分类筛选块是纯文本链接(说明在 title 上),版本块与模组页同构
+    String modpackHtml() => '''
+<html><body>
+  <div class="modlist-filter-block category">
+    <div class="title">整合包元素:</div>
+    <ul>
+      <li class="main"><span>全部</span></li>
+      <li class="main">
+        <a class="normal gray" href="javascript:void(0);"
+          onclick="window.location='/modpack.html?category=1'"
+          title="含有科技类模组。">科技</a>
+      </li>
+      <li class="main">
+        <a class="normal gray" href="javascript:void(0);"
+          onclick="window.location='/modpack.html?category=9'"
+          title="占据主要玩法的核心模组数量较多。">大型</a>
+      </li>
+    </ul>
+  </div>
+  <div class="modlist-filter-block mcver">
+    <ul>
+      <li><a href="javascript:void(0);"
+        onclick="window.location='/modpack.html?mcver=1.12.2'">1.12.2</a></li>
+      <li><a href="javascript:void(0);"
+        onclick="window.location='/modpack.html?mcver=earlier'">远古版本</a></li>
+    </ul>
+  </div>
+  <div class="modlist-block">
+    <div class="intro"><a class="intro-content">
+      <span>低配机的冒险福音,强优化!</span></a></div>
+    <div class="cover"><img src="//i.mcmod.cn/modpack/cover/883.jpg@170x115.jpg"></div>
+    <div class="title">
+      <p class="name"><a href="/modpack/883.html">[TC] 剑拔弩张之时</a></p>
+      <p class="ename"><a href="/modpack/883.html">&nbsp;</a></p>
+    </div>
+  </div>
+  <div class="modlist-block">
+    <div class="intro"><a class="intro-content">
+      <span>1.12.2 拔刀剑整合包</span></a></div>
+    <div class="cover"><img src="//i.mcmod.cn/modpack/cover/1314.jpg@170x115.jpg"></div>
+    <div class="title">
+      <p class="name"><a href="/modpack/1314.html">拔刀之旅</a></p>
+      <p class="ename"><a href="/modpack/1314.html">Battou No Tabi</a></p>
+    </div>
+  </div>
+  <div class="pagination"><a data-page="1" href="?page=1">1</a>
+    <a data-page="47" href="?page=47">47</a></div>
+</body></html>''';
+
+    test('列表:走 modpack.html,id 取自 /modpack/N.html,条目类型是整合包', () async {
+      final uris = <Uri>[];
+      McmodApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        return http.Response.bytes(utf8.encode(modpackHtml()), 200);
+      });
+
+      final r = await McmodApi.getFilteredMods(
+        const Filter(
+          type: ProjectType.modpack,
+          modSource: ModSource.mcmod,
+          sortMethod: SortMethod.none,
+        ),
+      );
+      expect(uris.single.path, '/modpack.html');
+      expect(r.totalPages, 47); // 分页链接的 data-page 最大值
+      expect(r.mods, hasLength(2));
+      final first = r.mods.first;
+      expect(first.id, '883');
+      expect(first.type, ProjectType.modpack);
+      expect(first.title, '[TC] 剑拔弩张之时');
+      expect(first.subName, isNull); // ename 是 &nbsp; → 空
+      expect(first.description, '低配机的冒险福音,强优化!');
+      // 封面走 modpack 目录,协议相对地址补全
+      expect(
+        first.iconUrl,
+        'https://i.mcmod.cn/modpack/cover/883.jpg@170x115.jpg',
+      );
+      expect(r.mods.last.subName, 'Battou No Tabi');
+      // 详情页地址也按类型拼(收藏页 / 浏览器打开用)
+      expect(first.pageUrl, 'https://www.mcmod.cn/modpack/883.html');
+    });
+
+    test('列表:分类/版本/排序参数与模组页通用', () async {
+      final uris = <Uri>[];
+      McmodApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        return http.Response.bytes(utf8.encode(modpackHtml()), 200);
+      });
+
+      await McmodApi.getFilteredMods(
+        const Filter(
+          type: ProjectType.modpack,
+          modSource: ModSource.mcmod,
+          sortMethod: SortMethod.createTime,
+          category: ProjectCategory(
+            id: '9',
+            type: ProjectType.modpack,
+            name: '大型',
+            source: ModSource.mcmod,
+          ),
+          version: ProjectVersion(version: '1.12.2', source: ModSource.mcmod),
+        ),
+      );
+      final params = uris.single.queryParameters;
+      expect(uris.single.path, '/modpack.html');
+      expect(params['category'], '9');
+      expect(params['mcver'], '1.12.2');
+      expect(params['sort'], 'createtime');
+    });
+
+    test('分类:取 modpack.html 里的筛选块(名称/说明/id 按类型分开缓存)', () async {
+      final uris = <Uri>[];
+      McmodApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        if (request.url.path == '/') {
+          // 首页(模组分类的来源),不应被整合包这条路径用到
+          return http.Response.bytes(utf8.encode(homeHtml()), 200);
+        }
+        return http.Response.bytes(utf8.encode(modpackHtml()), 200);
+      });
+
+      final cats = await McmodApi.getCategories(ProjectType.modpack);
+      expect(uris.single.path, '/modpack.html');
+      expect(cats.map((c) => c.name), ['科技', '大型']);
+      expect(cats.first.id, '1');
+      expect(cats.first.type, ProjectType.modpack);
+      expect(cats.first.description, '含有科技类模组。');
+      expect(cats.last.id, '9');
+
+      // 同类型第二次命中缓存
+      await McmodApi.getCategories(ProjectType.modpack);
+      expect(uris, hasLength(1));
+
+      // 换回模组类型:走首页那份,与整合包互不干扰(id 体系不同)
+      final modCats = await McmodApi.getCategories(ProjectType.mod);
+      expect(uris.last.path, '/');
+      expect(modCats.single.type, ProjectType.mod);
+    });
+
+    test('版本选项:取 modpack.html,跳过「远古版本」', () async {
+      final uris = <Uri>[];
+      McmodApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        return http.Response.bytes(utf8.encode(modpackHtml()), 200);
+      });
+
+      final versions = await McmodApi.getVersions(ProjectType.modpack);
+      expect(uris.single.path, '/modpack.html');
+      expect(versions.map((v) => v.version), ['1.12.2']);
+    });
+
+    test('详情:走 /modpack/N.html,封面取 modpack 目录,无平台/环境字段', () async {
+      final uris = <Uri>[];
+      McmodApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        return http.Response.bytes(
+          utf8.encode('''
+<html><head>
+  <title>[TC] 剑拔弩张之时 - MC百科|最大的Minecraft中文MOD百科</title>
+</head><body>
+  <img src="//i.mcmod.cn/modpack/cover/883.jpg@170x115.jpg" />
+  <li class="col-lg-4">整合包类型: <a href="/modpack.html?mold=2">魔改整合</a></li>
+  <li class="col-lg-4">运作方式: <a href="/modpack.html?api=1">Forge</a></li>
+  <li class="col-lg-12 mcver">
+    <ul><ul>
+      <li>Forge: </li>
+      <li><a href="/modpack.html?api=1&amp;mcver=1.12.2">1.12.2</a></li>
+    </ul></ul>
+  </li>
+  <li class="col-lg-12 author"><div class="frame"><ul>
+    <li><span class="avatar"><img src="//i.mcmod.cn/user/1.png@45x45.jpg"></span>
+      <span class="member"><span class="name">水咬狸花猫</span>
+      <span class="position">所有者/美术</span></span></li>
+  </ul></div></li>
+  <div class="common-link-frame">
+    <ul class="common-link-icon-frame common-link-icon-frame-style-3">
+      <li><a href="//link.mcmod.cn/target/aHR0cHM6Ly9wYW4ucXVhcmsuY24vcy9j">
+        <span title="夸克网盘" class="name">夸克网盘</span></a></li>
+    </ul>
+  </div>
+  <li class="text-area common-text"><p>这是整合包正文。</p></li>
+</body></html>'''),
+          200,
+        );
+      });
+
+      final d = await McmodApi.getDetail(
+        '883',
+        type: ProjectType.modpack,
+        fallbackDescription: '列表页简介',
+      );
+      expect(uris.single.path, '/modpack/883.html');
+      expect(d.type, ProjectType.modpack);
+      expect(d.title, '[TC] 剑拔弩张之时');
+      expect(d.description, '列表页简介');
+      expect(
+        d.coverUrl,
+        'https://i.mcmod.cn/modpack/cover/883.jpg@170x115.jpg',
+      );
+      expect(d.body, contains('这是整合包正文'));
+      // 信息面板:整合包页没有「支持平台 / 运行环境」两个字段,
+      // 它的加载器信息在版本分组里(见下面那条断言)
+      expect(d.platform, isNull);
+      expect(d.sides, isNull);
+      // 与模组页同构的部分照常解析:版本按加载器分组、作者、相关链接
+      expect(d.mcVersions[ProjectLoader.of('Forge')], ['1.12.2']);
+      expect(d.authors!.single.name, '水咬狸花猫');
+      expect(d.links.single.name, '夸克网盘');
+      expect(d.pageUrl, 'https://www.mcmod.cn/modpack/883.html');
+    });
+
+    test('详情缓存按「类型+id」分开:同号模组与整合包互不覆盖', () async {
+      final uris = <Uri>[];
+      McmodApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        final isPack = request.url.path.startsWith('/modpack/');
+        return http.Response.bytes(
+          utf8.encode(
+            '<html><head><title>${isPack ? '整合包' : '模组'}${request.url.path} - MC百科</title></head><body></body></html>',
+          ),
+          200,
+        );
+      });
+
+      final pack = await McmodApi.getDetail('883', type: ProjectType.modpack);
+      final mod = await McmodApi.getDetail('883');
+      expect(pack.type, ProjectType.modpack);
+      expect(mod.type, ProjectType.mod);
+      expect(uris.map((u) => u.path), ['/modpack/883.html', '/class/883.html']);
     });
   });
 }

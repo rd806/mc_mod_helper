@@ -7,14 +7,14 @@ import '../common/section_title.dart';
 
 /// 模组开发团队(作者信息卡片,超出可展开的行数时折叠)
 class AuthorsCard extends StatelessWidget {
-  const AuthorsCard({super.key, required this.mod});
+  const AuthorsCard({super.key, required this.project});
 
-  final ProjectDetail mod;
+  final ProjectDetail project;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final authors = mod.authors;
+    final authors = project.authors;
     if (authors == null || authors.isEmpty) return const SizedBox.shrink();
 
     return Card(

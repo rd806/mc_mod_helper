@@ -87,7 +87,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+      _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
     );
 
     // 初始:显示原文,按钮为「翻译」
@@ -133,7 +133,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+      _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
     );
     await tester.tap(find.text('翻译'));
     await tester.pump(); // SnackBar 入场
@@ -152,7 +152,7 @@ void main() {
       _enableAuto();
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
       );
       await _settle(tester);
 
@@ -171,7 +171,7 @@ void main() {
       LanguageSettings.instance.setAutoTranslate(true);
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
       );
       await _settle(tester);
 
@@ -197,7 +197,7 @@ void main() {
       LanguageSettings.instance.setAutoTranslate(true);
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
       );
       await _settle(tester);
       expect(calls, 0);
@@ -216,7 +216,7 @@ void main() {
       _enableAuto();
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
       );
       await _settle(tester);
       expect(find.textContaining('这是译文', findRichText: true), findsOneWidget);
@@ -239,7 +239,7 @@ void main() {
       AgentSettings.instance.setApiKey('k');
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
       );
       await _settle(tester);
       expect(calls, 0);
@@ -264,7 +264,7 @@ void main() {
       _enableAuto();
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
       );
       await _settle(tester);
       expect(find.textContaining('中文译文', findRichText: true), findsOneWidget);
@@ -288,7 +288,7 @@ void main() {
       _enableAuto();
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
       );
       await _settle(tester);
 
@@ -321,7 +321,7 @@ void main() {
       _enableAuto();
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
       );
       await _settle(tester);
 
@@ -350,7 +350,7 @@ void main() {
       _enableAuto();
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _zhMod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _zhMod, onLinkTap: _noop)),
       );
       await _settle(tester);
 
@@ -379,7 +379,7 @@ void main() {
       _enableAuto();
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _mod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _mod, onLinkTap: _noop)),
       );
       await _settle(tester);
       expect(prompts, hasLength(1));
@@ -387,7 +387,7 @@ void main() {
 
       // 同一个位置换成另一个模组:element 相同、State 被复用
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _otherMod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _otherMod, onLinkTap: _noop)),
       );
       await _settle(tester);
 
@@ -405,7 +405,7 @@ void main() {
       _enableAuto();
 
       await tester.pumpWidget(
-        _wrap(const DescriptionCard(mod: _emptyMod, onLinkTap: _noop)),
+        _wrap(const DescriptionCard(project: _emptyMod, onLinkTap: _noop)),
       );
       await _settle(tester);
 

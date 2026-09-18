@@ -40,7 +40,9 @@ class ModrinthApi {
   /// 会话缓存,避免重复请求
   static final Map<String, List<ProjectSummary>> _searchCache = {};
   static final Map<String, ProjectDetail> _detailCache = {};
-  static List<ProjectCategory>? _categoryCache;
+
+  /// 分类选项按类型缓存(接口一次返回所有类型的分类,这里按类型取子集)
+  static final Map<ProjectType, List<ProjectCategory>> _categoryCache = {};
 
   static List<ProjectVersion>? _versionCache;
 
@@ -65,7 +67,7 @@ class ModrinthApi {
   static void clearCaches() {
     _searchCache.clear();
     _detailCache.clear();
-    _categoryCache = null;
+    _categoryCache.clear();
     _versionCache = null;
     _filteredModsCache.clear();
     _lastAt = null;
@@ -129,18 +131,18 @@ class ModrinthApi {
     return detail;
   }
 
-  /// 获取详情页所属分类之外的公开接口:模组分类列表。
+  /// 获取分类列表(按类型)。
   ///
-  /// Modrinth 的 tag/category 接口返回全部分类(含资源包分辨率、加载器等),
-  /// 这里只保留 project_type=mod 的 categories 组。
-  static Future<List<ProjectCategory>> getCategories() async {
-    final cached = _categoryCache;
+  /// Modrinth 的 tag/category 接口一次返回全部类型的分类
+  /// (含资源包分辨率、加载器等分组),这里只保留 [type] 的 categories 组。
+  static Future<List<ProjectCategory>> getCategories(ProjectType type) async {
+    final cached = _categoryCache[type];
     if (cached != null) return cached;
 
     final uri = Uri.parse('https://api.modrinth.com/v2/tag/category');
     final body = await _get(uri);
-    final cats = _parseCategories(body);
-    _categoryCache = cats;
+    final cats = _parseCategories(body, type);
+    _categoryCache[type] = cats;
     return cats;
   }
 
@@ -175,7 +177,8 @@ class ModrinthApi {
     final facets = jsonEncode([
       if (filter.category != null) ['categories:${filter.category!.id}'],
       if (filter.version != null) ['versions:${filter.version!.version}'],
-      ['project_type:mod'],
+      // 项目类型的取值与枚举名一致(mod / modpack / …)
+      ['project_type:${filter.type.name}'],
     ]);
     final key = '${filter.signature}|$page';
     final cached = _filteredModsCache[key];
@@ -296,18 +299,19 @@ class ModrinthApi {
     'worldgen': '世界生成',
   };
 
-  static List<ProjectCategory> _parseCategories(String body) {
+  static List<ProjectCategory> _parseCategories(String body, ProjectType type) {
     final data = jsonDecode(body) as List<dynamic>;
     final cats = <ProjectCategory>[];
     for (final item in data.cast<Map<String, dynamic>>()) {
-      if (item['project_type'] != 'mod') continue;
+      // 只取该类型的 categories 组(接口同时返回 resolutions、loaders 等分组)
+      if (item['project_type'] != type.name) continue;
       if (item['header'] != 'categories') continue;
       final slug = (item['name'] as String?)?.trim() ?? '';
       if (slug.isEmpty) continue;
       cats.add(
         ProjectCategory(
           id: slug,
-          type: _projectType(item['project_type']),
+          type: type,
           name: _categoryNames[slug] ?? slug,
           source: ModSource.modrinth,
         ),

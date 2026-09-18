@@ -58,7 +58,7 @@ class ProjectSummary {
   final List<(String, String)>? statistics;
 
   /// 模组详情页地址(按数据来源返回)
-  String get pageUrl => SourceManager.getUrl(source, id);
+  String get pageUrl => SourceManager.getUrl(source, type, id);
 
   /// 去掉 `[缩写]` 前缀后的显示名
   String get displayName {

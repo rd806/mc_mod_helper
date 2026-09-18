@@ -174,6 +174,48 @@ void main() {
     expect((await CurseforgeApi.getDetail('4')).type, ProjectType.plugin);
   });
 
+  test('整合包:搜索与分类都带 classId=4471', () async {
+    final uris = <Uri>[];
+    CurseforgeApi.clientFactory = () => MockClient((request) async {
+      uris.add(request.url);
+      if (request.url.path == '/v1/categories') {
+        return _json({
+          'data': [
+            {'id': 4475, 'name': 'Adventure and RPG'},
+          ],
+        });
+      }
+      return _json({
+        'data': [
+          {
+            'id': 900,
+            'name': 'All the Mods 9',
+            'summary': '整合包',
+            'classId': 4471,
+          },
+        ],
+        'pagination': {'totalCount': 1},
+      });
+    });
+    CurseforgeApi.clearCaches();
+
+    final r = await CurseforgeApi.getFilteredMods(
+      const Filter(
+        type: ProjectType.modpack,
+        modSource: ModSource.curseforge,
+        sortMethod: SortMethod.none,
+      ),
+    );
+    expect(uris.single.queryParameters['classId'], '4471');
+    expect(r.mods.single.type, ProjectType.modpack);
+
+    // 分类也按类型的 classId 取(整合包分类与模组分类不是一套)
+    final cats = await CurseforgeApi.getCategories(ProjectType.modpack);
+    expect(uris.last.path, '/v1/categories');
+    expect(uris.last.queryParameters['classId'], '4471');
+    expect(cats.single.type, ProjectType.modpack);
+  });
+
   test('getDetail:name 作标题、logo 作封面、文件列表分组版本与加载器', () async {
     final d = await CurseforgeApi.getDetail('238222');
     expect(d.id, '238222');
@@ -205,7 +247,7 @@ void main() {
   });
 
   test('getCategories 翻译中文名,id 为数字字符串', () async {
-    final cats = await CurseforgeApi.getCategories();
+    final cats = await CurseforgeApi.getCategories(ProjectType.mod);
     expect(cats.map((c) => c.name), containsAll(['科技', '魔法']));
     final tech = cats.firstWhere((c) => c.name == '科技');
     expect(tech.id, '416');
@@ -229,6 +271,7 @@ void main() {
 
     final r1 = await CurseforgeApi.getFilteredMods(
       const Filter(
+        type: ProjectType.mod,
         modSource: ModSource.curseforge,
         sortMethod: SortMethod.lastEditTime,
         category: ProjectCategory(
@@ -255,6 +298,7 @@ void main() {
     // 翻页是 index 偏移制
     final r2 = await CurseforgeApi.getFilteredMods(
       const Filter(
+        type: ProjectType.mod,
         modSource: ModSource.curseforge,
         sortMethod: SortMethod.lastEditTime,
         category: ProjectCategory(
@@ -276,6 +320,7 @@ void main() {
 
     final bad = await CurseforgeApi.getFilteredMods(
       const Filter(
+        type: ProjectType.mod,
         modSource: ModSource.curseforge,
         sortMethod: SortMethod.none,
         category: ProjectCategory(
@@ -300,6 +345,7 @@ void main() {
 
     await CurseforgeApi.getFilteredMods(
       const Filter(
+        type: ProjectType.mod,
         modSource: ModSource.curseforge,
         sortMethod: SortMethod.none,
       ),

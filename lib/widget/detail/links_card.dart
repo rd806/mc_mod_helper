@@ -6,9 +6,9 @@ import '../common/section_title.dart';
 
 /// 相关链接(超出可展开的行数时折叠)
 class LinksCard extends StatelessWidget {
-  const LinksCard({super.key, required this.mod, required this.onOpenUrl});
+  const LinksCard({super.key, required this.project, required this.onOpenUrl});
 
-  final ProjectDetail mod;
+  final ProjectDetail project;
 
   /// 链接点击回调(灯箱/浏览器/应用内跳转由调用方分流)
   final void Function(String url) onOpenUrl;
@@ -16,7 +16,7 @@ class LinksCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final links = mod.links;
+    final links = project.links;
     if (links.isEmpty) return const SizedBox.shrink();
 
     return Card(
@@ -28,7 +28,7 @@ class LinksCard extends StatelessWidget {
             const SectionTitle(title: '相关链接', icon: Icons.insert_link_rounded),
             CollapsibleWidgets(
               widget: [
-                for (final link in mod.links)
+                for (final link in project.links)
                   ActionChip(
                     avatar: link.icon,
                     backgroundColor: theme.colorScheme.onPrimary.withAlpha(100),

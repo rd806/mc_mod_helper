@@ -12,20 +12,24 @@ import '../api/mcmod.dart';
 import '../model/filter/sort_method.dart';
 import '../model/project/project_category.dart';
 import '../model/project/project_summary.dart';
+import '../model/project/project_type.dart';
 import '../model/project/project_version.dart';
 import '../widget/dialog/captcha_dialog.dart';
 import '../widget/common/error_view.dart';
 
 /// 浏览页:首页与探索页合并而来。
 ///
-/// 内容完全由顶部的筛选栏([FilterBar])决定 —— 分类 / 版本 / 排序任意组合,
-/// 没有「查看更多」,所有内容都在本页滚动到底自动加载下一页。
-/// 原来的分类页、版本页、版块列表页因此都成了冗余入口,已删除。
+/// 顶部的类型标签决定浏览哪一类资源(模组 / 整合包),下方的筛选栏
+/// ([FilterBar])决定这一类里的分类 / 版本 / 排序组合,没有「查看更多」,
+/// 所有内容都在本页滚动到底自动加载下一页。
+///
+/// 类型与数据来源都算「作用域」(决定分类与版本的候选集),
+/// 变化时要清掉已选的分类/版本;筛选栏那三项才是「筛选条件」。
 class BrowsePage extends StatefulWidget {
   const BrowsePage({super.key, this.initialFilter});
 
-  /// 预设筛选(详情页的版本胶囊跳进来时带上该版本)。
-  /// 为空则用「当前数据来源 + 默认排序 + 不带分类版本」
+  /// 预设筛选(详情页的版本胶囊跳进来时带上该版本与类型)。
+  /// 为空则用「模组 + 当前数据来源 + 默认排序 + 不带分类版本」
   final Filter? initialFilter;
 
   @override
@@ -63,12 +67,18 @@ class _BrowsePageState extends State<BrowsePage> {
 
   bool get _hasMore => _totalPages == null || _page < _totalPages!;
 
+  /// 抓选项时的两次 await 之间,作用域有没有被改掉(换来源 / 换类型);
+  /// 改了就当这次结果过期,别把上一个作用域的分类/版本盖上去
+  bool _scopeIsCurrent(ModSource source, ProjectType type) =>
+      source == DisplaySettings.instance.dataSource && type == _filter.type;
+
   @override
   void initState() {
     super.initState();
     _filter =
         widget.initialFilter ??
         Filter(
+          type: ProjectTypeManager.supportedTypes.first,
           modSource: DisplaySettings.instance.dataSource,
           sortMethod: SortMethod.none,
         );
@@ -103,13 +113,35 @@ class _BrowsePageState extends State<BrowsePage> {
     final source = DisplaySettings.instance.dataSource;
     if (source == _lastDataSource) return;
     _lastDataSource = source;
-    setState(() {
-      _filter = Filter(
+    _resetScope(
+      Filter(
+        type: _filter.type,
         modSource: source,
         sortMethod: _filter.sortMethod,
-        category: null,
-        version: null,
-      );
+      ),
+    );
+  }
+
+  /// 切换项目类型(顶部的类型标签)。
+  ///
+  /// 类型与来源一样是「作用域」:各类型的分类 id 与版本集合都不同
+  /// (mcmod 的 category=1 在模组下是「科技」、在整合包下是「科技整合包」),
+  /// 所以换类型同样要清掉已选的分类与版本,排序保留
+  void _onTypeChanged(ProjectType type) {
+    if (type == _filter.type) return;
+    _resetScope(
+      Filter(
+        type: type,
+        modSource: DisplaySettings.instance.dataSource,
+        sortMethod: _filter.sortMethod,
+      ),
+    );
+  }
+
+  /// 作用域变化(换类型 / 换来源):清掉分类与版本,选项与第 1 页都重拉
+  void _resetScope(Filter next) {
+    setState(() {
+      _filter = next;
       _categories = const [];
       _versions = const [];
       _optionsLoading = true;
@@ -119,16 +151,17 @@ class _BrowsePageState extends State<BrowsePage> {
     _loadFirstPage();
   }
 
-  /// 抓取筛选栏的可选项(分类 + 版本)
+  /// 抓取筛选栏的可选项(分类 + 版本,按当前来源与类型)
   Future<void> _loadOptions() async {
     final source = DisplaySettings.instance.dataSource;
+    final type = _filter.type;
     try {
       // 两个请求共用来源自己的节流,并发发出会互相插队,故顺序等待
-      final categories = await SourceManager.getCategory(source);
-      if (!mounted || source != DisplaySettings.instance.dataSource) return;
+      final categories = await SourceManager.getCategory(source, type);
+      if (!mounted || !_scopeIsCurrent(source, type)) return;
       setState(() => _categories = categories);
-      final versions = await SourceManager.getVersions(source);
-      if (!mounted || source != DisplaySettings.instance.dataSource) return;
+      final versions = await SourceManager.getVersions(source, type);
+      if (!mounted || !_scopeIsCurrent(source, type)) return;
       setState(() {
         _versions = versions;
         _optionsLoading = false;
@@ -165,6 +198,7 @@ class _BrowsePageState extends State<BrowsePage> {
     SortMethod sort,
   ) {
     final next = Filter(
+      type: _filter.type,
       modSource: DisplaySettings.instance.dataSource,
       sortMethod: sort,
       category: category,
@@ -287,41 +321,57 @@ class _BrowsePageState extends State<BrowsePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: FakeSearchBar(),
-        actions: [
-          IconButton(
-            tooltip: '刷新',
-            icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsetsGeometry.all(16),
-            child: FilterBar(
-              filter: _filter,
-              categories: _categories,
-              versions: _versions,
-              optionsLoading: _optionsLoading,
-              optionsError: _optionsError,
-              onRetryOptions: () {
-                setState(() {
-                  _optionsLoading = true;
-                  _optionsError = null;
-                });
-                _loadOptions();
-              },
-              onChanged: _onFilterChanged,
+    // 类型标签:数量与下标都由 [ProjectTypeManager.supportedTypes] 决定,
+    // 初始下标跟着当前筛选的类型走(详情页的版本胶囊可能预设成整合包)
+    final types = ProjectTypeManager.supportedTypes;
+    final typeIndex = types.indexOf(_filter.type);
+
+    return DefaultTabController(
+      length: types.length,
+      initialIndex: typeIndex < 0 ? 0 : typeIndex,
+      child: Scaffold(
+        appBar: AppBar(
+          title: FakeSearchBar(),
+          actions: [
+            IconButton(
+              tooltip: '刷新',
+              icon: const Icon(Icons.refresh),
+              onPressed: _refresh,
             ),
+          ],
+          bottom: TabBar(
+            onTap: (index) => _onTypeChanged(types[index]),
+            tabs: [
+              for (final type in types)
+                Tab(text: ProjectTypeManager.getTypeTitle(type)),
+            ],
           ),
-          Expanded(
-            child: RefreshIndicator(onRefresh: _refresh, child: _buildBody()),
-          ),
-        ],
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsetsGeometry.all(16),
+              child: FilterBar(
+                filter: _filter,
+                categories: _categories,
+                versions: _versions,
+                optionsLoading: _optionsLoading,
+                optionsError: _optionsError,
+                onRetryOptions: () {
+                  setState(() {
+                    _optionsLoading = true;
+                    _optionsError = null;
+                  });
+                  _loadOptions();
+                },
+                onChanged: _onFilterChanged,
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(onRefresh: _refresh, child: _buildBody()),
+            ),
+          ],
+        ),
       ),
     );
   }

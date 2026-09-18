@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
 /// JSON 响应(http.Response(String) 默认 latin1 编码,中文会抛错,必须用 bytes)
@@ -90,6 +91,44 @@ void main() {
     );
     expect(total.results[ModSource.modrinth]!.single.id, 'jei');
     expect(total.errors, isEmpty);
+  });
+
+  test('getUrl:按类型拼地址(整合包不能拼成模组地址)', () {
+    // 模组:与之前一致
+    expect(
+      SourceManager.getUrl(ModSource.mcmod, ProjectType.mod, '459'),
+      'https://www.mcmod.cn/class/459.html',
+    );
+    expect(
+      SourceManager.getUrl(ModSource.modrinth, ProjectType.mod, 'jei'),
+      'https://modrinth.com/mod/jei',
+    );
+    // 整合包:各站点各有自己的路径段
+    expect(
+      SourceManager.getUrl(ModSource.mcmod, ProjectType.modpack, '883'),
+      'https://www.mcmod.cn/modpack/883.html',
+    );
+    expect(
+      SourceManager.getUrl(
+        ModSource.modrinth,
+        ProjectType.modpack,
+        'fabulously-optimized',
+      ),
+      'https://modrinth.com/modpack/fabulously-optimized',
+    );
+    expect(
+      SourceManager.getUrl(ModSource.curseforge, ProjectType.modpack, '900'),
+      'https://www.curseforge.com/minecraft/modpacks/900',
+    );
+    // Modrinth 的路径段与类型同名,其余类型也成立
+    expect(
+      SourceManager.getUrl(
+        ModSource.modrinth,
+        ProjectType.shader,
+        'complementary',
+      ),
+      'https://modrinth.com/shader/complementary',
+    );
   });
 
   test('getTotalSearch:mcmod 验证码异常直接上抛(由页面弹窗处理)', () async {

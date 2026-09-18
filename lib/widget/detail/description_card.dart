@@ -26,11 +26,11 @@ import '../common/section_title.dart';
 class DescriptionCard extends StatefulWidget {
   const DescriptionCard({
     super.key,
-    required this.mod,
+    required this.project,
     required this.onLinkTap,
   });
 
-  final ProjectDetail mod;
+  final ProjectDetail project;
 
   /// 正文链接/图片点击回调(灯箱/站内跳转/浏览器由调用方分流)
   final void Function(String url) onLinkTap;
@@ -75,7 +75,7 @@ class _DescriptionCardState extends State<DescriptionCard> {
   String? _seenLang;
 
   /// 缓存/请求用的键:区分来源与模组
-  String get _cacheKey => '${widget.mod.source.name}:${widget.mod.id}';
+  String get _cacheKey => '${widget.project.source.name}:${widget.project.id}';
 
   /// 当前应渲染的正文
   String get _html {
@@ -83,7 +83,7 @@ class _DescriptionCardState extends State<DescriptionCard> {
     if (_showTranslated && _translatedHtml != null && _translatedLang == lang) {
       return _translatedHtml!;
     }
-    return widget.mod.body!;
+    return widget.project.body!;
   }
 
   /// 译文当前是否生效(按钮文案/状态据此判断)
@@ -109,7 +109,10 @@ class _DescriptionCardState extends State<DescriptionCard> {
     super.didUpdateWidget(oldWidget);
     // 详情页刷新/换模组时 element 相同、State 会被复用,不重置就会把上一个
     // 模组的译文渲染到新模组的正文位置上
-    if (_cacheKey == '${oldWidget.mod.source.name}:${oldWidget.mod.id}') return;
+    if (_cacheKey ==
+        '${oldWidget.project.source.name}:${oldWidget.project.id}') {
+      return;
+    }
     _translatedHtml = null;
     _translatedLang = null;
     _autoStartedFor = null;
@@ -161,7 +164,7 @@ class _DescriptionCardState extends State<DescriptionCard> {
     }
     if (_autoSuppressed || _loading) return;
     // 正文可能为空(此时整卡都不渲染),不能让下面的 ! 崩掉
-    final body = widget.mod.body;
+    final body = widget.project.body;
     if (body == null || body.isEmpty) return;
     // 已有该语言译文(本页刚翻的,或会话内缓存的别的页面翻的):直接切过去
     final ready =
@@ -228,7 +231,7 @@ class _DescriptionCardState extends State<DescriptionCard> {
     });
     try {
       final html = await TranslateApi.translateHtml(
-        widget.mod.body!,
+        widget.project.body!,
         cacheKey: key,
         targetLang: lang,
         // 长正文分块翻译,进度反馈到按钮(翻译中 2/5)
@@ -269,7 +272,7 @@ class _DescriptionCardState extends State<DescriptionCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.mod.body == null || widget.mod.body!.isEmpty) {
+    if (widget.project.body == null || widget.project.body!.isEmpty) {
       return const SizedBox.shrink();
     }
     return Card(
@@ -279,7 +282,7 @@ class _DescriptionCardState extends State<DescriptionCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionTitle(
-              title: '模组介绍',
+              title: '详情介绍',
               icon: Icons.article_rounded,
               children: [_buildTranslateButton(context)],
             ),

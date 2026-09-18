@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
 import '../../icon/icon_manager.dart';
@@ -9,9 +10,9 @@ import '../common/image_box.dart';
 /// 点击封面开灯箱、名称+副标题构建等公共逻辑,
 /// 窄屏(竖排)与宽屏(横排)两种布局各自覆写 [build]。
 abstract class ModCover extends StatelessWidget {
-  const ModCover({super.key, required this.mod});
+  const ModCover({super.key, required this.project});
 
-  final ProjectDetail mod;
+  final ProjectDetail project;
 
   /// 打开灯箱
   void _showLightbox(BuildContext context, String url) {
@@ -22,10 +23,10 @@ abstract class ModCover extends StatelessWidget {
   /// [width]/[height] 由子类按布局决定
   Widget _buildIcon(BuildContext context, {double? width, double? height}) {
     final theme = Theme.of(context);
-    final image = mod.coverUrl == null
+    final image = project.coverUrl == null
         ? null
         : Image.network(
-            mod.coverUrl!,
+            project.coverUrl!,
             width: width,
             height: height,
             fit: BoxFit.cover,
@@ -35,9 +36,9 @@ abstract class ModCover extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: GestureDetector(
-        onTap: mod.coverUrl == null
+        onTap: project.coverUrl == null
             ? null
-            : () => _showLightbox(context, mod.coverUrl!),
+            : () => _showLightbox(context, project.coverUrl!),
         child: image ?? _buildPlaceholder(theme, width: width, height: height),
       ),
     );
@@ -58,47 +59,56 @@ abstract class ModCover extends StatelessWidget {
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 10,
       children: [
         Text(
-          mod.title,
+          project.title,
           style: theme.textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
         // 副标题
-        if (mod.subName != null) ...[
-          const SizedBox(height: 4),
+        if (project.subName != null) ...[
           Text(
-            mod.subName!,
+            project.subName!,
             style: theme.textTheme.titleMedium?.copyWith(
               color: theme.colorScheme.primary,
               fontStyle: FontStyle.italic,
             ),
           ),
         ],
-        const SizedBox(height: 10),
-        _buildDescription(mod, theme),
-        const SizedBox(height: 16),
-        _buildStatistic(mod, theme),
+        _buildDescription(theme),
+        _buildStatistic(theme),
       ],
     );
   }
 
   // 显示来源
-  Widget _buildSource(ProjectDetail mod, ThemeData theme) {
+  Widget _buildSource(ThemeData theme) {
     return Chip(
-      avatar: IconManager.getIconForDataSource(mod.source),
+      avatar: IconManager.getIconForDataSource(project.source),
       backgroundColor: Colors.transparent,
       label: Text(
-        SourceManager.getSourceString(mod.source),
+        SourceManager.getSourceString(project.source),
+        style: theme.textTheme.labelMedium,
+      ),
+    );
+  }
+
+  // 显示类别
+  Widget _buildType(ThemeData theme) {
+    return Chip(
+      avatar: ProjectTypeManager.getTypeIcon(project.type),
+      label: Text(
+        ProjectTypeManager.getTypeTitle(project.type),
         style: theme.textTheme.labelMedium,
       ),
     );
   }
 
   // 显示描述
-  Widget _buildDescription(ProjectDetail mod, ThemeData theme) {
-    final description = mod.description;
+  Widget _buildDescription(ThemeData theme) {
+    final description = project.description;
     if (description == null || description.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -112,8 +122,8 @@ abstract class ModCover extends StatelessWidget {
   }
 
   // 统计信息
-  Widget _buildStatistic(ProjectDetail mod, ThemeData theme) {
-    final statistic = mod.statistics;
+  Widget _buildStatistic(ThemeData theme) {
+    final statistic = project.statistics;
     List<Widget> widget = [];
 
     if (statistic == null || statistic.isEmpty) return const SizedBox.shrink();
@@ -125,11 +135,8 @@ abstract class ModCover extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: [
-          _buildSource(mod, theme),
-          const SizedBox(width: 10),
-          ...widget,
-        ],
+        spacing: 10,
+        children: [_buildSource(theme), _buildType(theme), ...widget],
       ),
     );
   }
@@ -137,17 +144,16 @@ abstract class ModCover extends StatelessWidget {
 
 /// 窄屏格式:封面在上,标题在下
 class ModCoverNarrow extends ModCover {
-  const ModCoverNarrow({super.key, required super.mod});
+  const ModCoverNarrow({super.key, required super.project});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 10,
       children: [
         _buildIcon(context, width: double.infinity, height: 200),
-        const SizedBox(height: 12),
         _buildName(context),
-        const SizedBox(height: 12),
         const Divider(),
       ],
     );
@@ -156,7 +162,7 @@ class ModCoverNarrow extends ModCover {
 
 /// 宽屏格式:封面缩略图在左,标题在右
 class ModCoverWide extends ModCover {
-  const ModCoverWide({super.key, required super.mod});
+  const ModCoverWide({super.key, required super.project});
 
   @override
   Widget build(BuildContext context) {

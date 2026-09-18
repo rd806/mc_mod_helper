@@ -12,7 +12,7 @@ Widget _card(Map<ProjectLoader, List<String>> versions) {
   return MaterialApp(
     home: Scaffold(
       body: EnvironmentCard(
-        mod: ProjectDetail(
+        project: ProjectDetail(
           id: 'sodium',
           type: ProjectType.mod,
           title: 'Sodium',
@@ -44,6 +44,38 @@ void main() {
     // 两组各自的版本都在
     expect(find.text('1.21.1'), findsOneWidget);
     expect(find.text('1.20.1'), findsOneWidget);
+  });
+
+  testWidgets('整合包:没有运行环境也要显示支持的MC版本与加载器', (tester) async {
+    // mcmod 的整合包页没有「运行环境」字段(sides 为空),
+    // 但「支持的MC版本」照样有 —— 卡片不能因为 sides 为空就整块藏起来
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: EnvironmentCard(
+            project: ProjectDetail(
+              id: '883',
+              type: ProjectType.modpack,
+              title: '剑拔弩张之时',
+              source: ModSource.mcmod,
+              sides: null,
+              mcVersions: {
+                ProjectLoader.of('Forge'): ['1.12.2', '1.20.1'],
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('加载环境'), findsOneWidget); // 卡片本身在
+    expect(find.text('Forge'), findsOneWidget); // 加载器行
+    expect(find.byIcon(LinkIcons.forge), findsOneWidget);
+    expect(find.text('1.12.2'), findsOneWidget); // 版本胶囊
+    expect(find.text('1.20.1'), findsOneWidget);
+    // 没有运行端信息,不显示客户端/服务端胶囊
+    expect(find.textContaining('客户端：'), findsNothing);
   });
 
   testWidgets('没有版本分组时整块不渲染', (tester) async {

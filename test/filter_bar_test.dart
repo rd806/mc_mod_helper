@@ -15,6 +15,7 @@ Widget _bar({int categories = 4, int versions = 4}) {
     home: Scaffold(
       body: FilterBar(
         filter: const Filter(
+          type: ProjectType.mod,
           modSource: ModSource.mcmod,
           sortMethod: SortMethod.none,
         ),

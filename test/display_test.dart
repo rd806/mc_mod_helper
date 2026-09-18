@@ -5,7 +5,7 @@ import 'package:mc_mod_helper/model/project/project_summary.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/setting/value/display.dart';
-import 'package:mc_mod_helper/widget/mod/mod_card.dart';
+import 'package:mc_mod_helper/widget/project/project_card.dart';
 
 /// 以给定宽度渲染展示方式对应的模组列表
 Widget _wrap(DisplayStyle style, {double width = 800}) {
@@ -87,7 +87,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: ModCardRow(
-            mod: ProjectSummary(
+            project: ProjectSummary(
               id: '1',
               type: ProjectType.mod,
               title: '[JEI] JEI物品管理器',
@@ -107,7 +107,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: ModCardRow(
-            mod: ProjectSummary(
+            project: ProjectSummary(
               id: '2',
               type: ProjectType.mod,
               title: '模组名称',

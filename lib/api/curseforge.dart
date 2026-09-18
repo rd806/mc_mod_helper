@@ -45,7 +45,9 @@ class CurseforgeApi {
   /// 会话缓存,避免重复请求
   static final Map<String, List<ProjectSummary>> _searchCache = {};
   static final Map<String, ProjectDetail> _detailCache = {};
-  static List<ProjectCategory>? _categoryCache;
+
+  /// 分类选项按类型缓存(classId 不同,分类也不一样)
+  static final Map<ProjectType, List<ProjectCategory>> _categoryCache = {};
 
   static List<ProjectVersion>? _versionCache;
 
@@ -69,8 +71,20 @@ class CurseforgeApi {
   /// Minecraft 游戏 ID(CurseForge 中 Minecraft 的 gameId 固定为 432)
   static const int _gameId = 432;
 
-  /// 模组分类 classId(CurseForge 中模组的 classId 固定为 6)
-  static const int _modClassId = 6;
+  /// 项目类型 → classId(CurseForge 用数字 classId 区分资源种类:
+  /// 6 模组、4471 整合包、12 材质包、6552 光影、5 服务端插件)。
+  /// 表外的类型按模组处理
+  static const Map<ProjectType, int> _classIds = {
+    ProjectType.mod: 6,
+    ProjectType.modpack: 4471,
+    ProjectType.resourcepack: 12,
+    ProjectType.shader: 6552,
+    ProjectType.plugin: 5,
+  };
+
+  /// 搜索 / 分类接口用的 classId
+  static int _classId(ProjectType type) =>
+      _classIds[type] ?? _classIds[ProjectType.mod]!;
 
   /// 分类英文名 → 中文名(未收录的保留原文)
   static const Map<String, String> _categoryNames = {
@@ -105,7 +119,7 @@ class CurseforgeApi {
   static void clearCaches() {
     _searchCache.clear();
     _detailCache.clear();
-    _categoryCache = null;
+    _categoryCache.clear();
     _versionCache = null;
     _filteredModsCache.clear();
     _lastAt = null;
@@ -123,7 +137,7 @@ class CurseforgeApi {
     final uri = Uri.parse('https://api.curseforge.com/v1/mods/search').replace(
       queryParameters: {
         'gameId': '$_gameId',
-        'classId': '$_modClassId',
+        'classId': '${_classId(ProjectType.mod)}',
         'searchFilter': keyword,
         'pageSize': '20',
         'sortField': '1',
@@ -171,17 +185,17 @@ class CurseforgeApi {
     return detail;
   }
 
-  /// 获取模组分类列表(classId=6 下 Minecraft 的模组分类)
-  static Future<List<ProjectCategory>> getCategories() async {
-    final cached = _categoryCache;
+  /// 获取分类列表(按类型的 classId 取,分类 id 与类型绑定)
+  static Future<List<ProjectCategory>> getCategories(ProjectType type) async {
+    final cached = _categoryCache[type];
     if (cached != null) return cached;
 
     final uri = Uri.parse('https://api.curseforge.com/v1/categories').replace(
-      queryParameters: {'gameId': '$_gameId', 'classId': '$_modClassId'},
+      queryParameters: {'gameId': '$_gameId', 'classId': '${_classId(type)}'},
     );
     final body = await _get(uri);
-    final cats = _parseCategories(body);
-    _categoryCache = cats;
+    final cats = _parseCategories(body, type);
+    _categoryCache[type] = cats;
     return cats;
   }
 
@@ -222,7 +236,7 @@ class CurseforgeApi {
     final uri = Uri.parse('https://api.curseforge.com/v1/mods/search').replace(
       queryParameters: {
         'gameId': '$_gameId',
-        'classId': '$_modClassId',
+        'classId': '${_classId(filter.type)}',
         if (id != null) 'categoryId': '$id',
         if (filter.version != null) 'gameVersion': filter.version!.version,
         'pageSize': '20',
@@ -306,7 +320,9 @@ class CurseforgeApi {
     );
   }
 
-  static List<ProjectCategory> _parseCategories(String body) {
+  /// 分类列表 → 分类选项。类型由**请求**的 classId 决定:
+  /// 分类条目本身不带 classId,是哪个类型的分类取决于我们按哪个 classId 查的
+  static List<ProjectCategory> _parseCategories(String body, ProjectType type) {
     final data = jsonDecode(body) as Map<String, dynamic>;
     final items = (data['data'] as List<dynamic>? ?? const []);
     final cats = <ProjectCategory>[];
@@ -317,7 +333,7 @@ class CurseforgeApi {
       cats.add(
         ProjectCategory(
           id: id.toString(),
-          type: _projectType(item['classId']),
+          type: type,
           name: _categoryNames[name] ?? name,
           source: ModSource.curseforge,
         ),

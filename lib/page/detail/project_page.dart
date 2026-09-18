@@ -22,15 +22,15 @@ import '../../widget/detail/cover.dart';
 import '../../widget/detail/description_card.dart';
 import '../../widget/detail/environment_card.dart';
 import '../../widget/detail/links_card.dart';
-import '../../widget/mod/favorite_toggle.dart';
+import '../../widget/project/favorite_toggle.dart';
 
-/// 模组详情页
+/// 详情页
 class ProjectPage extends StatefulWidget {
   const ProjectPage({
     super.key,
     required this.id,
+    required this.type,
     required this.source,
-    this.type = ProjectType.mod,
     this.initialTitle,
     this.initialDescription,
   });
@@ -41,7 +41,7 @@ class ProjectPage extends StatefulWidget {
   /// 数据来源:'mcmod' 或 'modrinth',决定用哪个 API 加载详情
   final ModSource source;
 
-  /// 项目类型(详情未加载完时的标题栏与收藏摘要用)
+  /// 项目类型
   final ProjectType type;
 
   /// 详情加载完成前显示在标题栏的名称
@@ -96,6 +96,7 @@ class _ProjectPageState extends State<ProjectPage> {
       final detail = switch (widget.source) {
         ModSource.mcmod => await McmodApi.getDetail(
           widget.id,
+          type: widget.type,
           fallbackDescription: widget.initialDescription,
         ),
         ModSource.modrinth => await ModrinthApi.getDetail(
@@ -137,28 +138,32 @@ class _ProjectPageState extends State<ProjectPage> {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
     if (!forceExternal) {
-      final mcmod = _mcmodUrl(uri);
+      final mcmod = _mcmodLink(uri);
       if (mcmod != null) {
-        // 跳过指向当前模组自身的链接,避免堆叠重复详情页
-        if (widget.source != ModSource.modrinth && mcmod == widget.id) return;
+        // 跳过指向当前项目自身的链接,避免堆叠重复详情页
+        if (_isSelf(mcmod.$1, mcmod.$2, ModSource.mcmod)) return;
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => ProjectPage(id: mcmod, source: ModSource.mcmod),
+            builder: (_) => ProjectPage(
+              id: mcmod.$1,
+              source: ModSource.mcmod,
+              type: mcmod.$2,
+            ),
           ),
         );
         return;
       }
 
-      final modrinth = _modrinthUrl(uri);
+      final modrinth = _modrinthLink(uri);
       if (modrinth != null) {
-        // 跳过指向当前项目自身的链接
-        if (widget.source == ModSource.modrinth && modrinth == widget.id) {
-          return;
-        }
+        if (_isSelf(modrinth.$1, modrinth.$2, ModSource.modrinth)) return;
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) =>
-                ProjectPage(id: modrinth, source: ModSource.modrinth),
+            builder: (_) => ProjectPage(
+              id: modrinth.$1,
+              source: ModSource.modrinth,
+              type: modrinth.$2,
+            ),
           ),
         );
         return;
@@ -175,26 +180,44 @@ class _ProjectPageState extends State<ProjectPage> {
     }
   }
 
-  /// Modrinth 模组页：modrinth.com/mod/{slug} 或 /project/{id|slug} → slug;
+  /// 是否为当前页自身(同来源 + 同类型 + 同 id)
+  bool _isSelf(String id, ProjectType type, ModSource source) =>
+      widget.source == source && widget.type == type && widget.id == id;
+
+  /// Modrinth 项目页 → (slug, 类型):
+  /// modrinth.com/{mod|modpack|resourcepack|shader|plugin}/{slug} 或
+  /// /project/{id|slug}(类型未知,按模组);
   /// 其它路径（版本页/用户页/docs 子域等）返回 null,走浏览器
-  static String? _modrinthUrl(Uri uri) {
+  static (String, ProjectType)? _modrinthLink(Uri uri) {
     if (uri.host != 'modrinth.com' && uri.host != 'www.modrinth.com') {
       return null;
     }
-    final m = RegExp(r'^/(?:mod|project)/([a-zA-Z0-9_-]+)/?$')
-        .firstMatch(uri.path.toLowerCase());
-    return m?.group(1);
+    final m = RegExp(
+      r'^/(mod|modpack|resourcepack|shader|plugin|project)/([a-zA-Z0-9_-]+)/?$',
+    ).firstMatch(uri.path.toLowerCase());
+    if (m == null) return null;
+    return (
+      m.group(2)!,
+      ProjectType.values.firstWhere(
+        (t) => t.name == m.group(1),
+        orElse: () => ProjectType.mod,
+      ),
+    );
   }
 
-  /// 站内模组详情页链接(www.mcmod.cn/class/{id}.html) → 模组 id;
+  /// 站内项目详情页链接 → (id, 类型):
+  /// 模组是 www.mcmod.cn/class/{id}.html、整合包是 /modpack/{id}.html;
   /// 其它链接返回 null
-  static String? _mcmodUrl(Uri uri) {
+  static (String, ProjectType)? _mcmodLink(Uri uri) {
     if (uri.host != 'www.mcmod.cn' && uri.host != 'mcmod.cn') {
       return null;
     }
-    final m = RegExp(r'^/class/(\d+)\.html$').firstMatch(uri.path);
-    // 不匹配返回 null(不能用 !,否则外链在 _openUrl 里会直接抛异常)
-    return m?.group(1);
+    final m = RegExp(r'^/(class|modpack)/(\d+)\.html$').firstMatch(uri.path);
+    if (m == null) return null;
+    return (
+      m.group(2)!,
+      m.group(1) == 'modpack' ? ProjectType.modpack : ProjectType.mod,
+    );
   }
 
   /// 是否为图片地址（富文本里的图片已包成 <a href=图片地址>）
@@ -242,7 +265,7 @@ class _ProjectPageState extends State<ProjectPage> {
             tooltip: '在浏览器中打开',
             icon: const Icon(Icons.open_in_browser),
             onPressed: () => _openUrl(
-              SourceManager.getUrl(widget.source, widget.id),
+              SourceManager.getUrl(widget.source, widget.type, widget.id),
               forceExternal: true,
             ),
           ),
@@ -330,7 +353,7 @@ class _ProjectPageState extends State<ProjectPage> {
         // 顶部:封面与标题（通栏）
         Padding(
           padding: const EdgeInsets.fromLTRB(64, 16, 64, 16),
-          child: ModCoverWide(mod: mod),
+          child: ModCoverWide(project: mod),
         ),
         // 下方:左宽右窄两栏
         Expanded(
@@ -381,7 +404,7 @@ class _ProjectPageState extends State<ProjectPage> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-            child: ModCoverNarrow(mod: mod),
+            child: ModCoverNarrow(project: mod),
           ),
         ),
         // SelectionButton 吸顶效果
@@ -406,7 +429,7 @@ class _ProjectPageState extends State<ProjectPage> {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsetsGeometry.fromLTRB(16, 0, 16, 16),
-        child: DescriptionCard(mod: mod, onLinkTap: _openUrl),
+        child: DescriptionCard(project: mod, onLinkTap: _openUrl),
       ),
     );
   }
@@ -417,9 +440,9 @@ class _ProjectPageState extends State<ProjectPage> {
       padding: const EdgeInsetsGeometry.fromLTRB(16, 0, 16, 16),
       sliver: SliverList(
         delegate: SliverChildListDelegate([
-          EnvironmentCard(mod: mod),
-          AuthorsCard(mod: mod),
-          LinksCard(mod: mod, onOpenUrl: _openUrl),
+          EnvironmentCard(project: mod),
+          AuthorsCard(project: mod),
+          LinksCard(project: mod, onOpenUrl: _openUrl),
         ]),
       ),
     );
@@ -427,16 +450,16 @@ class _ProjectPageState extends State<ProjectPage> {
 
   /// 描述区域
   Widget _buildDescription(ProjectDetail mod) {
-    return DescriptionCard(mod: mod, onLinkTap: _openUrl);
+    return DescriptionCard(project: mod, onLinkTap: _openUrl);
   }
 
   /// 其他页签: 环境/作者/链接/版本四个区块
   Widget _buildOther(ProjectDetail mod) {
     return Column(
       children: [
-        EnvironmentCard(mod: mod),
-        AuthorsCard(mod: mod),
-        LinksCard(mod: mod, onOpenUrl: _openUrl),
+        EnvironmentCard(project: mod),
+        AuthorsCard(project: mod),
+        LinksCard(project: mod, onOpenUrl: _openUrl),
       ],
     );
   }

@@ -7,10 +7,10 @@ import 'favorite_toggle.dart';
 /// 分类页模组卡片的公共基类:
 /// 卡片外壳(涟漪+跳转详情页)、标题拆分、标题/描述/来源构建等公共逻辑放这里,
 /// 行/列两种卡片只覆写封面([buildCover])与整体布局([build])。
-abstract class ModCard extends StatelessWidget {
-  const ModCard({super.key, required this.mod});
+abstract class ProjectCard extends StatelessWidget {
+  const ProjectCard({super.key, required this.project});
 
-  final ProjectSummary mod;
+  final ProjectSummary project;
 
   /// 卡片外壳:Card + InkWell 点击跳转详情页。
   /// StatelessWidget 没有 context 属性，由子类的 build 传入
@@ -27,11 +27,11 @@ abstract class ModCard extends StatelessWidget {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => ProjectPage(
-                id: mod.id,
-                source: mod.source,
-                type: mod.type,
-                initialTitle: mod.displayName,
-                initialDescription: mod.description,
+                id: project.id,
+                source: project.source,
+                type: project.type,
+                initialTitle: project.displayName,
+                initialDescription: project.description,
               ),
             ),
           );
@@ -46,79 +46,72 @@ abstract class ModCard extends StatelessWidget {
 
   /// 信息区内容:标题、描述与来源(两种卡片共用)
   Widget buildInfo(ThemeData theme) {
-    final name = mod.title;
+    final name = project.title;
     // 次要名称优先用解析得到的 subName(mcmod 列表页单独提供,
     // 标题里没有括号),否则从标题括号里拆;两者都没有时只显示主标题
-    final sub = mod.subName;
+    final sub = project.subName;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 6,
       children: [
-        buildTitle(theme, name, sub),
+        buildTitle(theme, name),
+        buildSubtitle(theme, sub),
         buildDescription(theme),
         buildStatistic(theme),
       ],
     );
   }
 
-  // 构建标题(主标题+可选副标题)
-  Widget buildTitle(ThemeData theme, String main, String? sub) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 主标题
-        Text(
-          main,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 3),
-        // 副标题
-        if (sub != null) ...[
-          Text(
-            sub,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontStyle: FontStyle.italic,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 5),
-        ],
-      ],
+  /// 主标题
+  Widget buildTitle(ThemeData theme, String main) {
+    return Text(
+      main,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+    );
+  }
+
+  /// 副标题
+  Widget buildSubtitle(ThemeData theme, String? sub) {
+    if (sub == null) return const SizedBox.shrink();
+    return Text(
+      sub,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.labelMedium?.copyWith(
+        fontStyle: FontStyle.italic,
+        color: Colors.grey,
+      ),
     );
   }
 
   /// 描述
   Widget buildDescription(ThemeData theme) {
-    final description = mod.description;
+    final description = project.description;
     if (description.isEmpty) return const SizedBox.shrink();
 
     return Column(
       children: [
         Text(
-          mod.description,
+          project.description,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 6),
       ],
     );
   }
 
   /// 统计信息
   Widget buildStatistic(ThemeData theme) {
-    final statistic = mod.statisticsText;
+    final statistic = project.statisticsText;
     if (statistic == null) return const SizedBox.shrink();
 
     return Text(
-      mod.statisticsText!,
+      project.statisticsText!,
       style: theme.textTheme.labelMedium?.copyWith(
         color: theme.colorScheme.onPrimaryContainer,
       ),
@@ -128,8 +121,8 @@ abstract class ModCard extends StatelessWidget {
 
 /// 分类页的模组行卡片（窄屏）：
 /// 左侧封面缩略图,右侧标题、描述与来源
-class ModCardRow extends ModCard {
-  const ModCardRow({super.key, required super.mod});
+class ModCardRow extends ProjectCard {
+  const ModCardRow({super.key, required super.project});
 
   @override
   Widget build(BuildContext context) {
@@ -139,17 +132,13 @@ class ModCardRow extends ModCard {
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: Stack(
+        child: Row(
           children: [
-            Row(
-              children: [
-                buildCover(theme),
-                const SizedBox(width: 12),
-                Expanded(child: buildInfo(theme)),
-                // 收藏心形:与 ModTile 行为一致,点击收藏/取消收藏
-                FavoriteToggle(mod: mod),
-              ],
-            ),
+            buildCover(theme),
+            const SizedBox(width: 12),
+            Expanded(child: buildInfo(theme)),
+            // 收藏心形:与 ModTile 行为一致,点击收藏/取消收藏
+            FavoriteToggle(mod: project),
           ],
         ),
       ),
@@ -160,10 +149,10 @@ class ModCardRow extends ModCard {
   Widget buildCover(ThemeData theme) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
-      child: mod.iconUrl == null
+      child: project.iconUrl == null
           ? _buildThumbPlaceholder(theme)
           : Image.network(
-              mod.iconUrl!,
+              project.iconUrl!,
               width: 80,
               height: 80,
               fit: BoxFit.cover,
@@ -186,8 +175,8 @@ class ModCardRow extends ModCard {
 
 /// 分类页的模组列卡片（宽屏网格）：
 /// 上方大封面,下方标题、描述与来源
-class ModCardColumn extends ModCard {
-  const ModCardColumn({super.key, required super.mod});
+class ModCardColumn extends ProjectCard {
+  const ModCardColumn({super.key, required super.project});
 
   @override
   Widget build(BuildContext context) {
@@ -215,7 +204,7 @@ class ModCardColumn extends ModCard {
               backgroundColor: theme.colorScheme.surface.withValues(
                 alpha: 0.85,
               ),
-              child: FavoriteToggle(mod: mod),
+              child: FavoriteToggle(mod: project),
             ),
           ),
         ],
@@ -226,10 +215,10 @@ class ModCardColumn extends ModCard {
   @override
   Widget buildCover(ThemeData theme) {
     return Expanded(
-      child: mod.iconUrl == null
+      child: project.iconUrl == null
           ? _buildCoverPlaceholder(theme)
           : Image.network(
-              mod.iconUrl!,
+              project.iconUrl!,
               width: double.infinity,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>

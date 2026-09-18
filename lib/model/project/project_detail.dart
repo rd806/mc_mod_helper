@@ -74,7 +74,7 @@ class ProjectDetail {
   final ModSource source;
 
   /// 模组详情页地址(按数据来源返回)
-  String get pageUrl => SourceManager.getUrl(source, id);
+  String get pageUrl => SourceManager.getUrl(source, type, id);
 
   /// 复制详情并替换简要介绍(会话缓存补简介用,其余字段原样保留)
   ProjectDetail copyWith({String? description}) => ProjectDetail(

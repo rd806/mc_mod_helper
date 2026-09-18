@@ -101,11 +101,16 @@ class McmodApi {
   /// 会话缓存,避免重复请求触发限流
   static final Map<String, List<ProjectSummary>> _searchCache = {};
   static final Map<String, ProjectDetail> _detailCache = {};
-  static List<ProjectCategory>? _categoryCache;
 
-  /// 首页 HTML:分类卡片在这上面(版本列表在 modlist 页,各有各的缓存)
+  /// 分类选项按类型缓存:模组的分类取首页卡片、整合包取 modpack 页的筛选块,
+  /// 且两类的分类 id 各自编号,不能共用一份
+  static final Map<ProjectType, List<ProjectCategory>> _categoryCache = {};
+
+  /// 版本选项按类型缓存(模组取 modlist 页、整合包取 modpack 页)
+  static final Map<ProjectType, List<ProjectVersion>> _versionCache = {};
+
+  /// 首页 HTML:模组的分类卡片在这上面(版本列表在列表页,各有各的缓存)
   static String? _homeCache;
-  static List<ProjectVersion>? _versionCache;
 
   /// 组合筛选的分页缓存:key = '筛选签名|页码'
   static final Map<String, ({List<ProjectSummary> mods, int totalPages})>
@@ -131,9 +136,9 @@ class McmodApi {
   static void clearCaches() {
     _searchCache.clear();
     _detailCache.clear();
-    _categoryCache = null;
+    _categoryCache.clear();
     _homeCache = null;
-    _versionCache = null;
+    _versionCache.clear();
     _filteredModsCache.clear();
     _cookies.clear();
     _lastWwwAt = null;
@@ -208,38 +213,53 @@ class McmodApi {
     return scored.map((e) => e.mod).toList();
   }
 
-  /// 获取模组详情。[id] 为统一字符串标识(mcmod 数字字符串,如 '123')。
+  /// 获取项目详情。[id] 为 mcmod 的数字字符串(如 '123')。
   ///
-  /// [fallbackDescription] 用于详情页没有“概述”时回退(通常来自搜索结果)。
+  /// [type] 决定路径段:模组在 /class/{id}.html、整合包在 /modpack/{id}.html。
+  /// [fallbackDescription] 用于详情页没有“概述”时回退(通常来自列表页)。
   static Future<ProjectDetail> getDetail(
     String id, {
+    ProjectType type = ProjectType.mod,
     String? fallbackDescription,
   }) async {
     final intro = fallbackDescription?.trim();
-    final cached = _detailCache[id];
+    final key = '${type.name}|$id';
+    final cached = _detailCache[key];
     if (cached != null) {
-      // 缓存只按 id 记录:缓存里的简要介绍可能来自无简介的入口
+      // 缓存只按类型+id 记录:缓存里的简要介绍可能来自无简介的入口
       // (如旧版分类页 description 为空),本次带上了列表页简介时
       // 补上并写回缓存,避免简介一直被旧缓存压成空
       if (cached.description == null && intro != null && intro.isNotEmpty) {
         final merged = cached.copyWith(description: intro);
-        _detailCache[id] = merged;
+        _detailCache[key] = merged;
         return merged;
       }
       return cached;
     }
 
     final numId = int.parse(id);
-    final uri = Uri.parse('https://www.mcmod.cn/class/$numId.html');
+    final uri = Uri.parse(
+      'https://www.mcmod.cn/${_pathSegment(type)}/$numId.html',
+    );
     final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
     final detail = _parseDetail(
       id,
       body,
+      type: type,
       fallbackDescription: fallbackDescription,
     );
-    _detailCache[id] = detail;
+    _detailCache[key] = detail;
     return detail;
   }
+
+  /// 项目类型 → 站点的路径段:模组 /class/、整合包 /modpack/。
+  ///
+  /// 其余类型(mcmod 另有材质包、光影版块)接入时在这里补;
+  /// 未知类型按模组处理,与之前的行为一致。
+  static String _pathSegment(ProjectType type) => switch (type) {
+    ProjectType.modpack => 'modpack',
+    _ => 'class',
+  };
 
   /// 组合筛选分页查询:第 [page] 页的模组与总页数,由浏览页滚到底增量请求。
   ///
@@ -257,29 +277,51 @@ class McmodApi {
     final cached = _filteredModsCache[key];
     if (cached != null) return cached;
 
-    final uri = Uri.parse('https://www.mcmod.cn/modlist.html').replace(
-      queryParameters: {
-        if (filter.category != null) 'category': filter.category!.id,
-        if (filter.version != null) 'mcver': filter.version!.version,
-        'sort': SortManager.mcmodSort(filter.sortMethod),
-        if (page > 1) 'page': '$page',
-      },
-    );
+    // 列表页按类型分开:模组 modlist.html、整合包 modpack.html。
+    // 两类页面的筛选参数与条目结构完全一致(实测 category/mcver/sort 通用)
+    final uri = Uri.parse('https://www.mcmod.cn/${_listPath(filter.type)}')
+        .replace(
+          queryParameters: {
+            if (filter.category != null) 'category': filter.category!.id,
+            if (filter.version != null) 'mcver': filter.version!.version,
+            'sort': SortManager.mcmodSort(filter.sortMethod),
+            if (page > 1) 'page': '$page',
+          },
+        );
     final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
-    final result = _parseModlistPage(body);
+    final result = _parseModlistPage(body, type: filter.type);
     _cacheFiltered(_filteredModsCache, key, result);
     return result;
   }
 
-  /// 获取 mcmod.cn 首页展示的模组分类(科技/魔法等)。
+  /// 类型 → 列表页:模组 modlist.html、整合包 modpack.html
+  static String _listPath(ProjectType type) =>
+      type == ProjectType.modpack ? 'modpack.html' : 'modlist.html';
+
+  /// 获取分类选项(科技/魔法…)。
   ///
-  /// 首页的分类块是服务端渲染的,直接解析 HTML 即可。
-  static Future<List<ProjectCategory>> getCategories() async {
-    final cached = _categoryCache;
+  /// 两类页面给的分类长得不一样,所以分头解析:
+  /// - 模组:首页的 `.class_category_block` 卡片(带标语与分类定义);
+  /// - 整合包:modpack.html 里的 `.modlist-filter-block.category`
+  ///   (纯文本链接,说明放在 title 属性里)。
+  ///
+  /// **两类的分类 id 是各自编号的**(模组的 1 是「科技」、整合包的 1 是
+  /// 「科技整合包」),所以缓存也按类型分开。
+  static Future<List<ProjectCategory>> getCategories(ProjectType type) async {
+    final cached = _categoryCache[type];
     if (cached != null) return cached;
 
-    final cats = _parseCategories(await _loadHome());
-    _categoryCache = cats;
+    final cats = type == ProjectType.modpack
+        ? _parseFilterCategories(
+            await _fetchWithRetry(
+              Uri.parse('https://www.mcmod.cn/modpack.html'),
+              _detailMinInterval,
+              _lastWwwAt,
+            ),
+            type,
+          )
+        : _parseCategories(await _loadHome());
+    _categoryCache[type] = cats;
     return cats;
   }
 
@@ -287,16 +329,19 @@ class McmodApi {
   ///
   /// 分两类入口:头部下拉的常用版本(1.20.1 / 1.7.10 …),
   /// 与按大版本分组的完整列表(组标题是更新名,如「棘巧试炼」= 1.21.x)。
-  /// 两者都在 modlist 页上 —— **首页没有版本信息**(站点改版后首页只剩分类),
-  /// 所以这里取的是 modlist.html
-  static Future<List<ProjectVersion>> getVersions() async {
-    final cached = _versionCache;
+  /// 两者都在列表页上 —— **首页没有版本信息**(站点改版后首页只剩分类),
+  /// 模组取 modlist.html、整合包取 modpack.html(同样按类型缓存)
+  static Future<List<ProjectVersion>> getVersions(ProjectType type) async {
+    final cached = _versionCache[type];
     if (cached != null) return cached;
 
-    final uri = Uri.parse('https://www.mcmod.cn/modlist.html');
-    final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
+    final body = await _fetchWithRetry(
+      Uri.parse('https://www.mcmod.cn/${_listPath(type)}'),
+      _detailMinInterval,
+      _lastWwwAt,
+    );
     final versions = _parseVersions(body);
-    _versionCache = versions;
+    _versionCache[type] = versions;
     return versions;
   }
 
@@ -427,13 +472,17 @@ class McmodApi {
 
   // ---------- 模组列表页(modlist)解析 ----------
 
-  static List<ProjectSummary> _parseModlist(String html) {
+  static List<ProjectSummary> _parseModlist(
+    String html, {
+    ProjectType type = ProjectType.mod,
+  }) {
     final doc = html_parser.parse(html);
     final results = <ProjectSummary>[];
     for (final block in doc.querySelectorAll('.modlist-block')) {
       final nameA = block.querySelector('.title .name a');
       final href = nameA?.attributes['href'] ?? '';
-      final idMatch = RegExp(r'class/(\d+)\.html').firstMatch(href);
+      final idMatch = RegExp('${_pathSegment(type)}/(\\d+)\\.html')
+          .firstMatch(href);
       if (idMatch == null) continue;
       final title = _cleanText(nameA?.text ?? '');
       if (title.isEmpty) continue;
@@ -450,9 +499,7 @@ class McmodApi {
       results.add(
         ProjectSummary(
           id: idMatch.group(1)!,
-          // 站点另有整合包/材质包等版块,但本应用用的 modlist 与 class 页
-          // 都是模组,故这里恒为 mod
-          type: ProjectType.mod,
+          type: type,
           title: title,
           description: intro,
           source: ModSource.mcmod,
@@ -495,6 +542,43 @@ class McmodApi {
     return cats;
   }
 
+  /// 解析列表页里的分类筛选块(整合包用的就是这一份)。
+  ///
+  /// 结构(实测 modpack.html):
+  /// `.modlist-filter-block.category > ul > li > a[onclick=
+  /// "window.location='/modpack.html?category=1'"]`,链接文本是分类名,
+  /// 说明在该链接的 title 属性里。首项「全部」是纯文本、没有链接,跳过。
+  ///
+  /// (模组列表页的这个块用的是 SVG 图标、没有文字,所以模组仍走首页卡片)
+  static List<ProjectCategory> _parseFilterCategories(
+    String html,
+    ProjectType type,
+  ) {
+    final doc = html_parser.parse(html);
+    final cats = <ProjectCategory>[];
+    final pattern = RegExp(r'category=(\d+)');
+    for (final li in doc.querySelectorAll(
+      '.modlist-filter-block.category li',
+    )) {
+      final a = li.querySelector('a');
+      final id = pattern.firstMatch(a?.attributes['onclick'] ?? '')?.group(1);
+      final name = _cleanText(a?.text ?? '');
+      if (id == null || name.isEmpty) continue;
+      final desc = (a?.attributes['title'] ?? li.attributes['title'] ?? '')
+          .trim();
+      cats.add(
+        ProjectCategory(
+          id: id,
+          type: type,
+          name: name,
+          source: ModSource.mcmod,
+          description: desc.isEmpty ? null : desc,
+        ),
+      );
+    }
+    return cats;
+  }
+
   /// 解析 modlist 页里的版本筛选项。
   ///
   /// 站点上有两种写法,都要认:
@@ -526,9 +610,10 @@ class McmodApi {
   /// 总页数取自分页链接的 data-page 属性最大值;
   /// 没有分页块(单页)时兜底为 1 页
   static ({List<ProjectSummary> mods, int totalPages}) _parseModlistPage(
-    String html,
-  ) {
-    final mods = _parseModlist(html);
+    String html, {
+    ProjectType type = ProjectType.mod,
+  }) {
+    final mods = _parseModlist(html, type: type);
     var totalPages = 1;
     final doc = html_parser.parse(html);
     for (final a in doc.querySelectorAll('a[data-page]')) {
@@ -543,6 +628,7 @@ class McmodApi {
   static ProjectDetail _parseDetail(
     String id,
     String html, {
+    ProjectType type = ProjectType.mod,
     String? fallbackDescription,
   }) {
     final doc = html_parser.parse(html);
@@ -561,9 +647,12 @@ class McmodApi {
       title = title.substring(0, paren.start).trim();
     }
 
-    // 封面图
+    // 封面图:站点的图片目录按类型分开(/class/cover、/modpack/cover),
+    // 所以要按类型找;正文里还有别的 /cover/ 图(post/cover),不能放宽选择器
     String? coverUrl;
-    final cover = doc.querySelector('img[src*="i.mcmod.cn/class/cover"]');
+    final cover = doc.querySelector(
+      'img[src*="i.mcmod.cn/${_pathSegment(type)}/cover"]',
+    );
     if (cover != null) {
       var src = cover.attributes['src'] ?? '';
       if (src.startsWith('//')) src = 'https:$src';
@@ -610,8 +699,11 @@ class McmodApi {
       if (loader.isNotEmpty) mcVersions[ProjectLoader.of(loader)] = versions;
     }
 
+    // 取左侧信息面板里的字段值。
+    // 两种形态都要认:'支持平台: Java版' 与 '运作方式: <a …>Forge</a>'
+    // (整合包的字段值带链接)
     String? field(String label) {
-      final m = RegExp('$label[:：]\\s*([^<]+)<').firstMatch(html);
+      final m = RegExp('$label[:：]\\s*(?:<a[^>]*>)?([^<]+)<').firstMatch(html);
       final v = m?.group(1)?.trim();
       return (v == null || v.isEmpty) ? null : v;
     }
@@ -706,9 +798,15 @@ class McmodApi {
     // 用列表页/搜索页带过来的简介作为 cover 的简要介绍
     final intro = fallbackDescription?.trim();
 
+    // 信息面板的字段按类型不同:模组是「支持平台 / 运行环境」,
+    // 整合包是「整合包类型 / 运作方式 / 打包方式」,没有客户端-服务端之分。
+    // 整合包页既没有「支持平台」也没有「运行环境」,两个字段都取不到值;
+    // 它的加载器信息在版本分组里(如 'Forge: 1.12.2'),不重复塞进 platform
+    final isPack = type == ProjectType.modpack;
+
     return ProjectDetail(
       id: id,
-      type: ProjectType.mod,
+      type: type,
       title: title,
       source: ModSource.mcmod,
       subName: subName,
@@ -718,7 +816,7 @@ class McmodApi {
       links: links,
       mcVersions: mcVersions,
       platform: field('支持平台'),
-      sides: getEnvironment(field('运行环境')),
+      sides: isPack ? null : getEnvironment(field('运行环境')),
       statistics: parseStatistics(),
       authors: parseAuthors(),
     );

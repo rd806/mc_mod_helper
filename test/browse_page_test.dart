@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/model/project/project_version.dart';
 import 'package:mc_mod_helper/page/browse.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
@@ -390,12 +391,66 @@ void main() {
     expect(modrinthUris.last.queryParameters.containsKey('facets'), isTrue);
   });
 
+  testWidgets('类型标签:切到整合包走 modpack.html,并清掉已选的分类/版本', (tester) async {
+    final listUris = <Uri>[];
+    McmodApi.clientFactory = () => MockClient((request) async {
+      final path = request.url.path;
+      if (path == '/') {
+        return http.Response.bytes(utf8.encode(_homeHtml()), 200);
+      }
+      // 选项请求不带筛选参数(模组在 modlist.html、整合包在 modpack.html);
+      // 带参数的是列表请求,记录下来供断言
+      if (request.url.query.isEmpty) {
+        return http.Response.bytes(utf8.encode(_versionFilterHtml()), 200);
+      }
+      listUris.add(request.url);
+      final isPack = path == '/modpack.html';
+      return http.Response.bytes(
+        utf8.encode(
+          '<html><body>'
+          '<div class="modlist-block"><div class="title">'
+          '<p class="name"><a href="/${isPack ? 'modpack' : 'class'}/1.html">'
+          '${isPack ? '整合包' : '模组'}1</a></p></div></div>'
+          '<div class="pagination"><a data-page="1" href="?page=1">1</a></div>'
+          '</body></html>',
+        ),
+        200,
+      );
+    });
+
+    await tester.pumpWidget(const MaterialApp(home: BrowsePage()));
+    await settle(tester);
+
+    // 顶部两个类型标签,默认在模组
+    expect(find.byType(Tab), findsNWidgets(2));
+    expect(find.text('模组'), findsOneWidget);
+    expect(find.text('整合包'), findsOneWidget);
+    expect(listUris.single.path, '/modlist.html');
+
+    // 先选一个分类,切类型后应当被清掉
+    await expandFilter(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, '科技'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(listUris.last.queryParameters['category'], '1');
+
+    // 切到整合包:按 modpack.html 重拉,分类回到「全部分类」
+    await tester.tap(find.text('整合包'));
+    await settle(tester, rounds: 6);
+    expect(listUris.last.path, '/modpack.html');
+    expect(listUris.last.queryParameters.containsKey('category'), isFalse);
+    expect(find.text('全部分类 · 全部版本 · 默认排序'), findsOneWidget);
+    expect(find.text('整合包1'), findsOneWidget); // 整合包列表渲染出来了
+  });
+
   testWidgets('详情页版本胶囊:预设版本的浏览页直接按该版本筛选', (tester) async {
     final uris = installMcmod();
     await tester.pumpWidget(
       MaterialApp(
         home: BrowsePage(
           initialFilter: const Filter(
+            type: ProjectType.mod,
             modSource: ModSource.mcmod,
             sortMethod: SortMethod.none,
             version: ProjectVersion(version: '1.20.1', source: ModSource.mcmod),

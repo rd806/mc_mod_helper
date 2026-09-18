@@ -75,12 +75,9 @@ class IconManager {
         break;
     }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 0, 12, 0),
-      child: Chip(
-        avatar: Icon(icon, size: 16),
-        label: Text(label, style: theme.textTheme.labelMedium),
-      ),
+    return Chip(
+      avatar: Icon(icon, size: 16),
+      label: Text(label, style: theme.textTheme.labelMedium),
     );
   }
 }

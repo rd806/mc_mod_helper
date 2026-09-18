@@ -2,6 +2,7 @@ import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/project/project_category.dart';
 import 'package:mc_mod_helper/model/project/project_summary.dart';
+import 'package:mc_mod_helper/model/project/project_type.dart';
 import 'package:mc_mod_helper/model/project/project_version.dart';
 
 import '../../api/mcmod.dart';
@@ -39,23 +40,32 @@ class SourceManager {
     }
   }
 
-  /// 获取主页分类
-  static Future<List<ProjectCategory>> getCategory(ModSource source) async {
+  /// 获取分类选项(按类型:各站点的分类是按类型分开编号的)
+  static Future<List<ProjectCategory>> getCategory(
+    ModSource source,
+    ProjectType type,
+  ) async {
     switch (source) {
       case ModSource.mcmod:
-        return await McmodApi.getCategories();
+        return await McmodApi.getCategories(type);
       case ModSource.modrinth:
-        return await ModrinthApi.getCategories();
+        return await ModrinthApi.getCategories(type);
       case ModSource.curseforge:
-        return await CurseforgeApi.getCategories();
+        return await CurseforgeApi.getCategories(type);
     }
   }
 
-  /// 获取游戏版本列表(浏览页筛选栏的版本选项)
-  static Future<List<ProjectVersion>> getVersions(ModSource source) async {
+  /// 获取游戏版本列表(浏览页筛选栏的版本选项)。
+  ///
+  /// 游戏版本本身与类型无关,但 mcmod 的版本选项是从列表页上抓的
+  /// (模组在 modlist.html、整合包在 modpack.html),所以要按类型取
+  static Future<List<ProjectVersion>> getVersions(
+    ModSource source,
+    ProjectType type,
+  ) async {
     switch (source) {
       case ModSource.mcmod:
-        return await McmodApi.getVersions();
+        return await McmodApi.getVersions(type);
       case ModSource.modrinth:
         return await ModrinthApi.getVersions();
       case ModSource.curseforge:
@@ -119,15 +129,30 @@ class SourceManager {
     return (results: results, errors: errors);
   }
 
-  /// 根据来源获取地址
-  static String getUrl(ModSource source, String id) {
+  /// 根据来源与项目类型获取页面地址。
+  ///
+  /// 各站点的路径段按类型分开(mcmod 的整合包在 /modpack/,Modrinth 的
+  /// 路径段就是它的 project_type),所以类型必须参与拼接 —— 否则整合包
+  /// 会被拼成模组地址。
+  static String getUrl(ModSource source, ProjectType type, String id) {
     switch (source) {
       case ModSource.mcmod:
-        return 'https://www.mcmod.cn/class/$id.html';
+        // 站点上模组是 /class/、整合包是 /modpack/;
+        // 其余类型(mcmod 另有材质包/光影版块)接进来时再补各自路径
+        final segment = type == ProjectType.modpack ? 'modpack' : 'class';
+        return 'https://www.mcmod.cn/$segment/$id.html';
       case ModSource.modrinth:
-        return 'https://modrinth.com/mod/$id';
+        // 路径段与 project_type 同名:/mod/ /modpack/ /resourcepack/ …
+        return 'https://modrinth.com/${type.name}/$id';
       case ModSource.curseforge:
-        return 'https://www.curseforge.com/minecraft/mc-mods/$id';
+        // CurseForge 的路径段自成一套;模组与整合包已确认,
+        // 其余类型的路径段待接入时核实
+        final segment = switch (type) {
+          ProjectType.modpack => 'modpacks',
+          ProjectType.resourcepack => 'texture-packs',
+          _ => 'mc-mods',
+        };
+        return 'https://www.curseforge.com/minecraft/$segment/$id';
     }
   }
 
