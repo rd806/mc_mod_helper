@@ -97,23 +97,16 @@ class _FilterBarState extends State<FilterBar> {
   /// 摘要条:来源胶囊 + 当前条件 + 展开箭头
   Widget _buildSummaryBar(ThemeData theme) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // 数据来源是「作用域」而不是一个筛选条件:它决定分类/版本的候选集,
         // 所以常驻在摘要条上,不放进展开面板里当第四组
-        ActionChip(
-          avatar: IconManager.getIconForDataSource(widget.filter.modSource),
-          label: Text(SourceManager.getSourceString(widget.filter.modSource)),
-          onPressed: () => showSwitchSourceDialog(context),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Text(
-            _summary,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+        Text(
+          _summary,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
         IconButton(

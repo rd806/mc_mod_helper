@@ -9,6 +9,7 @@ import 'package:mc_mod_helper/widget/filter/search_bar.dart';
 import 'package:mc_mod_helper/widget/filter/filter_bar.dart';
 
 import '../api/mcmod.dart';
+import '../icon/icon_manager.dart';
 import '../model/filter/sort_method.dart';
 import '../model/project/project_category.dart';
 import '../model/project/project_summary.dart';
@@ -16,6 +17,7 @@ import '../model/project/project_type.dart';
 import '../model/project/project_version.dart';
 import '../widget/dialog/captcha_dialog.dart';
 import '../widget/common/error_view.dart';
+import '../widget/dialog/switch_dialog.dart';
 
 /// 浏览页:首页与探索页合并而来。
 ///
@@ -331,7 +333,23 @@ class _BrowsePageState extends State<BrowsePage> {
       initialIndex: typeIndex < 0 ? 0 : typeIndex,
       child: Scaffold(
         appBar: AppBar(
-          title: FakeSearchBar(),
+          title: Row(
+            children: [
+              ActionChip(
+                avatar: IconManager.getIconForDataSource(
+                  DisplaySettings.instance.dataSource,
+                ),
+                label: Text(
+                  SourceManager.getSourceString(
+                    DisplaySettings.instance.dataSource,
+                  ),
+                ),
+                onPressed: () => showSwitchSourceDialog(context),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: FakeSearchBar()),
+            ],
+          ),
           actions: [
             IconButton(
               tooltip: '刷新',

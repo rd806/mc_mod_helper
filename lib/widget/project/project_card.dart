@@ -52,37 +52,39 @@ abstract class ProjectCard extends StatelessWidget {
     final sub = project.subName;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 6,
+      spacing: 5,
       children: [
-        buildTitle(theme, name),
-        buildSubtitle(theme, sub),
+        buildTitle(theme, name, sub),
         buildDescription(theme),
         buildStatistic(theme),
       ],
     );
   }
 
-  /// 主标题
-  Widget buildTitle(ThemeData theme, String main) {
-    return Text(
-      main,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-    );
-  }
-
-  /// 副标题
-  Widget buildSubtitle(ThemeData theme, String? sub) {
-    if (sub == null) return const SizedBox.shrink();
-    return Text(
-      sub,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: theme.textTheme.labelMedium?.copyWith(
-        fontStyle: FontStyle.italic,
-        color: Colors.grey,
-      ),
+  /// 标题
+  Widget buildTitle(ThemeData theme, String main, String? sub) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          main,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        if (sub != null)
+          Text(
+            sub,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontStyle: FontStyle.italic,
+              color: Colors.grey,
+            ),
+          ),
+      ],
     );
   }
 
@@ -91,17 +93,13 @@ abstract class ProjectCard extends StatelessWidget {
     final description = project.description;
     if (description.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      children: [
-        Text(
-          project.description,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
+    return Text(
+      project.description,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
     );
   }
 
