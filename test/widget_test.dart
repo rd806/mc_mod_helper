@@ -100,7 +100,10 @@ void main() {
     expect(find.text('探索'), findsNothing); // 已并入首页
     // 设置不再是浏览页 AppBar 上的按钮(只在页签里)
     expect(find.widgetWithIcon(AppBar, Icons.settings), findsNothing);
-    expect(find.byIcon(Icons.refresh), findsOneWidget); // 浏览页刷新按钮
+    // 刷新按钮:AppBar 一个是「重拉列表」,筛选栏里那个是「重置筛选」
+    // (图标都是 Icons.refresh,按 tooltip 区分)
+    expect(find.byTooltip('刷新'), findsOneWidget);
+    expect(find.byTooltip('重置'), findsOneWidget);
   });
 
   testWidgets('筛选栏默认收起:展开后才有选项内容', (tester) async {
@@ -108,7 +111,8 @@ void main() {
 
     // 收起状态:只有摘要条。面板是常驻在树上的(Offstage,保留测量结果),
     // 所以这里断言的是"面板里的内容查找不到"而不是"没有构建"
-    expect(find.text('重置'), findsNothing);
+    // (拿面板最后一组「排序」当探针:它只在展开时可见)
+    expect(find.text('排序'), findsNothing);
     expect(find.textContaining('筛选项加载失败'), findsNothing);
 
     await tester.tap(find.byTooltip('展开筛选'));
@@ -300,7 +304,8 @@ void main() {
   testWidgets('点击刷新按钮:当前版块重新加载', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.byIcon(Icons.refresh));
+    // AppBar 的「刷新」(筛选栏里那个 Icons.refresh 是「重置筛选」,按 tooltip 区分)
+    await tester.tap(find.byTooltip('刷新'));
     await tester.pump(); // 版块回到加载态
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.textContaining('加载失败'), findsNothing);

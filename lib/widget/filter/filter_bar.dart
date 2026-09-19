@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mc_mod_helper/icon/icon_manager.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/project/project_category.dart';
 import 'package:mc_mod_helper/model/project/project_version.dart';
-import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/widget/common/collapsible_widgets.dart';
-import 'package:mc_mod_helper/widget/dialog/switch_dialog.dart';
 
 import '../../model/filter/sort_method.dart';
 
@@ -96,26 +93,41 @@ class _FilterBarState extends State<FilterBar> {
 
   /// 摘要条:来源胶囊 + 当前条件 + 展开箭头
   Widget _buildSummaryBar(ThemeData theme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Stack(
       children: [
         // 数据来源是「作用域」而不是一个筛选条件:它决定分类/版本的候选集,
         // 所以常驻在摘要条上,不放进展开面板里当第四组
-        Text(
-          _summary,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        Align(
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _summary,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              IconButton(
+                tooltip: _expanded ? '收起筛选' : '展开筛选',
+                onPressed: () => setState(() => _expanded = !_expanded),
+                icon: AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(Icons.expand_more),
+                ),
+              ),
+            ],
           ),
         ),
-        IconButton(
-          tooltip: _expanded ? '收起筛选' : '展开筛选',
-          onPressed: () => setState(() => _expanded = !_expanded),
-          icon: AnimatedRotation(
-            turns: _expanded ? 0.5 : 0,
-            duration: const Duration(milliseconds: 200),
-            child: const Icon(Icons.expand_more),
+        Align(
+          alignment: Alignment.centerRight,
+          child: IconButton(
+            icon: Icon(Icons.filter_alt_off),
+            onPressed: _reset,
+            tooltip: '重置',
           ),
         ),
       ],
@@ -208,10 +220,6 @@ class _FilterBarState extends State<FilterBar> {
                   ),
                 ),
             ]),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(onPressed: _reset, child: const Text('重置')),
-            ),
           ],
         ),
       ),

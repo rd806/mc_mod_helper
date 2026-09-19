@@ -216,6 +216,35 @@ void main() {
     expect(cats.single.type, ProjectType.modpack);
   });
 
+  test('材质包 / 光影:classId 分别是 12 / 6552(CurseForge 没有插件)', () async {
+    final uris = <Uri>[];
+    CurseforgeApi.clientFactory = () => MockClient((request) async {
+      uris.add(request.url);
+      return _json({
+        'data': [],
+        'pagination': {'totalCount': 0},
+      });
+    });
+    for (final (type, classId) in [
+      (ProjectType.resourcepack, '12'),
+      (ProjectType.shader, '6552'),
+    ]) {
+      await CurseforgeApi.getFilteredMods(
+        Filter(
+          type: type,
+          modSource: ModSource.curseforge,
+          sortMethod: SortMethod.none,
+        ),
+      );
+      expect(uris.last.queryParameters['classId'], classId, reason: type.name);
+    }
+    // 插件不在 CurseForge 的可用类型里(见 SourceManager.supportedTypes)
+    expect(
+      SourceManager.supportedTypes(ModSource.curseforge),
+      isNot(contains(ProjectType.plugin)),
+    );
+  });
+
   test('getDetail:name 作标题、logo 作封面、文件列表分组版本与加载器', () async {
     final d = await CurseforgeApi.getDetail('238222');
     expect(d.id, '238222');

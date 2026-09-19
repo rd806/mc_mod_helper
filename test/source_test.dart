@@ -93,6 +93,48 @@ void main() {
     expect(total.errors, isEmpty);
   });
 
+  test('supportedTypes:各来源能查的类型不同(实测)', () {
+    // mcmod 只有模组与整合包;CurseForge 没有插件;Modrinth 五种都有
+    expect(SourceManager.supportedTypes(ModSource.mcmod), [
+      ProjectType.mod,
+      ProjectType.modpack,
+    ]);
+    expect(SourceManager.supportedTypes(ModSource.curseforge), [
+      ProjectType.mod,
+      ProjectType.modpack,
+      ProjectType.resourcepack,
+      ProjectType.shader,
+    ]);
+    expect(SourceManager.supportedTypes(ModSource.modrinth), [
+      ProjectType.mod,
+      ProjectType.modpack,
+      ProjectType.resourcepack,
+      ProjectType.shader,
+      ProjectType.plugin,
+    ]);
+  });
+
+  test('normalizeType:新来源没有的类型回落到它的第一个类型', () {
+    // Modrinth 看插件时切到 mcmod / CurseForge → 回落成模组
+    expect(
+      SourceManager.normalizeType(ModSource.mcmod, ProjectType.plugin),
+      ProjectType.mod,
+    );
+    expect(
+      SourceManager.normalizeType(ModSource.curseforge, ProjectType.plugin),
+      ProjectType.mod,
+    );
+    // 支持的照原样保留
+    expect(
+      SourceManager.normalizeType(ModSource.curseforge, ProjectType.shader),
+      ProjectType.shader,
+    );
+    expect(
+      SourceManager.normalizeType(ModSource.mcmod, ProjectType.modpack),
+      ProjectType.modpack,
+    );
+  });
+
   test('getUrl:按类型拼地址(整合包不能拼成模组地址)', () {
     // 模组:与之前一致
     expect(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../icon/link_icons.dart';
+import '../../icon/platform_icons.dart';
 
 /// 已知的模组加载器:键是「小写标识」,与各站点返回的写法对应
 /// (mcmod / CurseForge 给 'Forge'、Modrinth 给 'forge')。
@@ -8,26 +8,79 @@ import '../../icon/link_icons.dart';
 /// 图标与配色只在这里定义一处,界面与链接图标都从这里取。
 const Map<String, ProjectLoader> projectLoaders = {
   'forge': ProjectLoader(
-    icon: Icon(LinkIcons.forge, color: Colors.blue),
+    icon: Icon(PlatformIcons.forge, color: Colors.blue),
     name: 'Forge',
   ),
   'fabric': ProjectLoader(
-    icon: Icon(LinkIcons.fabric, color: Colors.green),
+    icon: Icon(PlatformIcons.fabric, color: Colors.green),
     name: 'Fabric',
   ),
   'neoforge': ProjectLoader(
-    icon: Icon(LinkIcons.neoforge, color: Colors.orange),
+    icon: Icon(PlatformIcons.neoforge, color: Colors.orange),
     name: 'NeoForge',
   ),
   'quilt': ProjectLoader(
-    icon: Icon(LinkIcons.quilt, color: Colors.blueAccent),
+    icon: Icon(PlatformIcons.quilt, color: Colors.blueAccent),
     name: 'Quilt',
   ),
+
+  'bukkit': ProjectLoader(
+    icon: Icon(PlatformIcons.bukkit, color: Colors.orange),
+    name: 'Bukkit',
+  ),
+  'spigot': ProjectLoader(
+    icon: Icon(PlatformIcons.spigot, color: Colors.yellow),
+    name: 'Spigot',
+  ),
+  'paper': ProjectLoader(
+    icon: Icon(PlatformIcons.paper, color: Colors.green),
+    name: 'Paper',
+  ),
+  'purpur': ProjectLoader(
+    icon: Icon(PlatformIcons.purpur, color: Colors.purple),
+    name: 'Purpur',
+  ),
+  'folia': ProjectLoader(
+    icon: Icon(PlatformIcons.folia, color: Colors.green),
+    name: 'Folia',
+  ),
+  'bungeecord': ProjectLoader(
+    icon: Icon(PlatformIcons.bungeecord, color: Colors.orange),
+    name: 'BungeeCord',
+  ),
+  'velocity': ProjectLoader(
+    icon: Icon(PlatformIcons.velocity, color: Colors.purple),
+    name: 'Velocity',
+  ),
+  'waterfall': ProjectLoader(
+    icon: Icon(PlatformIcons.waterfall, color: Colors.purple),
+    name: 'Waterfall',
+  ),
+};
+
+/// 服务端平台:跑这些加载器的项目在 Modrinth 上就是「插件」。
+///
+/// 用途是反推类型 —— Modrinth 的 `project_type` 是旧字段,插件也被报成 'mod'
+/// (实测 veinminer:`project_type=mod`、`loaders=[bukkit]`),
+/// 这类项目的详情没有别的类型线索,只能从加载器认
+const Set<String> serverPlatforms = {
+  'bukkit',
+  'spigot',
+  'paper',
+  'purpur',
+  'folia',
+  'bungeecord',
+  'velocity',
+  'waterfall',
 };
 
 /// 模组加载器
 class ProjectLoader {
   const ProjectLoader({required this.icon, required this.name});
+
+  /// 是否服务端平台(写法大小写不一,统一按小写比)
+  static bool isServerPlatform(String name) =>
+      serverPlatforms.contains(name.trim().toLowerCase());
 
   /// 站点给的名字 → 加载器。
   ///

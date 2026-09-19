@@ -252,10 +252,43 @@ class ModrinthApi {
     ];
   }
 
-  /// Modrinth 的 project_type 取值与 [ProjectType] 的枚举名一一对应
-  /// (mod / modpack / resourcepack / shader / plugin),缺失或陌生取值按模组处理
-  static ProjectType _projectType(Object? raw) =>
-      ProjectTypeManager.typeFromString(raw is String ? raw : null);
+  /// 接口取值 → 本项目类型(枚举名与接口同名);不认识返回 null
+  static ProjectType? _typeByName(Object? raw) {
+    if (raw is! String) return null;
+    for (final type in ProjectType.values) {
+      if (type.name == raw) return type;
+    }
+    return null;
+  }
+
+  /// 项目类型。Modrinth 的 `project_type` 是**旧字段**,插件也被报成 'mod'
+  /// (实测 veinminer:`project_type=mod`、`all_project_types=[datapack,mod,plugin]`、
+  /// `loaders=[bukkit]`),所以两个形状都要处理:
+  ///
+  /// - 搜索命中带新的 `all_project_types` 列表 → 取其中**最具体**的那个
+  ///   ('mod' 只是兜底语义:列表里还有 plugin / shader 等就用那个);
+  /// - 项目详情没有新字段 → `project_type` 为 mod 时再看加载器是不是全是
+  ///   服务端平台(bukkit / paper…),是就纠正为插件。
+  ///
+  /// 其余类型(shader / resourcepack / modpack)旧字段给的是对的,照用。
+  static ProjectType _projectType(Map<String, dynamic> data) {
+    final all = (data['all_project_types'] as List<dynamic>?)?.cast<String>();
+    if (all != null) {
+      final types = [for (final name in all) ?_typeByName(name)];
+      for (final type in types) {
+        if (type != ProjectType.mod) return type;
+      }
+      if (types.isNotEmpty) return ProjectType.mod;
+    }
+    final legacy = _typeByName(data['project_type']) ?? ProjectType.mod;
+    if (legacy != ProjectType.mod) return legacy;
+    final loaders =
+        (data['loaders'] as List<dynamic>?)?.cast<String>() ?? const [];
+    if (loaders.isNotEmpty && loaders.any(ProjectLoader.isServerPlatform)) {
+      return ProjectType.plugin;
+    }
+    return legacy;
+  }
 
   /// 单个搜索命中条目 → ModSummary;字段缺失时返回 null 丢弃
   static ProjectSummary? _parseHit(Map<String, dynamic> hit) {
@@ -264,7 +297,7 @@ class ModrinthApi {
     if (slug.isEmpty || title.isEmpty) return null;
     return ProjectSummary(
       id: slug,
-      type: _projectType(hit['project_type']),
+      type: _projectType(hit),
       title: title,
       description: (hit['description'] as String?) ?? '',
       iconUrl: hit['icon_url'] as String?,
@@ -354,7 +387,7 @@ class ModrinthApi {
 
     return ProjectDetail(
       id: sourceId,
-      type: _projectType(data['project_type']),
+      type: _projectType(data),
       title: title,
       subName: null,
       description: description,

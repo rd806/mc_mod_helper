@@ -9,19 +9,9 @@ enum ProjectType { mod, modpack, resourcepack, shader, plugin }
 
 /// 管理项目类型:显示名 / 图标 / 持久化
 ///
-/// 已接入模组与整合包(见 [supportedTypes]);材质包 / 光影 / 插件
-/// 先把词汇表备好 —— 收藏与浏览历史按类型落库,以后接进来时
-/// 不会与既有的模组记录混为一谈。
+/// 「哪个来源能查哪些类型」不在这里,而在 `SourceManager.supportedTypes`
+/// —— 站点之间并不一致(mcmod 没有材质包 / 光影 / 插件,CurseForge 没有插件)。
 class ProjectTypeManager {
-  /// 应用已接入浏览的类型(浏览页的类型标签就用这一份)。
-  ///
-  /// 只有两个:三个来源都支持模组与整合包;材质包 / 光影 / 插件
-  /// 站点也能查到,但还没接入(见 [ProjectType] 的其余取值)
-  static const List<ProjectType> supportedTypes = [
-    ProjectType.mod,
-    ProjectType.modpack,
-  ];
-
   /// 类型显示名(界面用)
   static String getTypeTitle(ProjectType type) => switch (type) {
     ProjectType.mod => '模组',

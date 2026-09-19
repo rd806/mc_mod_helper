@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:mc_mod_helper/model/filter/sort_method.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
@@ -107,7 +108,11 @@ Future<void> expandFilter(WidgetTester tester) async {
 
 void main() {
   setUp(() async {
+    // 三个来源的节流时间戳与缓存都要清:用例之间共用单例,
+    // 上一个用例残留的「刚请求过」会让下一个用例的请求晚 1s 发出
     McmodApi.clearCaches();
+    ModrinthApi.clearCaches();
+    CurseforgeApi.clearCaches();
     SharedPreferences.setMockInitialValues({});
     await DisplaySettings.instance.load();
   });
@@ -293,8 +298,10 @@ void main() {
     await tester.pump();
     expect(uris.last.queryParameters['category'], '1');
 
-    // 重置后与首屏的条件相同 → 会话缓存命中(不再请求),界面立刻回到无筛选
-    await tester.tap(find.text('重置'));
+    // 重置按钮在摘要条右侧(图标是 Icons.refresh,与 AppBar 的「刷新」同图标,
+    // 所以按 tooltip 定位)。重置后与首屏的条件相同 → 会话缓存命中(不再请求),
+    // 界面立刻回到无筛选
+    await tester.tap(find.byTooltip('重置'));
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
@@ -442,6 +449,114 @@ void main() {
     expect(listUris.last.queryParameters.containsKey('category'), isFalse);
     expect(find.text('全部分类 · 全部版本 · 默认排序'), findsOneWidget);
     expect(find.text('整合包1'), findsOneWidget); // 整合包列表渲染出来了
+  });
+
+  testWidgets('类型标签跟着来源走:Modrinth 五种,mcmod 两种', (tester) async {
+    // 本用例会把数据来源改掉;万一中途断言失败,也要把来源还原,
+    // 否则后面的用例会拿着「来源=CurseForge」去跑 mcmod 的假响应
+    addTearDown(() => DisplaySettings.instance.setDataSource(ModSource.mcmod));
+    final mrUris = <Uri>[];
+    ModrinthApi.clientFactory = () => MockClient((request) async {
+      final path = request.url.path;
+      if (path == '/v2/tag/category') {
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode([
+              {
+                'name': 'cartoon',
+                'project_type': 'shader',
+                'header': 'categories',
+              },
+            ]),
+          ),
+          200,
+        );
+      }
+      if (path == '/v2/tag/game_version') {
+        return http.Response.bytes(utf8.encode(jsonEncode(const [])), 200);
+      }
+      mrUris.add(request.url);
+      return http.Response.bytes(
+        utf8.encode(jsonEncode({'hits': [], 'total_hits': 0})),
+        200,
+      );
+    });
+    ModrinthApi.clearCaches();
+    DisplaySettings.instance.setDataSource(ModSource.modrinth);
+
+    await tester.pumpWidget(const MaterialApp(home: BrowsePage()));
+    await settle(tester, rounds: 5);
+
+    // Modrinth 五种都有
+    for (final label in ['模组', '整合包', '材质包', '光影', '插件']) {
+      expect(find.text(label), findsOneWidget, reason: label);
+    }
+
+    // 切到「光影」:facets 按类型给
+    await tester.tap(find.text('光影'));
+    await settle(tester, rounds: 4);
+    expect(
+      mrUris.last.queryParameters['facets'],
+      contains('project_type:shader'),
+    );
+
+    // 再切到「插件」
+    await tester.tap(find.text('插件'));
+    await settle(tester, rounds: 4);
+    expect(
+      mrUris.last.queryParameters['facets'],
+      contains('project_type:plugin'),
+    );
+
+    // 换到 CurseForge(没有插件):标签少一个,且当前类型要回落到模组。
+    // 用 CurseForge 验回落是因为它的 classId 能把两者分开
+    // (模组 6 / 插件 5),mcmod 的模组与插件都走同一张列表页,分辨不出来
+    final cfUris = <Uri>[];
+    CurseforgeApi.clientFactory = () => MockClient((request) async {
+      cfUris.add(request.url);
+      return http.Response.bytes(
+        utf8.encode(
+          jsonEncode({
+            'data': [],
+            'pagination': {'totalCount': 0},
+          }),
+        ),
+        200,
+      );
+    });
+    CurseforgeApi.clearCaches();
+    // 切换来源前先记下:本用例只关心「切过去之后发出的那次列表查询」,
+    // 用 firstWhere 而不是 last —— 选项请求(分类/版本)也走同一个接口,
+    // 谁先在节流队列里排到取决于前面用例残留的时间戳
+    final cfSearchBefore = cfUris.length;
+    DisplaySettings.instance.setDataSource(ModSource.curseforge);
+    await settle(tester, rounds: 8);
+
+    expect(find.text('插件'), findsNothing);
+    expect(find.text('光影'), findsOneWidget);
+    expect(find.text('材质包'), findsOneWidget);
+    final searches = cfUris
+        .skip(cfSearchBefore)
+        .where((u) => u.path == '/v1/mods/search');
+    expect(searches, isNotEmpty, reason: '换来源后应当重拉列表');
+    expect(
+      searches.first.queryParameters['classId'],
+      '6',
+      reason: '插件在新来源不可用 → 回落到模组,不能带着 classId=5 去查',
+    );
+
+    // 再换到 mcmod:它连材质包与光影都没有,只剩两个标签
+    final mcmodUris = installMcmod();
+    DisplaySettings.instance.setDataSource(ModSource.mcmod);
+    await settle(tester, rounds: 6);
+
+    expect(find.text('插件'), findsNothing);
+    expect(find.text('光影'), findsNothing);
+    expect(find.text('材质包'), findsNothing);
+    expect(find.text('模组'), findsOneWidget);
+    expect(find.text('整合包'), findsOneWidget);
+    expect(mcmodUris.last.path, '/modlist.html');
+    expect(find.text('全部分类 · 全部版本 · 默认排序'), findsOneWidget);
   });
 
   testWidgets('详情页版本胶囊:预设版本的浏览页直接按该版本筛选', (tester) async {

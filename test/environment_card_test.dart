@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mc_mod_helper/icon/link_icons.dart';
+import 'package:mc_mod_helper/icon/platform_icons.dart';
 import 'package:mc_mod_helper/model/project/project_detail.dart';
 import 'package:mc_mod_helper/model/project/project_loader.dart';
 import 'package:mc_mod_helper/model/project/project_type.dart';
@@ -37,7 +37,7 @@ void main() {
 
     // 规范名称与图标(图标取自注册表:一份定义,界面与链接图标共用)
     expect(find.text('Fabric'), findsOneWidget);
-    expect(find.byIcon(LinkIcons.fabric), findsOneWidget);
+    expect(find.byIcon(PlatformIcons.fabric), findsOneWidget);
     // 注册表外的加载器不丢:原名照常显示,用通用图标
     expect(find.text('数据包'), findsOneWidget);
     expect(find.byIcon(Icons.extension), findsOneWidget);
@@ -71,7 +71,7 @@ void main() {
 
     expect(find.text('加载环境'), findsOneWidget); // 卡片本身在
     expect(find.text('Forge'), findsOneWidget); // 加载器行
-    expect(find.byIcon(LinkIcons.forge), findsOneWidget);
+    expect(find.byIcon(PlatformIcons.forge), findsOneWidget);
     expect(find.text('1.12.2'), findsOneWidget); // 版本胶囊
     expect(find.text('1.20.1'), findsOneWidget);
     // 没有运行端信息,不显示客户端/服务端胶囊
@@ -81,6 +81,6 @@ void main() {
   testWidgets('没有版本分组时整块不渲染', (tester) async {
     await tester.pumpWidget(_card(const {}));
     await tester.pumpAndSettle();
-    expect(find.byIcon(LinkIcons.fabric), findsNothing);
+    expect(find.byIcon(PlatformIcons.fabric), findsNothing);
   });
 }

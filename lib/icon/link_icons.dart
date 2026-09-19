@@ -14,11 +14,6 @@ class LinkIcons {
   static const String linkFont = 'LinkIcons';
 
   /// 拿到生成的字体文件后，按工具输出的 codePoint 修正以下值
-  // 模组类
-  static const IconData forge = IconData(0xf001, fontFamily: linkFont);
-  static const IconData fabric = IconData(0xf002, fontFamily: linkFont);
-  static const IconData neoforge = IconData(0xf003, fontFamily: linkFont);
-  static const IconData quilt = IconData(0xf004, fontFamily: linkFont);
   // 发布站类
   static const IconData github = IconData(0xe906, fontFamily: linkFont);
   static const IconData gitee = IconData(0xf908, fontFamily: linkFont);

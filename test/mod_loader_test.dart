@@ -16,6 +16,43 @@ void main() {
     expect(ProjectLoader.of('fabric').name, 'Fabric');
   });
 
+  test('of:服务端平台也认得(Modrinth 的插件按这些加载器给出)', () {
+    // 插件版本条目的 loaders 是 paper / bukkit / velocity 这类服务端平台
+    for (final raw in [
+      'paper',
+      'bukkit',
+      'spigot',
+      'purpur',
+      'folia',
+      'bungeecord',
+      'velocity',
+      'waterfall',
+    ]) {
+      final loader = ProjectLoader.of(raw);
+      expect(loader.name, isNot(raw), reason: raw); // 取到的是规范写法
+      expect(identical(loader, projectLoaders[raw]), isTrue, reason: raw);
+    }
+    expect(ProjectLoader.of('paper').name, 'Paper');
+    expect(ProjectLoader.of('Paper').icon, isA<Icon>());
+    expect(ProjectLoader.of('velocity').color, isNotNull);
+  });
+
+  test('isServerPlatform:认得服务端平台,模组加载器不算', () {
+    for (final name in ['bukkit', 'Paper', ' VELOCITY ']) {
+      expect(ProjectLoader.isServerPlatform(name), isTrue, reason: name);
+    }
+    for (final name in [
+      'forge',
+      'fabric',
+      'neoforge',
+      'quilt',
+      'datapack',
+      '',
+    ]) {
+      expect(ProjectLoader.isServerPlatform(name), isFalse, reason: name);
+    }
+  });
+
   test('of:注册表外的加载器保留原名,用通用图标兜底', () {
     final loader = ProjectLoader.of('数据包');
     expect(loader.name, '数据包');

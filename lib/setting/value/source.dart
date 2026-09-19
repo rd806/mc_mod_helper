@@ -21,6 +21,39 @@ class SourceManager {
     );
   }
 
+  /// 各来源实际能查的项目类型(浏览页的类型标签就用这一份)。
+  ///
+  /// 站点之间并不一致(实测):
+  /// - mcmod 只有模组与整合包,没有材质包 / 光影 / 插件;
+  /// - CurseForge 有模组 / 整合包 / 材质包 / 光影,没有插件;
+  /// - Modrinth 五种都有。
+  ///
+  /// 所以类型标签要跟着数据来源走 —— 在 mcmod 上摆一个「插件」标签,
+  /// 点进去只可能是一条空列表。
+  static List<ProjectType> supportedTypes(ModSource source) => switch (source) {
+    ModSource.mcmod => const [ProjectType.mod, ProjectType.modpack],
+    ModSource.modrinth => const [
+      ProjectType.mod,
+      ProjectType.modpack,
+      ProjectType.resourcepack,
+      ProjectType.shader,
+      ProjectType.plugin,
+    ],
+    ModSource.curseforge => const [
+      ProjectType.mod,
+      ProjectType.modpack,
+      ProjectType.resourcepack,
+      ProjectType.shader,
+    ],
+  };
+
+  /// 把类型收敛到该来源支持的那几个(换来源后原类型可能不再可用,
+  /// 例如 Modrinth 的「插件」切到 mcmod)。不支持时回落到该来源的第一个类型
+  static ProjectType normalizeType(ModSource source, ProjectType type) {
+    final types = supportedTypes(source);
+    return types.contains(type) ? type : types.first;
+  }
+
   /// 组合筛选分页查询:按 [filter] 的资料来源分发,返回该页模组与总页数,
   /// 由浏览页滚到底时增量请求。
   ///

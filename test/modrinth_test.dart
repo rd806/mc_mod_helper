@@ -218,6 +218,94 @@ void main() {
       expect(uris.last.queryParameters['facets'], '[["project_type:modpack"]]');
     });
 
+    test('材质包 / 光影 / 插件:facets 按类型给 project_type', () async {
+      final uris = <Uri>[];
+      ModrinthApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        return _json({'hits': [], 'total_hits': 0});
+      });
+      for (final type in [
+        ProjectType.resourcepack,
+        ProjectType.shader,
+        ProjectType.plugin,
+      ]) {
+        await ModrinthApi.getFilteredMods(
+          Filter(
+            type: type,
+            modSource: ModSource.modrinth,
+            sortMethod: SortMethod.none,
+          ),
+        );
+        expect(
+          uris.last.queryParameters['facets'],
+          '[["project_type:${type.name}"]]',
+          reason: type.name,
+        );
+      }
+    });
+
+    test('插件:project_type 报成 mod,靠 all_project_types / loaders 纠正', () async {
+      // 实测 veinminer:旧字段 project_type=mod,新字段
+      // all_project_types=[datapack,mod,plugin],loaders=[bukkit]。
+      // 只看旧字段的话插件会被显示成「模组」(封面上的类型胶囊就是这么错的)
+      ModrinthApi.clientFactory = () => MockClient((request) async {
+        if (request.url.path == '/v2/search') {
+          return _json({
+            'hits': [
+              {
+                'slug': 'veinminer',
+                'title': 'VeinMiner',
+                'description': '插件',
+                'project_type': 'mod', // 旧字段
+                'all_project_types': ['datapack', 'mod', 'plugin'],
+              },
+              {
+                'slug': 'pure-datapack',
+                'title': 'Pure Datapack',
+                'description': '纯数据包',
+                'project_type': 'mod',
+                'all_project_types': ['datapack'],
+              },
+              {
+                'slug': 'plain-mod',
+                'title': 'Plain Mod',
+                'description': '普通模组',
+                'project_type': 'mod',
+              },
+            ],
+            'total_hits': 3,
+          });
+        }
+        // 详情没有 all_project_types:只能看加载器
+        if (request.url.path == '/v2/project/veinminer') {
+          return _json({
+            'title': 'VeinMiner',
+            'description': '插件',
+            'project_type': 'mod',
+            'loaders': ['bukkit'],
+          });
+        }
+        if (request.url.path == '/v2/project/veinminer/version' ||
+            request.url.path == '/v2/project/veinminer/members') {
+          return _json(const []);
+        }
+        return http.Response('', 404);
+      });
+      ModrinthApi.clearCaches();
+
+      final hits = await ModrinthApi.search('x');
+      expect(hits.map((h) => h.type), [
+        ProjectType.plugin, // 新字段里有更具体的类型
+        ProjectType.mod, // 只有 datapack → 仍是模组(枚举里没有数据包)
+        ProjectType.mod, // 普通模组不受影响
+      ]);
+
+      // 详情:旧字段 mod + 加载器是服务端平台 → 插件
+      final detail = await ModrinthApi.getDetail('veinminer');
+      expect(detail.type, ProjectType.plugin);
+      expect(detail.pageUrl, 'https://modrinth.com/plugin/veinminer');
+    });
+
     test('search 映射到 ModSummary', () async {
       final results = await ModrinthApi.search('sodium');
       expect(results, hasLength(1));

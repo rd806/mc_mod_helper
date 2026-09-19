@@ -18,7 +18,7 @@
 
 ## 功能
 
-- [x] 浏览资源（顶部标签切换模组 / 整合包；筛选栏按分类 / 游戏版本 / 排序组合筛选，滚动到底自动加载下一页）
+- [x] 浏览资源（模组、整合包、材质、光影、插件）
 - [x] 搜索模组（允许聚合搜索）
 - [x] 查看详情：版本信息，加载环境，开发团队，支持版本，详细描述
 - [x] 验证处理
@@ -39,7 +39,7 @@
 
 ### 默认
 
-使用了一个重写的轻量 HTML 渲染器（位于 `render/default_render/` ），支持的格式并不完全，但兼容性和观感较好。
+使用了一个重写的轻量 HTML 渲染器（位于 `/lib/render/default_render/` ），支持的格式并不完全，但兼容性和观感较好。
 
 > 现已实现：
 > * 图片表格（画廊）的较好渲染（DeepSeek NB！）。
@@ -74,7 +74,7 @@ flutter build apk --split-per-abi
 > [!Note]
 > 如果遇到构建失败错误，可能是因为在联网下载 sqlite 库时网络不通畅，可通过使用代理或手动下载库文件解决。
 
-另外，`test/` 文件夹中包含若干测试文件（出自DeepSeek），可使用 
+另外，`/test` 文件夹中包含若干测试文件（出自DeepSeek），可使用 
 
 ```shell
 flutter test
@@ -84,7 +84,7 @@ flutter test
 
 ## 说明
 
-* `mc_mod_helper.json` 是来自 [Ico moon](https://icomoon.io/new-app/) 的图标文件集合。
+* `/icons/*.json` 是来自 [Ico moon](https://icomoon.io/new-app/) 的图标文件集合。
 * `UPDATE.md` 存放更新描述。
 * 模组加载器的图标来源于 Modrinth。
 * 字体使用了 [HarmonyOS Sans](https://developer.huawei.com/consumer/cn/doc/design-guides/font-0000001828772001) 的 Regular 子集。

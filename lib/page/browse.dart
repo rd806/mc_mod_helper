@@ -74,16 +74,29 @@ class _BrowsePageState extends State<BrowsePage> {
   bool _scopeIsCurrent(ModSource source, ProjectType type) =>
       source == DisplaySettings.instance.dataSource && type == _filter.type;
 
+  /// 当前来源能查的类型(类型标签的文案与下标都以它为准)
+  List<ProjectType> get _types =>
+      SourceManager.supportedTypes(DisplaySettings.instance.dataSource);
+
   @override
   void initState() {
     super.initState();
+    final source = DisplaySettings.instance.dataSource;
     _filter =
         widget.initialFilter ??
         Filter(
-          type: ProjectTypeManager.supportedTypes.first,
-          modSource: DisplaySettings.instance.dataSource,
+          type: SourceManager.supportedTypes(source).first,
+          modSource: source,
           sortMethod: SortMethod.none,
         );
+    // 预设类型也要按来源收敛:详情页的版本胶囊可能带来当前来源没有的类型
+    _filter = Filter(
+      type: SourceManager.normalizeType(_filter.modSource, _filter.type),
+      modSource: _filter.modSource,
+      sortMethod: _filter.sortMethod,
+      category: _filter.category,
+      version: _filter.version,
+    );
     _lastDataSource = _filter.modSource;
     _controller.addListener(() {
       // 距底部 600px 内触发预加载下一页
@@ -115,9 +128,11 @@ class _BrowsePageState extends State<BrowsePage> {
     final source = DisplaySettings.instance.dataSource;
     if (source == _lastDataSource) return;
     _lastDataSource = source;
+    // 原类型在新来源上可能不存在(在 Modrinth 看「插件」再切到 mcmod),
+    // 收敛到该来源支持的类型,否则标签下标对不上、还会去查一个空集合
     _resetScope(
       Filter(
-        type: _filter.type,
+        type: SourceManager.normalizeType(source, _filter.type),
         modSource: source,
         sortMethod: _filter.sortMethod,
       ),
@@ -323,9 +338,9 @@ class _BrowsePageState extends State<BrowsePage> {
 
   @override
   Widget build(BuildContext context) {
-    // 类型标签:数量与下标都由 [ProjectTypeManager.supportedTypes] 决定,
-    // 初始下标跟着当前筛选的类型走(详情页的版本胶囊可能预设成整合包)
-    final types = ProjectTypeManager.supportedTypes;
+    // 类型标签:数量随来源变化,下标跟着当前筛选的类型走
+    // (详情页的版本胶囊可能预设成整合包 / 材质包等)
+    final types = _types;
     final typeIndex = types.indexOf(_filter.type);
 
     return DefaultTabController(
@@ -368,7 +383,7 @@ class _BrowsePageState extends State<BrowsePage> {
         body: Column(
           children: [
             Padding(
-              padding: const EdgeInsetsGeometry.all(16),
+              padding: const EdgeInsetsGeometry.all(8),
               child: FilterBar(
                 filter: _filter,
                 categories: _categories,

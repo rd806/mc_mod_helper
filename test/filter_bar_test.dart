@@ -71,9 +71,10 @@ void main() {
     await tester.pumpWidget(_bar());
     await tester.pump();
 
-    // 收起:面板用 Offstage 藏在树上(保留测量结果),查找与无障碍都跳过它
+    // 收起:面板用 Offstage 藏在树上(保留测量结果),查找与无障碍都跳过它。
+    // 拿面板最后一组「排序」的标题当探针(它只在面板里出现)
     expect(find.byType(ChoiceChip), findsNothing);
-    expect(find.text('重置'), findsNothing);
+    expect(find.text('排序'), findsNothing);
 
     await tester.tap(find.byTooltip('展开筛选'));
     await tester.pumpAndSettle();
