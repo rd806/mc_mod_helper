@@ -176,7 +176,7 @@ void main() {
 
     // 五个分组标题都在,且默认全部折叠(子项不渲染)
     expect(find.widgetWithText(AppBar, '设置'), findsOneWidget);
-    for (final title in ['主题', '显示', '语言', 'AI', '关于']) {
+    for (final title in ['主题', '浏览', '语言', 'AI', '关于']) {
       expect(
         find.descendant(of: settings, matching: find.text(title)),
         findsOneWidget,
@@ -220,12 +220,13 @@ void main() {
       'Unifont',
     );
 
-    // ---- 显示:渲染方法/数据来源/展示方式 ----
-    await tester.tap(find.text('显示'));
+    // ---- 浏览:渲染方法/数据来源/展示方式/记录浏览历史 ----
+    await tester.tap(find.text('浏览'));
     await tester.pumpAndSettle();
     expect(find.text('渲染方法'), findsOneWidget);
     expect(find.text('数据来源'), findsOneWidget);
     expect(find.text('展示方式'), findsOneWidget);
+    expect(find.text('记录浏览历史'), findsOneWidget);
 
     // 切换渲染方法(RenderType 下拉框) → 服务值变化;
     // 渲染方法不触发主页重拉,无新计时器
@@ -258,6 +259,13 @@ void main() {
     await tester.tap(find.text('网格').last);
     await tester.pumpAndSettle();
     expect(DisplaySettings.instance.displayStyle, DisplayStyle.card);
+
+    // 记录浏览历史开关(默认开)→ 关掉后服务值变化
+    await tester.ensureVisible(find.byType(SwitchListTile));
+    await tester.pump();
+    await tester.tap(find.byType(SwitchListTile).first);
+    await tester.pumpAndSettle();
+    expect(DisplaySettings.instance.recordHistory, isFalse);
 
     // ---- 语言:目标语言(详情页翻译按钮使用) ----
     await tester.tap(find.text('语言'));

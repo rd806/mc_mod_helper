@@ -18,6 +18,7 @@ class DisplaySettings extends ChangeNotifier {
   static const String _dataSourceKey = 'data_source';
   static const String _displayStyleKey = 'display_style';
   static const String _renderTypeKey = 'render_type';
+  static const String _recordHistoryKey = 'record_history';
 
   /// 搜索/详情数据来源的合法取值
   static const List<ModSource> dataSources = [
@@ -42,10 +43,12 @@ class DisplaySettings extends ChangeNotifier {
   ModSource _dataSource = ModSource.mcmod;
   DisplayStyle _displayStyle = DisplayStyle.table;
   RenderType _renderType = RenderType.auto;
+  bool _recordHistory = true;
 
   ModSource get dataSource => _dataSource;
   DisplayStyle get displayStyle => _displayStyle;
   RenderType get renderType => _renderType;
+  bool get recordHistory => _recordHistory;
 
   /// 启动时读取已保存的设置(在 runApp 前调用)。
   ///
@@ -70,6 +73,8 @@ class DisplaySettings extends ChangeNotifier {
       _renderType = (rt != null && renderTypes.contains(renderType))
           ? renderType
           : RenderType.auto;
+
+      _recordHistory = prefs.getBool(_recordHistoryKey) ?? true;
 
       notifyListeners();
     } catch (_) {
@@ -103,6 +108,14 @@ class DisplaySettings extends ChangeNotifier {
     _persist(_displayStyleKey, style.name);
   }
 
+  /// 设置是否记录浏览历史(同值短路,与其它 setter 一致)
+  void setRecordHistory(bool record) {
+    if (record == _recordHistory) return;
+    _recordHistory = record;
+    notifyListeners();
+    _persist(_recordHistoryKey, record);
+  }
+
   /// 异步写盘;失败不影响本次切换,仅下次启动回到上次成功保存的值
   Future<void> _persist(String key, Object value) async {
     try {
@@ -112,6 +125,10 @@ class DisplaySettings extends ChangeNotifier {
           await prefs.setInt(key, i);
         case final double d:
           await prefs.setDouble(key, d);
+        // bool 必须单独一支:落到 default 会被强转成 String 抛异常,
+        // 又被下面的 catch 吞掉,表现为"开关切了但永远存不下来"
+        case final bool b:
+          await prefs.setBool(key, b);
         default:
           await prefs.setString(key, value as String);
       }

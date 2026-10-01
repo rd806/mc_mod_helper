@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../model/author/author_summary.dart';
 import '../../model/project/project_detail.dart';
+import '../../page/detail/author_page.dart';
 import '../common/collapsible_widgets.dart';
 import '../common/section_title.dart';
 
@@ -27,7 +28,24 @@ class AuthorsCard extends StatelessWidget {
             CollapsibleWidgets(
               widget: [
                 for (final author in authors)
-                  AuthorSummary.buildAuthorChip(author, theme),
+                  AuthorSummary.buildAuthorChip(
+                    author,
+                    theme,
+                    // 有作者 id 的芯片点进作者页;没 id(理论上不会有)保持纯展示
+                    onTap: author.id == null
+                        ? null
+                        : () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => AuthorPage(
+                                id: author.id!,
+                                source: project.source,
+                                initialName: author.name,
+                                initialAvatarUrl: author.avatarUrl,
+                                initialUrl: author.url,
+                              ),
+                            ),
+                          ),
+                  ),
               ],
             ),
           ],

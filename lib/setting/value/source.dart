@@ -1,4 +1,5 @@
 import 'package:mc_mod_helper/api/curseforge.dart';
+import 'package:mc_mod_helper/model/author/author_detail.dart';
 import 'package:mc_mod_helper/model/filter/filter.dart';
 import 'package:mc_mod_helper/model/project/project_category.dart';
 import 'package:mc_mod_helper/model/project/project_summary.dart';
@@ -103,6 +104,40 @@ class SourceManager {
         return await ModrinthApi.getVersions();
       case ModSource.curseforge:
         return await CurseforgeApi.getVersions();
+    }
+  }
+
+  /// 作者主页:头部信息 + 该作者的作品(按 [page] 分页,见各 API 的说明)。
+  ///
+  /// 三个来源的数据厚度不一样:mcmod 与 Modrinth 一次给全(totalPages 恒为 1),
+  /// CurseForge 只有作品能翻页,而且拿不到头像与简介。
+  static Future<({AuthorDetail author, int totalPages})> getAuthor(
+    ModSource source,
+    String id, {
+    int page = 1,
+  }) async {
+    switch (source) {
+      case ModSource.mcmod:
+        return await McmodApi.getAuthor(id, page: page);
+      case ModSource.modrinth:
+        return await ModrinthApi.getAuthor(id, page: page);
+      case ModSource.curseforge:
+        return await CurseforgeApi.getAuthor(id, page: page);
+    }
+  }
+
+  /// 作者主页地址(「在浏览器中打开」用)。
+  ///
+  /// CurseForge 的主页按用户名拼,数字 id 拼不出可用地址 —— 那边优先用
+  /// 作者卡片带来的 [AuthorSummary.url],这个只作兜底。
+  static String getAuthorUrl(ModSource source, String id) {
+    switch (source) {
+      case ModSource.mcmod:
+        return 'https://www.mcmod.cn/author/$id.html';
+      case ModSource.modrinth:
+        return 'https://modrinth.com/user/$id';
+      case ModSource.curseforge:
+        return 'https://www.curseforge.com/members/$id';
     }
   }
 

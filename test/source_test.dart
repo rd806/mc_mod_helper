@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:mc_mod_helper/api/curseforge.dart';
 import 'package:mc_mod_helper/api/mcmod.dart';
 import 'package:mc_mod_helper/api/modrinth.dart';
 import 'package:mc_mod_helper/model/project/project_type.dart';
@@ -171,6 +172,62 @@ void main() {
       ),
       'https://modrinth.com/shader/complementary',
     );
+  });
+
+  test('getAuthorUrl:按来源拼作者主页地址', () {
+    expect(
+      SourceManager.getAuthorUrl(ModSource.mcmod, '32946'),
+      'https://www.mcmod.cn/author/32946.html',
+    );
+    expect(
+      SourceManager.getAuthorUrl(ModSource.modrinth, 'DzLrfrbK'),
+      'https://modrinth.com/user/DzLrfrbK',
+    );
+    // CurseForge 的主页按用户名拼,数字 id 拼不出可用地址 ——
+    // 页面优先用作者卡片带来的 url,这个只是兜底
+    expect(
+      SourceManager.getAuthorUrl(ModSource.curseforge, 'jellysquid3'),
+      'https://www.curseforge.com/members/jellysquid3',
+    );
+  });
+
+  test('getAuthor:按来源分发到各自的 API', () async {
+    final uris = <Uri>[];
+    http.Response pack(Object data) => http.Response.bytes(
+      utf8.encode(jsonEncode(data)),
+      200,
+      headers: {'content-type': 'application/json; charset=utf-8'},
+    );
+
+    McmodApi.clientFactory = () => MockClient((request) async {
+      uris.add(request.url);
+      return http.Response.bytes(
+        utf8.encode(
+          '<html><body><div class="author-row">'
+          '<div class="author-user-frame"><div class="author-user-avatar">'
+          '<span><img src="//i.mcmod.cn/u/a.png"></span></div>'
+          '<div class="author-name"><span class="name"><h5>某人</h5></span></div>'
+          '</div></div></body></html>',
+        ),
+        200,
+      );
+    });
+    final mcmod = await SourceManager.getAuthor(ModSource.mcmod, '1');
+    expect(uris.single.path, '/author/1.html');
+    expect(mcmod.author.name, '某人');
+
+    uris.clear();
+    CurseforgeApi.clientFactory = () => MockClient((request) async {
+      uris.add(request.url);
+      return pack({
+        'data': const [],
+        'pagination': {'totalCount': 0},
+      });
+    });
+    final cf = await SourceManager.getAuthor(ModSource.curseforge, '12345');
+    expect(uris.single.path, '/v1/mods/search');
+    expect(uris.single.queryParameters['authorId'], '12345');
+    expect(cf.author.source, ModSource.curseforge);
   });
 
   test('getTotalSearch:mcmod 验证码异常直接上抛(由页面弹窗处理)', () async {

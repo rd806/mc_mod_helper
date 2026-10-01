@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:mc_mod_helper/model/filter/sort_method.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 
+import '../model/author/author_detail.dart';
 import '../model/author/author_summary.dart';
 import '../model/filter/filter.dart';
 import '../model/project/project_category.dart';
@@ -102,6 +103,9 @@ class McmodApi {
   static final Map<String, List<ProjectSummary>> _searchCache = {};
   static final Map<String, ProjectDetail> _detailCache = {};
 
+  /// 作者页缓存:头部与作品一次解析完(站点一次给全,不需要翻页)
+  static final Map<String, AuthorDetail> _authorCache = {};
+
   /// 分类选项按类型缓存:模组的分类取首页卡片、整合包取 modpack 页的筛选块,
   /// 且两类的分类 id 各自编号,不能共用一份
   static final Map<ProjectType, List<ProjectCategory>> _categoryCache = {};
@@ -136,6 +140,7 @@ class McmodApi {
   static void clearCaches() {
     _searchCache.clear();
     _detailCache.clear();
+    _authorCache.clear();
     _categoryCache.clear();
     _homeCache = null;
     _versionCache.clear();
@@ -250,6 +255,25 @@ class McmodApi {
     );
     _detailCache[key] = detail;
     return detail;
+  }
+
+  /// 作者主页:头部信息 + 该作者的全部作品。
+  ///
+  /// https://www.mcmod.cn/author/{id}.html —— 站点一次给全(实测作者页没有
+  /// 分页控件、也没有 data-page,38 个作品也在一页里),所以 totalPages 恒为 1,
+  /// 浏览页不会再来翻页;[page] 只有第 1 页有意义,大于 1 也返回同一份。
+  static Future<({AuthorDetail author, int totalPages})> getAuthor(
+    String id, {
+    int page = 1,
+  }) async {
+    final cached = _authorCache[id];
+    if (cached != null) return (author: cached, totalPages: 1);
+
+    final uri = Uri.parse('https://www.mcmod.cn/author/$id.html');
+    final body = await _fetchWithRetry(uri, _detailMinInterval, _lastWwwAt);
+    final author = _parseAuthorPage(id, body);
+    _authorCache[id] = author;
+    return (author: author, totalPages: 1);
   }
 
   /// 项目类型 → 站点的路径段:模组 /class/、整合包 /modpack/。
@@ -623,6 +647,84 @@ class McmodApi {
     return (mods: mods, totalPages: totalPages);
   }
 
+  // ---------- 作者页解析 ----------
+
+  /// 作者页:头部(头像 / 名称 / 简介)+ 参与项目。
+  ///
+  /// 作者 id 不存在时站点会 301 到 `/error/`(http 默认跟随跳转 → 200,
+  /// 但页面里没有 .author-row),所以「找不到头部」要抛异常,
+  /// 不能当成一个没有名字的空作者。
+  static AuthorDetail _parseAuthorPage(String id, String html) {
+    final doc = html_parser.parse(html);
+    final name = doc.querySelector('.author-name .name')?.text.trim() ?? '';
+    if (name.isEmpty) throw Exception('作者页解析失败:没有找到作者信息');
+
+    var avatar =
+        doc.querySelector('.author-user-avatar img')?.attributes['src'] ?? '';
+    if (avatar.startsWith('//')) avatar = 'https:$avatar';
+    final bio = doc.querySelector('.author-content .text')?.text.trim() ?? '';
+
+    return AuthorDetail(
+      id: id,
+      source: ModSource.mcmod,
+      avatarUrl: avatar.isEmpty ? null : avatar,
+      name: name,
+      bio: bio.isEmpty ? null : bio,
+      projects: _parseAuthorProjects(doc),
+    );
+  }
+
+  /// 参与项目:`.author-mods .block`。
+  ///
+  /// 选择器必须限定在 `.author-mods` 里 —— 侧栏「最近参与编辑」与
+  /// 「相关作者」里全是别的用户(`center.mcmod.cn/{uid}/`、`/author/{id}.html`),
+  /// 松散的选择器会把无关的人抓进来。类型按链接的路径段判断:站点给的作品
+  /// 可能是模组也可能是整合包,还有材质包 / 光影等本项目没接入的版块,后者跳过。
+  static List<ProjectSummary> _parseAuthorProjects(Document doc) {
+    final projects = <ProjectSummary>[];
+    for (final block in doc.querySelectorAll('.author-mods .block')) {
+      final link = block.querySelector('.info .name a');
+      final match = RegExp(r'/(class|modpack)/(\d+)\.html')
+          .firstMatch(link?.attributes['href'] ?? '');
+      final title = link?.text.trim() ?? '';
+      if (match == null || title.isEmpty) continue;
+      var icon = block.querySelector('.cover img')?.attributes['src'] ?? '';
+      if (icon.startsWith('//')) icon = 'https:$icon';
+      projects.add(
+        ProjectSummary(
+          id: match.group(2)!,
+          type: match.group(1) == 'modpack'
+              ? ProjectType.modpack
+              : ProjectType.mod,
+          title: title,
+          // 副标题(英文名)在链接的 title 属性里,不在可见文本里:
+          // title="机械动力：航空学 (Create: Aeronautics)" 的可见文本只有
+          // 中文名,括号里那截正好当卡片副标题(与详情页拆副标题同一份规则)
+          subName: _splitParenEnglish(link?.attributes['title'] ?? '')?.$1,
+          // 作者页只有作品名与作者在其中的角色,没有简介
+          description: '',
+          iconUrl: icon.isEmpty ? null : icon,
+          source: ModSource.mcmod,
+        ),
+      );
+    }
+    return projects;
+  }
+
+  /// 把 `中文名 (English)` 拆成 (英文名, 中文名);括号里不是英文时返回 null。
+  ///
+  /// 详情页标题与作者页作品链接的 `title` 属性都是这个写法。判据是括号里
+  /// 得有拉丁字母 —— 站点也拿括号写中文注释(如 `(需要前置)`),
+  /// 那种不该当成英文名显示。
+  static (String, String)? _splitParenEnglish(String text) {
+    final source = text.trim();
+    final paren = RegExp(r'\((.*?)\)\s*$').firstMatch(source);
+    if (paren == null) return null;
+    final inner = paren.group(1)!.trim();
+    if (!RegExp(r'[A-Za-z]').hasMatch(inner)) return null;
+    return (inner, source.substring(0, paren.start).trim());
+  }
+
   // ---------- 详情页解析 ----------
 
   static ProjectDetail _parseDetail(
@@ -640,12 +742,10 @@ class McmodApi {
             ?.text
             .replaceFirst(RegExp(r'\s*-\s*MC百科.*$'), '') ??
         '';
-    String? subName;
-    final paren = RegExp(r'\((.*?)\)$').firstMatch(title);
-    if (paren != null && RegExp(r'[A-Za-z]').hasMatch(paren.group(1)!)) {
-      subName = paren.group(1);
-      title = title.substring(0, paren.start).trim();
-    }
+    // 括号里的英文名拆成副标题(规则与作者页共用)
+    final split = _splitParenEnglish(title);
+    final subName = split?.$1;
+    if (split != null) title = split.$2;
 
     // 封面图:站点的图片目录按类型分开(/class/cover、/modpack/cover),
     // 所以要按类型找;正文里还有别的 /cover/ 图(post/cover),不能放宽选择器
@@ -754,6 +854,11 @@ class McmodApi {
         authors.add(
           AuthorSummary(
             name: name,
+            // 作者页地址在头像链与名称链上各有一份(都指向同一个作者),
+            // 取第一个即可 —— 没带 id 就点不进作者页
+            id: RegExp(r'/author/(\d+)\.html')
+                .firstMatch(li.querySelector('a')?.attributes['href'] ?? '')
+                ?.group(1),
             avatarUrl: avatar.isEmpty ? null : avatar,
             role: li.querySelector('.position')?.text.trim(),
           ),

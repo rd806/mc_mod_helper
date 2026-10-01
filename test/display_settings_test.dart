@@ -46,6 +46,28 @@ void main() {
     expect(DisplaySettings.instance.renderType, RenderType.hyper);
   });
 
+  test('recordHistory:默认记录,setter 写盘并能读回', () async {
+    await DisplaySettings.instance.load();
+    expect(DisplaySettings.instance.recordHistory, isTrue);
+
+    DisplaySettings.instance.setRecordHistory(false);
+    expect(DisplaySettings.instance.recordHistory, isFalse);
+    // 带类型写盘:bool 落到 setString 会被强转抛异常,又被 _persist 的 catch
+    // 吞掉,表现成「开关切了但重启就复位」,这条断言就是钉它的
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('record_history'), isFalse);
+
+    // 模拟重启:load 读回上次保存的值
+    await DisplaySettings.instance.load();
+    expect(DisplaySettings.instance.recordHistory, isFalse);
+  });
+
+  test('recordHistory:存档里有值时以存档为准', () async {
+    SharedPreferences.setMockInitialValues({'record_history': false});
+    await DisplaySettings.instance.load();
+    expect(DisplaySettings.instance.recordHistory, isFalse);
+  });
+
   test('dataSource setter 生效', () async {
     await DisplaySettings.instance.load();
     DisplaySettings.instance.setDataSource(ModSource.modrinth);

@@ -48,13 +48,15 @@ void main() {
           '<title>测试模组 - MC百科|最大的Minecraft中文MOD百科</title>'
           '</head><body>'
           '<li class="col-lg-12 author"><div class="frame"><ul>'
-          '<li><span class="avatar"><img '
-          'src="//i.mcmod.cn/user/avatar/1.png@45x45.jpg"></span>'
-          '<span class="member"><span class="name">古镇天</span>'
+          '<li><span class="avatar"><a href="/author/1001.html">'
+          '<img src="//i.mcmod.cn/user/avatar/1.png@45x45.jpg"></a></span>'
+          '<span class="member"><span class="name">'
+          '<a href="/author/1001.html">古镇天</a></span>'
           '<span class="position">所有者/程序</span></span></li>'
-          '<li><span class="avatar"><img '
-          'src="//i.mcmod.cn/author/avatar/g.png@45x45.jpg"></span>'
-          '<span class="member"><span class="name">Anvil-Dev</span>'
+          '<li><span class="avatar"><a href="/author/1002.html">'
+          '<img src="//i.mcmod.cn/author/avatar/g.png@45x45.jpg"></a></span>'
+          '<span class="member"><span class="name">'
+          '<a href="/author/1002.html">Anvil-Dev</a></span>'
           '<span class="position">贡献者</span></span></li>'
           '</ul></div></li>'
           '</body></html>',
@@ -72,7 +74,10 @@ void main() {
       'https://i.mcmod.cn/user/avatar/1.png@45x45.jpg',
     );
     expect(d.authors!.first.role, '所有者/程序');
+    // 作者 id 取自作者页链接(/author/{id}.html),进作者页要用
+    expect(d.authors!.first.id, '1001');
     expect(d.authors!.last.name, 'Anvil-Dev');
+    expect(d.authors!.last.id, '1002');
     expect(d.authors!.last.role, '贡献者');
   });
 
@@ -455,8 +460,10 @@ void main() {
     </ul></ul>
   </li>
   <li class="col-lg-12 author"><div class="frame"><ul>
-    <li><span class="avatar"><img src="//i.mcmod.cn/user/1.png@45x45.jpg"></span>
-      <span class="member"><span class="name">水咬狸花猫</span>
+    <li><span class="avatar"><a href="/author/32946.html">
+      <img src="//i.mcmod.cn/user/1.png@45x45.jpg"></a></span>
+      <span class="member"><span class="name">
+      <a href="/author/32946.html">水咬狸花猫</a></span>
       <span class="position">所有者/美术</span></span></li>
   </ul></div></li>
   <div class="common-link-frame">
@@ -492,6 +499,7 @@ void main() {
       // 与模组页同构的部分照常解析:版本按加载器分组、作者、相关链接
       expect(d.mcVersions[ProjectLoader.of('Forge')], ['1.12.2']);
       expect(d.authors!.single.name, '水咬狸花猫');
+      expect(d.authors!.single.id, '32946');
       expect(d.links.single.name, '夸克网盘');
       expect(d.pageUrl, 'https://www.mcmod.cn/modpack/883.html');
     });
@@ -514,6 +522,167 @@ void main() {
       expect(pack.type, ProjectType.modpack);
       expect(mod.type, ProjectType.mod);
       expect(uris.map((u) => u.path), ['/modpack/883.html', '/class/883.html']);
+    });
+  });
+
+  group('作者页', () {
+    /// 实测抓下来的作者页结构(截取头部 + 参与项目 + 会干扰解析的两块邻居)
+    String authorHtml() => '''
+<html><head><title>水咬狸花猫 - 个人作者 - MC百科</title></head><body>
+<div class="author-row">
+  <div class="author-user-frame hascontent">
+    <div class="author-user-avatar">
+      <span><img alt="水咬狸花猫" src="//i.mcmod.cn/user/avatar/68/685115/a.png" /></span>
+    </div>
+    <div class="author-name">
+      <span class="name"><h5>水咬狸花猫</h5></span>
+      <span class="subname"><i class="text-muted">hp12138 / hp-1e</i></span>
+    </div>
+  </div>
+  <div class="author-content common-text font14">
+    <div class="text"><p>哔哩哔哩同名，剑拔弩张之时整合包作者。</p></div>
+  </div>
+  <div class="author-partner">
+    <div class="title">相关作者:</div>
+    <div class="list"><ul><li class="block">
+      <div class="avatar"><a href="/author/34818.html" title="钱多多">
+        <img src="//www.mcmod.cn/static/0d.jpg" /></a></div>
+      <div class="info"><div class="name">
+        <a href="/author/34818.html" title="钱多多">钱多多</a></div></div>
+    </li></ul></div>
+  </div>
+  <div class="author-mods">
+    <div class="title">参与项目:</div>
+    <div class="list"><ul>
+      <div class="block">
+        <div class="cover"><a href="/modpack/883.html" title="[TC]剑拔弩张之时">
+          <img alt="[TC]剑拔弩张之时" src="//i.mcmod.cn/modpack/cover/883.jpg@170x115.jpg" /></a></div>
+        <div class="info">
+          <div class="name"><span class="badge badge-dark badge-modpack">整合包</span>
+            <a href="/modpack/883.html" title="[TC]剑拔弩张之时">剑拔弩张之时</a></div>
+          <div title="所有者/美术/文案" class="position">所有者/美术/文案</div>
+        </div>
+      </div>
+      <div class="block">
+        <div class="cover"><a href="/class/459.html" title="[JEI] JEI物品管理器 (Just Enough Items)">
+          <img alt="JEI" src="//i.mcmod.cn/class/cover/459.jpg@170x115.jpg" /></a></div>
+        <div class="info">
+          <div class="name"><span class="badge badge-dark badge-mod">模组</span>
+            <a href="/class/459.html" title="[JEI] JEI物品管理器 (Just Enough Items)">JEI物品管理器</a></div>
+          <div title="贡献者" class="position">贡献者</div>
+        </div>
+      </div>
+      <div class="block">
+        <div class="cover"><a href="/class/26350.html" title="机械动力：航空学 (Create: Aeronautics)">
+          <img alt="机械动力：航空学" src="//i.mcmod.cn/class/cover/26350.jpg" /></a></div>
+        <div class="info">
+          <div class="name"><span class="badge badge-dark badge-mod">模组</span>
+            <a href="/class/26350.html" title="机械动力：航空学 (Create: Aeronautics)">机械动力：航空学</a></div>
+          <div title="贡献者" class="position">贡献者</div>
+        </div>
+      </div>
+      <div class="block">
+        <div class="cover"><a href="/class/999.html" title="停更模组 (停更)">
+          <img alt="停更模组" src="//i.mcmod.cn/class/cover/999.jpg" /></a></div>
+        <div class="info">
+          <div class="name"><span class="badge badge-dark badge-mod">模组</span>
+            <a href="/class/999.html" title="停更模组 (停更)">停更模组</a></div>
+          <div title="贡献者" class="position">贡献者</div>
+        </div>
+      </div>
+      <div class="block">
+        <div class="cover"><a href="/texture/12.html" title="某个材质包">
+          <img alt="材质" src="//i.mcmod.cn/texture/cover/12.jpg" /></a></div>
+        <div class="info"><div class="name">
+          <a href="/texture/12.html" title="某个材质包">某个材质包</a></div></div>
+      </div>
+    </ul></div>
+  </div>
+  <div class="common-imglist-block">
+    <div class="list"><ul><li class="block">
+      <div class="avatar"><a href="//center.mcmod.cn/837596/">最近编辑的人</a></div>
+    </li></ul></div>
+  </div>
+</div>
+</body></html>''';
+
+    test('getAuthor:头部与参与项目,类型按链接路径段分开', () async {
+      final uris = <Uri>[];
+      McmodApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        return http.Response.bytes(utf8.encode(authorHtml()), 200);
+      });
+
+      final r = await McmodApi.getAuthor('32946');
+      expect(uris.single.path, '/author/32946.html');
+      final author = r.author;
+      expect(author.id, '32946');
+      expect(author.source, ModSource.mcmod);
+      expect(author.name, '水咬狸花猫');
+      // 协议相对的头像地址补全
+      expect(
+        author.avatarUrl,
+        'https://i.mcmod.cn/user/avatar/68/685115/a.png',
+      );
+      expect(author.bio, contains('剑拔弩张之时整合包作者'));
+
+      // 作品:材质包那条的路径段不在白名单里,要跳过。
+      // (页面下方「相关作者」「最近编辑」两块也照真实结构摆着:它们指向的是
+      // 别的用户,选择器一旦放宽就会把它们卷进来)
+      expect(author.projects, hasLength(4));
+      final pack = author.projects!.first;
+      expect(pack.id, '883');
+      expect(pack.type, ProjectType.modpack);
+      expect(pack.title, '剑拔弩张之时');
+      expect(pack.iconUrl, contains('/modpack/cover/883.jpg'));
+      expect(pack.source, ModSource.mcmod);
+      final mod = author.projects![1];
+      expect(mod.id, '459');
+      expect(mod.type, ProjectType.mod);
+      expect(mod.title, 'JEI物品管理器');
+
+      // 副标题:英文名只在 title 属性的括号里,可见文本是中文名 ——
+      // 括号里不是英文的(站点也拿括号写中文注释)不能当副标题
+      expect(
+        {for (final p in author.projects!) p.title: p.subName},
+        {
+          '剑拔弩张之时': null, // title 属性里没有括号
+          'JEI物品管理器': 'Just Enough Items',
+          '机械动力：航空学': 'Create: Aeronautics',
+          '停更模组': null, // 括号里是中文注释
+        },
+      );
+
+      // 作者页一次给全,没有第二页
+      expect(r.totalPages, 1);
+    });
+
+    test('getAuthor:作者页只抓一次(再次进入走会话缓存)', () async {
+      final uris = <Uri>[];
+      McmodApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        return http.Response.bytes(utf8.encode(authorHtml()), 200);
+      });
+
+      await McmodApi.getAuthor('32946');
+      final again = await McmodApi.getAuthor('32946');
+      expect(uris, hasLength(1));
+      expect(again.author.name, '水咬狸花猫');
+    });
+
+    test('getAuthor:没有作者区块(站点 301 到 /error/ 后的 200 页)抛异常', () async {
+      // 站点对不存在的作者 301 到 /error/,http 跟随跳转后是 200 + 普通页面,
+      // 所以判据只能是「页面里没有作者信息」,不能当成一个没有名字的空作者
+      McmodApi.clientFactory = () => MockClient(
+        (request) async => http.Response.bytes(
+          utf8.encode(
+            '<html><body><div class="error-page">页面不存在</div></body></html>',
+          ),
+          200,
+        ),
+      );
+
+      expect(McmodApi.getAuthor('999999999'), throwsException);
     });
   });
 }

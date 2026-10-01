@@ -14,6 +14,8 @@ import 'package:mc_mod_helper/page/detail/project_page.dart';
 import 'package:mc_mod_helper/service/saves/history.dart';
 import 'package:mc_mod_helper/service/saves/likes.dart';
 import 'package:mc_mod_helper/setting/display_settings.dart';
+import 'package:mc_mod_helper/setting/value/layout.dart';
+import 'package:mc_mod_helper/widget/detail/project_cover.dart';
 
 http.Response _json(Object data) => http.Response.bytes(
   utf8.encode(jsonEncode(data)),
@@ -72,6 +74,100 @@ void main() {
     ModrinthApi.clientFactory = () => MockClient(_handler);
     SharedPreferences.setMockInitialValues({});
     await DisplaySettings.instance.load();
+  });
+
+  testWidgets('关掉「记录浏览历史」后详情页不写库', (tester) async {
+    await HistoryService.instance.clear();
+    // 设置默认是开的,这里显式关掉;用例结束恢复,免得影响同文件其它用例
+    DisplaySettings.instance.setRecordHistory(false);
+    addTearDown(() => DisplaySettings.instance.setRecordHistory(true));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ProjectPage(
+          id: 'jei',
+          type: ProjectType.mod,
+          source: ModSource.modrinth,
+          initialTitle: 'JEI',
+        ),
+      ),
+    );
+    // 三个接口各等 1s 节流
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+    }
+
+    // 详情照常加载,只是不记历史
+    expect(find.text('JEI', findRichText: true), findsWidgets);
+    expect(HistoryService.instance.list(), isEmpty);
+
+    // 打开开关再进一次:这次要记上(证明上面的空是因为开关,不是没走到记录)。
+    // 先卸载整页,否则同类型同 key 的 ProjectPage 只会走 didUpdateWidget,
+    // 不会重新 initState → 不会重新加载 → 也就不会记录
+    DisplaySettings.instance.setRecordHistory(true);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ProjectPage(
+          id: 'jei',
+          type: ProjectType.mod,
+          source: ModSource.modrinth,
+          initialTitle: 'JEI',
+        ),
+      ),
+    );
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+    }
+    expect(HistoryService.instance.list(), hasLength(1));
+    expect(HistoryService.instance.list().single.id, 'jei');
+  });
+
+  testWidgets('宽屏边距:窗口收窄时边距先减,内容宽到上限就封顶', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1600, 900);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ProjectPage(
+          id: 'jei',
+          type: ProjectType.mod,
+          source: ModSource.modrinth,
+          initialTitle: 'JEI',
+        ),
+      ),
+    );
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+    }
+
+    // 很宽时:内容封顶在上限宽,余量都成了左右边距
+    expect(
+      tester.getSize(find.byType(ModCoverWide)).width,
+      PageLayout.maxContentWidth,
+    );
+
+    // 收窄到 1100:这一段里减的是边距(已到最小),内容才跟着缩
+    tester.view.physicalSize = const Size(1100, 900);
+    await tester.pump();
+    expect(
+      tester.getSize(find.byType(ModCoverWide)).width,
+      1100 - PageLayout.minPadding * 2,
+    );
+
+    // 刚好回到临界宽度:内容又满宽了(再往回一点就该只有边距在变)
+    final critical = PageLayout.maxContentWidth + PageLayout.minPadding * 2;
+    tester.view.physicalSize = Size(critical, 900);
+    await tester.pump();
+    expect(
+      tester.getSize(find.byType(ModCoverWide)).width,
+      PageLayout.maxContentWidth,
+    );
   });
 
   testWidgets('窄屏详情:封面+吸顶按钮+两页签各自独立滚动', (tester) async {

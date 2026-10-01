@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
 import 'package:mc_mod_helper/model/project/project_loader.dart';
 
+import '../model/author/author_detail.dart';
 import '../model/author/author_summary.dart';
 import '../model/filter/filter.dart';
 import '../model/filter/sort_method.dart';
@@ -45,6 +46,11 @@ class CurseforgeApi {
   /// 会话缓存,避免重复请求
   static final Map<String, List<ProjectSummary>> _searchCache = {};
   static final Map<String, ProjectDetail> _detailCache = {};
+
+  /// 作者作品的分页缓存:key = '作者 id|页码'
+  /// (CurseForge 没有作者资料接口,这里只缓存作品列表)
+  static final Map<String, ({List<ProjectSummary> mods, int totalPages})>
+  _authorProjectsCache = {};
 
   /// 分类选项按类型缓存(classId 不同,分类也不一样)
   static final Map<ProjectType, List<ProjectCategory>> _categoryCache = {};
@@ -119,6 +125,7 @@ class CurseforgeApi {
   static void clearCaches() {
     _searchCache.clear();
     _detailCache.clear();
+    _authorProjectsCache.clear();
     _categoryCache.clear();
     _versionCache = null;
     _filteredModsCache.clear();
@@ -126,6 +133,53 @@ class CurseforgeApi {
     // 重置惰性缓存的客户端,让测试可以替换 clientFactory
     _clientInstance = null;
   }
+
+  /// 作者主页:CurseForge **没有作者资料接口**,只能按 `authorId` 检索他的作品,
+  /// 所以头部只有 id —— 名字/头像由调用方从详情页的作者卡片带过来
+  /// (官方参数表:`authorId` = 该作者参与的项目,`primaryAuthorId` = 他主导的)。
+  ///
+  /// 不带 `classId`:它在该接口是可选的,省略后该作者各版块(模组/整合包/
+  /// 材质/光影)的项目一起返回;分版块取要发四次请求,分页语义也会乱。
+  static Future<({AuthorDetail author, int totalPages})> getAuthor(
+    String id, {
+    int page = 1,
+  }) async {
+    final authorId = int.tryParse(id);
+    // 作者 id 不是数字(理论上不会出现)时当作没有作品,而不是发一个空查询
+    if (authorId == null) {
+      return (author: _buildAuthor(id, const []), totalPages: 0);
+    }
+    final key = '$id|$page';
+    final cached = _authorProjectsCache[key];
+    if (cached != null) {
+      return (
+        author: _buildAuthor(id, cached.mods),
+        totalPages: cached.totalPages,
+      );
+    }
+
+    final uri = Uri.parse('https://api.curseforge.com/v1/mods/search').replace(
+      queryParameters: {
+        'gameId': '$_gameId',
+        'authorId': '$authorId',
+        'pageSize': '20',
+        'index': '${(page - 1) * 20}',
+        'sortField': '1',
+        'sortOrder': 'desc',
+      },
+    );
+    final body = await _get(uri);
+    final result = _parseCategoryPage(body);
+    _cacheFiltered(_authorProjectsCache, key, result);
+    return (
+      author: _buildAuthor(id, result.mods),
+      totalPages: result.totalPages,
+    );
+  }
+
+  /// 作者页头部:CurseForge 拿不到名字/头像/简介,这里只带 id 与作品
+  static AuthorDetail _buildAuthor(String id, List<ProjectSummary> projects) =>
+      AuthorDetail(id: id, source: ModSource.curseforge, projects: projects);
 
   /// 按关键词搜索模组,返回摘要列表。
   ///
@@ -419,7 +473,16 @@ class CurseforgeApi {
       if (a is! Map<String, dynamic>) continue;
       final name = (a['name'] as String?)?.trim() ?? '';
       if (name.isEmpty) continue;
-      authors.add(AuthorSummary(name: name));
+      final id = a['id'];
+      authors.add(
+        AuthorSummary(
+          name: name,
+          // id 是数字(按 authorId 检索作品要用),统一转成字符串
+          id: id is num ? '${id.toInt()}' : null,
+          // 主页地址由站点给出,格式不保证 —— 当不透明字符串用
+          url: (a['url'] as String?)?.trim(),
+        ),
+      );
     }
     return authors.isEmpty ? null : authors;
   }

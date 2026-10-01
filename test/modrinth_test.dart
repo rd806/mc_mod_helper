@@ -143,18 +143,19 @@ Future<http.Response> _handler(http.Request request) async {
     ]);
   }
   if (request.url.path == '/v2/project/sodium/members') {
-    // 团队成员:user(用户名/头像) + role
+    // 团队成员:user(id/用户名/头像) + role
     return _json([
       {
         'user': {
+          'id': 'DzLrfrbK',
           'username': 'jellysquid3',
           'avatar_url': 'https://cdn.modrinth.com/avatars/jelly.png',
         },
         'role': 'Owner',
       },
       {
-        'user': {'username': 'IMS212'},
-        'role': 'Developer',
+        'user': {'id': 'IMS212id', 'username': 'IMS212'},
+        'role': 'Maintainer',
       },
     ]);
   }
@@ -244,10 +245,10 @@ void main() {
       }
     });
 
-    test('插件:project_type 报成 mod,靠 all_project_types / loaders 纠正', () async {
-      // 实测 veinminer:旧字段 project_type=mod,新字段
-      // all_project_types=[datapack,mod,plugin],loaders=[bukkit]。
-      // 只看旧字段的话插件会被显示成「模组」(封面上的类型胶囊就是这么错的)
+    test('插件:project_type 报成 mod,就与模组共用「模组」这个类型', () async {
+      // 实测 veinminer:project_type=mod,另有 all_project_types=[datapack,mod,plugin]、
+      // loaders=[bukkit]。这两个字段**不参与**类型判断(拿它们纠正会误伤正经模组),
+      // 所以插件显示成模组是可以接受的
       ModrinthApi.clientFactory = () => MockClient((request) async {
         if (request.url.path == '/v2/search') {
           return _json({
@@ -276,7 +277,6 @@ void main() {
             'total_hits': 3,
           });
         }
-        // 详情没有 all_project_types:只能看加载器
         if (request.url.path == '/v2/project/veinminer') {
           return _json({
             'title': 'VeinMiner',
@@ -293,17 +293,18 @@ void main() {
       });
       ModrinthApi.clearCaches();
 
+      // 命中条目一律按 project_type 定类型:插件也是「模组」
       final hits = await ModrinthApi.search('x');
       expect(hits.map((h) => h.type), [
-        ProjectType.plugin, // 新字段里有更具体的类型
-        ProjectType.mod, // 只有 datapack → 仍是模组(枚举里没有数据包)
-        ProjectType.mod, // 普通模组不受影响
+        ProjectType.mod, // 插件(不再看 all_project_types)
+        ProjectType.mod, // 只有 datapack → 模组(枚举里没有数据包)
+        ProjectType.mod, // 普通模组
       ]);
 
-      // 详情:旧字段 mod + 加载器是服务端平台 → 插件
+      // 详情同理:加载器是服务端平台也不改类型
       final detail = await ModrinthApi.getDetail('veinminer');
-      expect(detail.type, ProjectType.plugin);
-      expect(detail.pageUrl, 'https://modrinth.com/plugin/veinminer');
+      expect(detail.type, ProjectType.mod);
+      expect(detail.pageUrl, 'https://modrinth.com/mod/veinminer');
     });
 
     test('search 映射到 ModSummary', () async {
@@ -394,13 +395,91 @@ void main() {
       // 作者:成员接口的 username/头像,角色映射中文
       expect(d.authors, hasLength(2));
       expect(d.authors!.first.name, 'jellysquid3');
+      // user.id 是进作者页要用的(成员接口只给 id,不给用户名当路径)
+      expect(d.authors!.first.id, 'DzLrfrbK');
       expect(
         d.authors!.first.avatarUrl,
         'https://cdn.modrinth.com/avatars/jelly.png',
       );
       expect(d.authors!.first.role, '所有者');
       expect(d.authors!.last.name, 'IMS212');
-      expect(d.authors!.last.role, '开发者');
+      expect(d.authors!.last.id, 'IMS212id');
+      expect(d.authors!.last.role, '维护者');
+    });
+
+    test('getAuthor:用户资料 + 他参与的项目(计数键是 followers)', () async {
+      final uris = <Uri>[];
+      ModrinthApi.clientFactory = () => MockClient((request) async {
+        uris.add(request.url);
+        if (request.url.path == '/v2/user/DzLrfrbK') {
+          // 实测响应:name 是可选展示名(多数人为 null),这里给一个
+          return _json({
+            'id': 'DzLrfrbK',
+            'username': 'IMS',
+            'name': 'IMS 的展示名',
+            'avatar_url': 'https://cdn.modrinth.com/user/DzLrfrbK/a.png',
+            'bio': 'the Iris guy',
+          });
+        }
+        if (request.url.path == '/v2/user/DzLrfrbK/projects') {
+          // 「用户的项目」返回的是完整项目对象(不是搜索命中):
+          // 关注数在 followers 上,没有 follows
+          return _json([
+            {
+              'slug': 'sodium',
+              'title': 'Sodium',
+              'description': '渲染引擎',
+              'project_type': 'mod',
+              'icon_url': 'https://cdn.modrinth.com/data/sodium.png',
+              'downloads': 8630000,
+              'followers': 40788,
+            },
+            {
+              'slug': 'iris',
+              'title': 'Iris Shaders',
+              'description': '光影加载器',
+              'project_type': 'shader',
+              'downloads': 100,
+              'followers': 20,
+            },
+          ]);
+        }
+        return http.Response('', 404);
+      });
+
+      final r = await ModrinthApi.getAuthor('DzLrfrbK');
+      final author = r.author;
+      expect(author.id, 'DzLrfrbK');
+      expect(author.source, ModSource.modrinth);
+      expect(author.name, 'IMS 的展示名');
+      expect(author.bio, 'the Iris guy');
+      expect(author.avatarUrl, 'https://cdn.modrinth.com/user/DzLrfrbK/a.png');
+      expect(r.totalPages, 1); // 接口一次给全,没有分页
+
+      expect(author.projects, hasLength(2));
+      final mod = author.projects!.first;
+      expect(mod.id, 'sodium');
+      expect(mod.type, ProjectType.mod);
+      expect(mod.iconUrl, 'https://cdn.modrinth.com/data/sodium.png');
+      expect(mod.statistics, [('downloads', '863万'), ('followers', '4.1万')]);
+      expect(author.projects!.last.type, ProjectType.shader);
+      expect(uris.map((u) => u.path), [
+        '/v2/user/DzLrfrbK',
+        '/v2/user/DzLrfrbK/projects',
+      ]);
+    });
+
+    test('getAuthor:没有展示名时退回用户名', () async {
+      ModrinthApi.clientFactory = () => MockClient((request) async {
+        if (request.url.path == '/v2/user/x') {
+          return _json({'id': 'x', 'username': 'someone', 'name': null});
+        }
+        return _json(const []);
+      });
+
+      final r = await ModrinthApi.getAuthor('x');
+      expect(r.author.name, 'someone');
+      expect(r.author.projects, isEmpty);
     });
 
     test('非 200 抛出含状态码的异常', () async {
@@ -488,6 +567,12 @@ void main() {
   });
 
   testWidgets('数据来源切到 Modrinth 后搜索与详情走 Modrinth', (tester) async {
+    // 详情页宽屏断点是 1000(之下走窄屏单列,没有右栏):本用例要验宽屏
+    // 右栏(相关链接/支持版本)的滚动,所以显式给一个宽视口
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await DisplaySettings.instance.load();
     // 本用例验证 hyper_render 渲染路径,显式指定渲染方法
     // (默认 'default' 是 HtmlContent,详情页不会出现 HyperViewer)

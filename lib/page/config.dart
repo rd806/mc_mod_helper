@@ -87,11 +87,12 @@ class _ConfigPageState extends State<ConfigPage> {
             listenable: DisplaySettings.instance,
             builder: (context, _) => SettingsGroup(
               icon: Icons.display_settings,
-              title: '显示',
+              title: '浏览',
               children: [
                 _buildRenderType(DisplaySettings.instance),
                 _buildDataSource(DisplaySettings.instance),
                 _buildDisplayStyle(DisplaySettings.instance),
+                _buildRecordHistory(DisplaySettings.instance),
               ],
             ),
           ),
@@ -314,6 +315,16 @@ class _ConfigPageState extends State<ConfigPage> {
           ),
       ],
       onChanged: DisplaySettings.instance.setDisplayStyle,
+    );
+  }
+
+  /// 是否记录浏览历史(关闭后详情页不再写库,已有记录保持不动)
+  Widget _buildRecordHistory(DisplaySettings s) {
+    return SwitchTile(
+      title: '记录浏览历史',
+      subtitle: '关闭后浏览模组不再记入「我的 - 历史」',
+      initialValue: s.recordHistory,
+      onChanged: DisplaySettings.instance.setRecordHistory,
     );
   }
 

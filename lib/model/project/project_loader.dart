@@ -58,29 +58,9 @@ const Map<String, ProjectLoader> projectLoaders = {
   ),
 };
 
-/// 服务端平台:跑这些加载器的项目在 Modrinth 上就是「插件」。
-///
-/// 用途是反推类型 —— Modrinth 的 `project_type` 是旧字段,插件也被报成 'mod'
-/// (实测 veinminer:`project_type=mod`、`loaders=[bukkit]`),
-/// 这类项目的详情没有别的类型线索,只能从加载器认
-const Set<String> serverPlatforms = {
-  'bukkit',
-  'spigot',
-  'paper',
-  'purpur',
-  'folia',
-  'bungeecord',
-  'velocity',
-  'waterfall',
-};
-
 /// 模组加载器
 class ProjectLoader {
   const ProjectLoader({required this.icon, required this.name});
-
-  /// 是否服务端平台(写法大小写不一,统一按小写比)
-  static bool isServerPlatform(String name) =>
-      serverPlatforms.contains(name.trim().toLowerCase());
 
   /// 站点给的名字 → 加载器。
   ///

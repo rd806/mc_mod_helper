@@ -1,7 +1,7 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:mc_mod_helper/api/curseforge.dart';
+import 'package:mc_mod_helper/setting/display_settings.dart';
+import 'package:mc_mod_helper/setting/value/layout.dart';
 import 'package:mc_mod_helper/setting/value/source.dart';
 import 'package:mc_mod_helper/widget/button/selection_button.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -18,7 +18,7 @@ import '../../widget/dialog/captcha_dialog.dart';
 import '../../widget/common/image_box.dart';
 import '../../widget/detail/scroll_button.dart';
 import '../../widget/detail/authors_card.dart';
-import '../../widget/detail/cover.dart';
+import '../../widget/detail/project_cover.dart';
 import '../../widget/detail/description_card.dart';
 import '../../widget/detail/environment_card.dart';
 import '../../widget/detail/links_card.dart';
@@ -55,6 +55,12 @@ class ProjectPage extends StatefulWidget {
 }
 
 class _ProjectPageState extends State<ProjectPage> {
+  /// 宽屏 / 窄屏的分界宽度。
+  ///
+  /// 两栏布局至少需要:右栏 350 + 正文一栏看得过去的宽度(约 560)+ 栏间距,
+  /// 所以取 1000(此时左右边距已减到最小边距,内容还有 952 可用)
+  static const double _narrowBreakpoint = 1000;
+
   // 当前展示的组件
   int _currentIndex = 0;
   // 待加载的信息
@@ -108,7 +114,12 @@ class _ProjectPageState extends State<ProjectPage> {
           fallbackDescription: widget.initialDescription,
         ),
       };
-      await HistoryService.instance.record(ProjectSummary.fromDetail(detail));
+      // 记一条浏览历史(详情页是唯一的"浏览"入口)。
+      // 设置里关掉「记录浏览历史」后不再写库 —— 已经记下的保持不动,
+      // 所以在调用点判设置,而不是让 HistoryService 依赖设置
+      if (DisplaySettings.instance.recordHistory) {
+        await HistoryService.instance.record(ProjectSummary.fromDetail(detail));
+      }
       return detail;
     } on McmodCaptchaException catch (e) {
       if (!mounted) rethrow;
@@ -327,11 +338,17 @@ class _ProjectPageState extends State<ProjectPage> {
   Widget _buildSuccess(ProjectDetail mod) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final narrow = constraints.maxWidth < 800;
+        final width = constraints.maxWidth;
+        // 左右边距:内容宽到上限就封顶,窗口收窄时边距先减(见 PageLayout),
+        // 所以这里不需要按宽度分档给不同的边距
+        final padding = PageLayout.paddingFor(width);
+        final narrow = width < _narrowBreakpoint;
         return Stack(
           children: [
             Positioned.fill(
-              child: narrow ? _buildNarrowPage(mod) : _buildWidePage(mod),
+              child: narrow
+                  ? _buildNarrowPage(mod)
+                  : _buildWidePage(mod, padding),
             ),
             // 返回顶部:窄屏滚整页(含封面),宽屏滚左栏正文列。
             // 右下角让给助手悬浮按钮,故整体上移
@@ -346,44 +363,41 @@ class _ProjectPageState extends State<ProjectPage> {
   }
 
   /// 宽屏布局:顶部通栏封面+名称,下方左右两栏(左宽右窄)各自独立滚动
-  Widget _buildWidePage(ProjectDetail mod) {
+  Widget _buildWidePage(ProjectDetail mod, double padding) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 顶部:封面与标题（通栏）
         Padding(
-          padding: const EdgeInsets.fromLTRB(64, 16, 64, 16),
+          padding: EdgeInsets.fromLTRB(padding, 16, padding, 16),
           child: ModCoverWide(project: mod),
         ),
         // 下方:左宽右窄两栏
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 左栏(宽):模组介绍
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(64, 0, 0, 0),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(padding, 0, padding, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 左栏(宽):模组介绍
+                Expanded(
                   child: ListView(
                     controller: _leftController,
                     padding: const EdgeInsets.fromLTRB(0, 0, 10, 0),
                     children: [_buildDescription(mod)],
                   ),
                 ),
-              ),
-              // 右栏(窄):相关链接 + 支持版本
-              SizedBox(
-                width: min(450, MediaQuery.of(context).size.width * 0.4),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 0, 54, 0),
+                // 右栏(窄):相关链接 + 支持版本
+                SizedBox(
+                  width: 350,
                   child: ListView(
                     controller: _rightController,
                     padding: const EdgeInsets.fromLTRB(0, 0, 10, 0),
                     children: [_buildOther(mod)],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -400,10 +414,15 @@ class _ProjectPageState extends State<ProjectPage> {
     return CustomScrollView(
       controller: _narrowController,
       slivers: [
-        // 封面区域
+        // 封面区域(窄屏就是「边距已减到最小」的那一档,与宽屏接得上)
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            padding: const EdgeInsets.fromLTRB(
+              PageLayout.minPadding,
+              16,
+              PageLayout.minPadding,
+              0,
+            ),
             child: ModCoverNarrow(project: mod),
           ),
         ),

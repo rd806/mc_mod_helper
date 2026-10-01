@@ -103,7 +103,11 @@ Future<http.Response> _handler(http.Request request) async {
           'wikiUrl': null,
         },
         'authors': [
-          {'id': 1, 'name': 'jellysquid3', 'url': 'https://example.com/a'},
+          {
+            'id': 1,
+            'name': 'jellysquid3',
+            'url': 'https://www.curseforge.com/members/jellysquid3',
+          },
         ],
       },
     });
@@ -216,6 +220,65 @@ void main() {
     expect(cats.single.type, ProjectType.modpack);
   });
 
+  test('getAuthor:按 authorId 检索作品,分页是 index 偏移,头部没有名字', () async {
+    final uris = <Uri>[];
+    CurseforgeApi.clientFactory = () => MockClient((request) async {
+      uris.add(request.url);
+      return _json({
+        'data': [
+          {'id': 250898, 'name': 'Create', 'summary': '科技模组', 'classId': 6},
+          {
+            'id': 900,
+            'name': 'All the Mods 9',
+            'summary': '整合包',
+            'classId': 4471,
+          },
+        ],
+        'pagination': {'totalCount': 45},
+      });
+    });
+
+    final r = await CurseforgeApi.getAuthor('12345');
+    // CurseForge 没有作者资料接口:头部只有 id,名字/头像由详情页卡片带过来
+    expect(r.author.id, '12345');
+    expect(r.author.source, ModSource.curseforge);
+    expect(r.author.name, isNull);
+    expect(r.author.avatarUrl, isNull);
+    // 不带 classId:该作者各版块的项目一起返回(classId 由 API 可选)
+    final params = uris.single.queryParameters;
+    expect(params['authorId'], '12345');
+    expect(params['gameId'], '432');
+    expect(params.containsKey('classId'), isFalse);
+    expect(params['index'], '0');
+    expect(r.totalPages, 3); // 45 条 / 20 每页
+
+    // 作品按 classId 映射类型
+    expect(r.author.projects!.map((p) => p.type), [
+      ProjectType.mod,
+      ProjectType.modpack,
+    ]);
+
+    // 翻页仍是 index 偏移制
+    await CurseforgeApi.getAuthor('12345', page: 2);
+    expect(uris.last.queryParameters['index'], '20');
+  });
+
+  test('getAuthor:作者 id 不是数字时返回空作品,不发请求', () async {
+    var called = false;
+    CurseforgeApi.clientFactory = () => MockClient((request) async {
+      called = true;
+      return _json({
+        'data': const [],
+        'pagination': {'totalCount': 0},
+      });
+    });
+
+    final r = await CurseforgeApi.getAuthor('not-a-number');
+    expect(r.author.projects, isEmpty);
+    expect(r.totalPages, 0);
+    expect(called, isFalse);
+  });
+
   test('材质包 / 光影:classId 分别是 12 / 6552(CurseForge 没有插件)', () async {
     final uris = <Uri>[];
     CurseforgeApi.clientFactory = () => MockClient((request) async {
@@ -268,9 +331,15 @@ void main() {
     // 链接:源码命中 GitHub 品牌名,官网在列
     expect(d.links.map((l) => l.name), contains('GitHub'));
     expect(d.links.map((l) => l.name), contains('官网'));
-    // 作者:API 的 authors 列表,无头像与角色
+    // 作者:API 的 authors 列表,无头像与角色;
+    // id(按 authorId 查他的作品)与主页地址都要留住
     expect(d.authors, hasLength(1));
     expect(d.authors!.single.name, 'jellysquid3');
+    expect(d.authors!.single.id, '1');
+    expect(
+      d.authors!.single.url,
+      'https://www.curseforge.com/members/jellysquid3',
+    );
     expect(d.authors!.single.avatarUrl, isNull);
     expect(d.authors!.single.role, isNull);
   });

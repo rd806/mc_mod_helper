@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:markdown/markdown.dart' as md;
 import 'package:mc_mod_helper/setting/value/source.dart';
 
+import '../model/author/author_detail.dart';
 import '../model/author/author_summary.dart';
 import '../model/filter/filter.dart';
 import '../model/filter/sort_method.dart';
@@ -41,6 +42,9 @@ class ModrinthApi {
   static final Map<String, List<ProjectSummary>> _searchCache = {};
   static final Map<String, ProjectDetail> _detailCache = {};
 
+  /// 作者页缓存:用户资料与他的项目一次拿全(接口没有分页)
+  static final Map<String, AuthorDetail> _authorCache = {};
+
   /// 分类选项按类型缓存(接口一次返回所有类型的分类,这里按类型取子集)
   static final Map<ProjectType, List<ProjectCategory>> _categoryCache = {};
 
@@ -67,6 +71,7 @@ class ModrinthApi {
   static void clearCaches() {
     _searchCache.clear();
     _detailCache.clear();
+    _authorCache.clear();
     _categoryCache.clear();
     _versionCache = null;
     _filteredModsCache.clear();
@@ -129,6 +134,54 @@ class ModrinthApi {
     );
     _detailCache[sourceId] = detail;
     return detail;
+  }
+
+  /// 作者主页:用户资料 + 他参与的项目。
+  ///
+  /// `/v2/user/{id}` 给 `username / name / avatar_url / bio`,
+  /// `/v2/user/{id}/projects` 一次返回全部项目对象(接口没有分页参数),
+  /// 所以 totalPages 恒为 1;[page] 只有第 1 页有意义,大于 1 也返回同一份。
+  /// 两个地址都同时接受 id 与用户名。
+  static Future<({AuthorDetail author, int totalPages})> getAuthor(
+    String id, {
+    int page = 1,
+  }) async {
+    final cached = _authorCache[id];
+    if (cached != null) return (author: cached, totalPages: 1);
+
+    final userBody = await _get(
+      Uri.parse('https://api.modrinth.com/v2/user/$id'),
+    );
+    final projectsBody = await _get(
+      Uri.parse('https://api.modrinth.com/v2/user/$id/projects'),
+    );
+    final user = jsonDecode(userBody) as Map<String, dynamic>;
+    // name 是可选展示名(多数人是 null),没有就退回用户名
+    final display = (user['name'] as String?)?.trim() ?? '';
+    final username = (user['username'] as String?)?.trim() ?? '';
+    final bio = (user['bio'] as String?)?.trim() ?? '';
+    final userId = (user['id'] as String?)?.trim() ?? '';
+
+    final author = AuthorDetail(
+      // 接口回来的规范 id 优先(调用方也可能拿用户名来查)
+      id: userId.isEmpty ? id : userId,
+      source: ModSource.modrinth,
+      avatarUrl: user['avatar_url'] as String?,
+      name: display.isNotEmpty ? display : (username.isEmpty ? null : username),
+      bio: bio.isEmpty ? null : bio,
+      projects: _parseUserProjects(projectsBody),
+    );
+    _authorCache[id] = author;
+    return (author: author, totalPages: 1);
+  }
+
+  /// 用户的项目列表:与搜索命中是同一套字段,直接复用 [_parseHit]
+  static List<ProjectSummary> _parseUserProjects(String body) {
+    final data = jsonDecode(body) as List<dynamic>;
+    return [
+      for (final project in data.cast<Map<String, dynamic>>())
+        ?_parseHit(project),
+    ];
   }
 
   /// 获取分类列表(按类型)。
@@ -261,36 +314,23 @@ class ModrinthApi {
     return null;
   }
 
-  /// 项目类型。Modrinth 的 `project_type` 是**旧字段**,插件也被报成 'mod'
-  /// (实测 veinminer:`project_type=mod`、`all_project_types=[datapack,mod,plugin]`、
-  /// `loaders=[bukkit]`),所以两个形状都要处理:
+  /// 项目类型,**只认 `project_type` 这一个字段**。
   ///
-  /// - 搜索命中带新的 `all_project_types` 列表 → 取其中**最具体**的那个
-  ///   ('mod' 只是兜底语义:列表里还有 plugin / shader 等就用那个);
-  /// - 项目详情没有新字段 → `project_type` 为 mod 时再看加载器是不是全是
-  ///   服务端平台(bukkit / paper…),是就纠正为插件。
+  /// 这个字段对 shader / resourcepack / modpack 报得都是对的,只有插件被报成
+  /// 'mod'(实测 veinminer:`project_type=mod`、`all_project_types=[datapack,mod,plugin]`、
+  /// `loaders=[bukkit]`)。
   ///
-  /// 其余类型(shader / resourcepack / modpack)旧字段给的是对的,照用。
-  static ProjectType _projectType(Map<String, dynamic> data) {
-    final all = (data['all_project_types'] as List<dynamic>?)?.cast<String>();
-    if (all != null) {
-      final types = [for (final name in all) ?_typeByName(name)];
-      for (final type in types) {
-        if (type != ProjectType.mod) return type;
-      }
-      if (types.isNotEmpty) return ProjectType.mod;
-    }
-    final legacy = _typeByName(data['project_type']) ?? ProjectType.mod;
-    if (legacy != ProjectType.mod) return legacy;
-    final loaders =
-        (data['loaders'] as List<dynamic>?)?.cast<String>() ?? const [];
-    if (loaders.isNotEmpty && loaders.any(ProjectLoader.isServerPlatform)) {
-      return ProjectType.plugin;
-    }
-    return legacy;
-  }
+  /// 曾经拿 `all_project_types` / 加载器去纠正插件,实测会误伤:只要项目的加载器
+  /// 里沾到服务端平台(bukkit / paper…)就被贴上插件的标签,连正经模组也会中招。
+  /// 插件与模组本来就近,两者共用「模组」这个标签可以接受,所以这里不再推断
+  /// —— 浏览页的「插件」分类(检索时用 facets 的 project_type:plugin)不受影响。
+  static ProjectType _projectType(Map<String, dynamic> data) =>
+      _typeByName(data['project_type']) ?? ProjectType.mod;
 
-  /// 单个搜索命中条目 → ModSummary;字段缺失时返回 null 丢弃
+  /// 单个搜索命中条目 → ModSummary;字段缺失时返回 null 丢弃。
+  ///
+  /// 搜索接口与「用户的项目列表」字段基本一致,唯一的差别是关注数:
+  /// 搜索命中叫 `follows`、项目对象叫 `followers`,两种都认
   static ProjectSummary? _parseHit(Map<String, dynamic> hit) {
     final slug = (hit['slug'] as String?)?.trim() ?? '';
     final title = (hit['title'] as String?)?.trim() ?? '';
@@ -303,7 +343,7 @@ class ModrinthApi {
       iconUrl: hit['icon_url'] as String?,
       statistics: _buildStats(
         (hit['downloads'] as num?)?.toInt(),
-        (hit['follows'] as num?)?.toInt(),
+        ((hit['follows'] ?? hit['followers']) as num?)?.toInt(),
       ),
       source: ModSource.modrinth,
     );
@@ -406,12 +446,14 @@ class ModrinthApi {
   /// 团队角色 → 中文(未收录的保留原文)
   static const Map<String, String> _roleNames = {
     'Owner': '所有者',
+    'Project Lead': '项目负责人',
+    'Maintainer': '维护者',
     'Developer': '开发者',
     'Editor': '编辑',
     'Manager': '管理',
   };
 
-  /// 成员列表 → 作者:每个成员带 user(用户名/头像)与 role
+  /// 成员列表 → 作者:每个成员带 user(id/用户名/头像)与 role
   static List<AuthorSummary>? _parseAuthors(String body) {
     final data = jsonDecode(body) as List<dynamic>;
     final authors = <AuthorSummary>[];
@@ -422,6 +464,8 @@ class ModrinthApi {
       authors.add(
         AuthorSummary(
           name: name,
+          // user.id 是进作者页要用的:成员接口给的是用户 id,不是用户名
+          id: (user?['id'] as String?)?.trim(),
           avatarUrl: user?['avatar_url'] as String?,
           role:
               _roleNames[(m['role'] as String?) ?? ''] ?? m['role'] as String?,

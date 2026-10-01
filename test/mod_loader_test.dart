@@ -37,22 +37,6 @@ void main() {
     expect(ProjectLoader.of('velocity').color, isNotNull);
   });
 
-  test('isServerPlatform:认得服务端平台,模组加载器不算', () {
-    for (final name in ['bukkit', 'Paper', ' VELOCITY ']) {
-      expect(ProjectLoader.isServerPlatform(name), isTrue, reason: name);
-    }
-    for (final name in [
-      'forge',
-      'fabric',
-      'neoforge',
-      'quilt',
-      'datapack',
-      '',
-    ]) {
-      expect(ProjectLoader.isServerPlatform(name), isFalse, reason: name);
-    }
-  });
-
   test('of:注册表外的加载器保留原名,用通用图标兜底', () {
     final loader = ProjectLoader.of('数据包');
     expect(loader.name, '数据包');
